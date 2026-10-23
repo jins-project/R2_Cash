@@ -207,7 +207,6 @@ details.log li b{color:var(--text);font-weight:500}
   <button class="btn" id="btnSaveJson" title="현재 데이터를 JSON 파일로 내려받습니다">JSON 저장</button>
   <button class="btn" id="btnLoadJson" title="JSON 파일에서 데이터를 불러옵니다">JSON 불러오기</button>
   <input type="file" id="fileInput" accept=".json,application/json" hidden>
-  <button class="btn" id="btnShare" style="display:none" title="같은 방에 들어오는 링크를 복사합니다">공유 링크 복사</button>
   <button class="btn" id="btnNick">내 이름: <span id="nickView">미설정</span></button>
   <button class="btn" id="btnAdmin">관리자</button>
   <button class="btn primary" id="btnAdd">+ 캐릭터 추가</button>
@@ -359,30 +358,12 @@ details.log li b{color:var(--text);font-weight:500}
     <p class="hint" id="modeDesc"></p>
     <div class="row" style="justify-content:flex-start">
       <button class="btn" id="btnFbSetup">Firebase 연결 설정</button>
-      <button class="btn" id="btnRoomChange">입장 코드 변경</button>
       <button class="btn danger" id="btnToLocal">로컬 모드로 돌아가기</button>
     </div>
     <div class="err" id="adminErr"></div>
     <div class="row">
       <button class="btn" data-close>닫기</button>
       <button class="btn primary" id="adminSetBtn">비밀번호 설정</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ 팝업: 입장 코드 (Firebase 모드) ============ -->
-<div class="modal-bg" id="mRoom">
-  <div class="modal">
-    <h3>입장 코드</h3>
-    <p class="hint">같은 입장 코드를 넣은 사람끼리만 같은 데이터를 봅니다. 코드를 모르는 사람은 페이지 주소를 알아도 데이터를 볼 수 없어요.
-      <br>처음 만드는 사람은 <b>새 코드 만들기</b>를 누르고, 나머지 사람에게는 상단의 <b>공유 링크 복사</b>로 링크를 보내주세요.</p>
-    <label for="roomInput">입장 코드 (영문·숫자·-·_ 8~40자)</label>
-    <input type="text" id="roomInput" maxlength="40" autocomplete="off" spellcheck="false">
-    <div class="err" id="roomErr"></div>
-    <div class="row">
-      <button class="btn" id="roomNew">새 코드 만들기</button>
-      <button class="btn" id="roomLocal">로컬 모드로 사용</button>
-      <button class="btn primary" id="roomOk">입장</button>
     </div>
   </div>
 </div>
@@ -405,7 +386,7 @@ details.log li b{color:var(--text);font-weight:500}
      projectId: "r2-cash",
      appId: "1:123:web:abc"
    };
-   ※ apiKey 는 공개돼도 괜찮은 값입니다. 데이터 보호는 "보안 규칙(firestore.rules) + 입장 코드"가 담당합니다. */
+   ※ apiKey 는 공개돼도 괜찮은 값입니다. 데이터 모양 검사는 보안 규칙(firestore.rules)이 담당합니다. */
 const EMBEDDED_CONFIG = {
   apiKey: "AIzaSyB596GHLV4Zzl0kNp-Duc2FGeFWTWTORNI",
   authDomain: "jins-projectm.firebaseapp.com",
@@ -419,7 +400,7 @@ const EMBEDDED_CONFIG = {
 const APP_ID = "r2-item-timer";   // JSON 파일이 이 프로그램 것인지 확인하는 표시
 const DATA_VERSION = 2;            // v2: 연장 횟수(count), 악세사리 여러 개
 const LOCAL_KEY = "r2_local_data"; // 로컬 모드 자동 저장 위치
-const ROOM_RE = /^[A-Za-z0-9_-]{8,40}$/;  // 입장 코드 형식 (보안 규칙과 같아야 함)
+const ROOM_ID = "r2-main-room";   // 모두가 함께 쓰는 고정 저장 위치 (Firestore: r2rooms/r2-main-room)
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
@@ -649,9 +630,9 @@ function createLocalStore(){
 
 /* ---------- 3-2. Firebase 저장소 (Cloud Firestore) ----------
    Firestore 안의 저장 구조
-     r2rooms/{입장코드}                      ← 문서: { adminHash }
-     r2rooms/{입장코드}/characters/{캐릭터ID} ← 문서: { name, memo, items, updatedBy, updatedAt }
-     r2rooms/{입장코드}/logs/{자동ID}         ← 문서: { at, by, text }
+     r2rooms/r2-main-room                      ← 문서: { adminHash }
+     r2rooms/r2-main-room/characters/{캐릭터ID} ← 문서: { name, memo, items, updatedBy, updatedAt }
+     r2rooms/r2-main-room/logs/{자동ID}         ← 문서: { at, by, text }
 ------------------------------------------------------------- */
 function loadScript(src){
   return new Promise((ok, fail) => {
@@ -1213,10 +1194,9 @@ function openAdmin(){
   const isLocal = Store.mode === "local";
   $("modeDesc").textContent = isLocal
     ? "지금은 로컬 모드입니다. 데이터는 이 브라우저에만 저장되며, 다른 사람과는 JSON 파일로 주고받습니다."
-    : `지금은 Firebase 모드입니다. 입장 코드 [${getRoom()}] 를 쓰는 사람끼리 실시간으로 같은 데이터를 봅니다.`;
+    : "지금은 Firebase 모드입니다. 이 페이지에 접속한 모든 사람이 실시간으로 같은 데이터를 봅니다.";
   $("btnFbSetup").style.display = isLocal ? "" : "none";
   $("btnToLocal").style.display = isLocal || EMBEDDED_CONFIG ? "none" : "";
-  $("btnRoomChange").style.display = isLocal ? "none" : "";
   updatePreview();
   showModal("mAdmin");
 }
@@ -1313,7 +1293,7 @@ function showModal(id){ $(id).classList.add("show"); }
 function hideModal(id){ $(id).classList.remove("show"); }
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => b.closest(".modal-bg").classList.remove("show"));
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") document.querySelectorAll(".modal-bg.show").forEach(m => { if (m.id !== "mRoom" || getRoom()) m.classList.remove("show"); });
+  if (e.key === "Escape") document.querySelectorAll(".modal-bg.show").forEach(m => m.classList.remove("show"));
 });
 
 // 화면 안 여러 버튼을 한 곳에서 처리 (이벤트 위임)
@@ -1363,55 +1343,14 @@ $("btnNick").onclick = () => {
 };
 $("nickView").textContent = localStorage.getItem("r2_nick") || "미설정";
 
-/* ===================== 입장 코드 ===================== */
-function getRoom(){ const r = localStorage.getItem("r2_room") || ""; return ROOM_RE.test(r) ? r : ""; }
-function randomRoom(){
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  const arr = new Uint32Array(14); crypto.getRandomValues(arr);
-  return Array.from(arr, n => chars[n % chars.length]).join("");
-}
-function openRoom(){
-  $("roomInput").value = getRoom(); $("roomErr").textContent = "";
-  $("roomLocal").style.display = EMBEDDED_CONFIG ? "none" : "";
-  showModal("mRoom");
-  setTimeout(() => $("roomInput").focus(), 50);
-}
-$("roomNew").onclick = () => { $("roomInput").value = randomRoom(); $("roomErr").textContent = "새 코드를 만들었습니다. [입장]을 누르세요."; };
-$("roomOk").onclick = () => {
-  const r = $("roomInput").value.trim();
-  if (!ROOM_RE.test(r)){ $("roomErr").textContent = "영문·숫자·-·_ 로 8~40자를 입력하세요."; return; }
-  localStorage.setItem("r2_room", r); location.reload();
-};
-$("roomLocal").onclick = () => { localStorage.removeItem("r2_fbcfg"); location.reload(); };
-$("btnRoomChange").onclick = () => { hideModal("mAdmin"); openRoom(); };
-$("btnShare").onclick = () => {
-  const link = location.origin + location.pathname + "#room=" + getRoom();
-  const done = () => toast("공유 링크를 복사했습니다. 함께 쓸 사람에게 보내주세요.");
-  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(link).then(done, () => prompt("아래 링크를 복사하세요", link));
-  else prompt("아래 링크를 복사하세요", link);
-};
-
-// 이미 열린 페이지에서 공유 링크를 눌러도 반영되도록
-window.addEventListener("hashchange", () => { if (/room=/.test(location.hash)) location.reload(); });
-
 /* ===================== 10. 시작 ===================== */
 (function boot(){
-  // 공유 링크(…html#room=코드)로 들어오면 코드를 저장하고 주소창에서는 지웁니다
-  const m = location.hash.match(/room=([A-Za-z0-9_-]{8,40})/);
-  if (m){ localStorage.setItem("r2_room", m[1]); history.replaceState(null, "", location.pathname + location.search); }
-
   let cfg = EMBEDDED_CONFIG;
   if (!cfg){ try { cfg = JSON.parse(localStorage.getItem("r2_fbcfg") || "null"); } catch(e){ cfg = null; } }
 
-  if (cfg && !getRoom()){
-    // Firebase 설정은 있는데 입장 코드가 없으면 먼저 코드를 받습니다
-    Store = createLocalStore();
-    setConn("", "입장 코드 필요");
-    chars = {}; renderAll();
-    openRoom();
-  } else if (cfg){
-    $("btnShare").style.display = "";
-    Store = createFirebaseStore(cfg, getRoom());
+  if (cfg){
+    // 입장 코드 없이 바로 공용 저장 위치에 연결합니다
+    Store = createFirebaseStore(cfg, ROOM_ID);
     Store.start().catch(e => {
       // Firebase 실패 시 로컬 모드로 자동 전환 → 프로그램은 계속 쓸 수 있습니다
       console.error(e);
