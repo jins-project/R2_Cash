@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R2 캐쉬템 기간 관리</title>
+<!-- 글꼴: 인터넷이 없으면 맑은 고딕으로 자동 대체됩니다 -->
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===================== 색상·글꼴 설정 =====================
+   아이템마다 "연장에 쓰는 도구" 색을 입혀서 한눈에 구분합니다.
+   황금 망치 = 금색 / 카오스 망치 = 보라 / 변환룬 = 청록
+============================================================ */
+:root{
+  --bg:#141824;
+  --panel:#1d2233;
+  --panel-2:#252b40;
+  --line:#343b55;
+  --text:#e8e6df;
+  --muted:#9097ad;
+  --gold:#d9a441;     /* 황금 망치 */
+  --chaos:#a77be0;    /* 카오스 망치 */
+  --rune:#3fb5a3;     /* 변환룬 */
+  --ember:#ff6b4a;    /* 24시간 이내 강조 */
+  --dead:#5d6278;     /* 만료 */
+  --ok:#6fcf7f;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  font-size:13.5px;line-height:1.45;
+}
+button,input,select{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- 상단 바 ---------- */
+header{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);
+  position:sticky;top:0;z-index:5;
+}
+header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.3px}
+header h1 small{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}
+.conn{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.conn i{width:8px;height:8px;border-radius:50%;background:var(--dead);display:inline-block}
+.conn.on i{background:var(--ok)}
+.conn.local i{background:var(--gold)}
+header .spacer{flex:1}
+
+.btn{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+  padding:6px 11px;cursor:pointer;white-space:nowrap;position:relative;font-size:13px;
+}
+.btn:hover{border-color:var(--muted)}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+.btn.primary{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
+.btn.danger{color:var(--ember);border-color:#5a2f2a}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.sm{padding:3px 7px;font-size:12px}
+/* JSON 저장 후 변경사항이 있으면 버튼에 점 표시 */
+.btn.dirty::after{
+  content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;
+  background:var(--ember);border:2px solid var(--panel);
+}
+
+main{padding:16px 18px}
+
+/* ---------- 24시간 이내 모음 ---------- */
+#queue{
+  border:1px solid #6b3428;border-radius:10px;
+  background:linear-gradient(180deg,#2a1d1f,#21192000);
+  padding:12px 14px;margin-bottom:16px;
+}
+#queue h2{margin:0 0 2px;font-size:15px;color:var(--ember)}
+#queue p.sub{margin:0 0 10px;color:var(--muted);font-size:12px}
+#queue.calm{border-color:var(--line);background:var(--panel)}
+#queue.calm h2{color:var(--ok)}
+.qlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px}
+.qrow{
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+  gap:8px;align-items:center;background:#00000033;border-radius:6px;padding:6px 8px 6px 10px;
+  border-left:3px solid var(--c);
+}
+.qrow .who{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow .who small{font-weight:400;color:var(--c);margin-left:4px}
+.qrow .rem{color:var(--ember);font-weight:700;text-align:right}
+.qrow .exp{display:block;font-size:11px;color:var(--muted);text-align:right}
+
+/* ---------- 도구 모음 ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:170px
+}
+.toolbar select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.stats{margin-left:auto;color:var(--muted);font-size:12px}
+.stats b{color:var(--text)}
+
+/* ---------- 캐릭터 카드: 넓은 화면에서 한 줄 5개 ---------- */
+#grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:start}
+@media (max-width:1500px){ #grid{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (max-width:1200px){ #grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:900px) { #grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:600px) { #grid{grid-template-columns:1fr} }
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.card.has-urgent{border-color:#7a3a2c}
+.card-head{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line)}
+.card-head .name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-head .memo{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-head .spacer{flex:1}
+.badge{font-size:11px;padding:0 6px;border-radius:9px;background:var(--ember);color:#200;font-weight:700}
+
+.item{
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:0 8px;align-items:center;
+  padding:5px 9px 5px 8px;border-left:3px solid var(--c);border-bottom:1px solid #ffffff0a;
+}
+.item:last-child{border-bottom:0}
+.item .iname{font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .sub{font-size:11px;color:var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .sub .cnt{color:var(--muted)}
+.item .sub .cnt.full{color:var(--ember);font-weight:700}
+.item .txt{text-align:right}
+.item .rem{font-weight:700;font-size:13px;white-space:nowrap}
+.item .exp{font-size:11px;color:var(--muted);white-space:nowrap}
+.item .btn{padding:3px 6px;font-size:12px}
+
+.item.urgent{background:#ff6b4a14}
+.item.urgent .rem{color:var(--ember)}
+.item.expired .rem{color:var(--dead)}
+.item.expired .iname{color:var(--muted);text-decoration:line-through}
+.item.none .rem{color:var(--dead);font-weight:400}
+
+.t-gold{--c:var(--gold)}
+.t-chaos{--c:var(--chaos)}
+.t-rune{--c:var(--rune)}
+
+.empty{
+  grid-column:1/-1;text-align:center;padding:50px 20px;border:1px dashed var(--line);border-radius:10px;color:var(--muted)
+}
+.empty .btn{margin-top:12px}
+
+/* ---------- 기록 ---------- */
+details.log{margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+details.log summary{cursor:pointer;font-weight:500}
+details.log ul{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;max-height:320px;overflow:auto}
+details.log li{padding:3px 0;border-bottom:1px solid #ffffff0a;color:var(--muted)}
+details.log li b{color:var(--text);font-weight:500}
+
+/* ---------- 팝업창(모달) ---------- */
+.modal-bg{position:fixed;inset:0;background:#000a;display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+.modal-bg.show{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:100%;max-width:560px;padding:18px 20px}
+.modal h3{margin:0 0 12px;font-size:17px}
+.modal h4{margin:0 0 6px;font-size:14px}
+.modal label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px}
+.modal input[type=text],.modal input[type=password],.modal input[type=number],.modal textarea,.modal select{
+  width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px
+}
+.modal textarea{min-height:150px;font-family:Consolas,monospace;font-size:13px;color:var(--text)}
+.modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.modal .hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.modal .err{color:var(--ember);font-size:13px;min-height:18px;margin-top:8px}
+.modal hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+
+/* 시간 입력 줄: 이름 | 일 | 시간 | 분 | 연장횟수 | 버튼 */
+.timein{display:grid;grid-template-columns:minmax(0,1fr) 50px 50px 50px 58px 52px;gap:5px;align-items:center;padding:4px 0 4px 9px;border-left:3px solid var(--c);margin-top:5px}
+.timein input{padding:5px !important;text-align:right}
+.timein input.acc-name{text-align:left}
+.timein .lbl{font-size:13px}
+.timein .lbl small{color:var(--c);display:block;font-size:11px}
+.timein .unit-head{font-size:11px;color:var(--muted);text-align:center}
+.acc-head{display:flex;align-items:center;gap:8px;margin:12px 0 2px;font-size:12.5px;color:var(--chaos)}
+.acc-head .spacer{flex:1}
+
+/* 불러오기 미리보기 */
+.import-sum{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:13px}
+.import-sum ul{margin:6px 0 0;padding-left:18px;max-height:160px;overflow:auto}
+.radio{display:flex;gap:8px;align-items:flex-start;margin-top:8px;cursor:pointer}
+.radio small{display:block;color:var(--muted)}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  padding:9px 15px;z-index:30;display:none;max-width:90vw
+}
+.toast.show{display:block}
+
+@media (max-width:600px){
+  main{padding:10px}
+  .stats{margin-left:0;width:100%}
+  .qlist{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){
+  .item.urgent .rem{animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.55}}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>R2 캐쉬템 기간 관리 <small>함께 쓰는 연장 알리미</small></h1>
+  <span class="conn" id="conn"><i></i><span>시작 중…</span></span>
+  <span class="spacer"></span>
+  <button class="btn" id="btnSaveJson" title="현재 데이터를 JSON 파일로 내려받습니다">JSON 저장</button>
+  <button class="btn" id="btnLoadJson" title="JSON 파일에서 데이터를 불러옵니다">JSON 불러오기</button>
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+  <button class="btn" id="btnNick">내 이름: <span id="nickView">미설정</span></button>
+  <button class="btn" id="btnAdmin">관리자</button>
+  <button class="btn primary" id="btnAdd">+ 캐릭터 추가</button>
+</header>
+
+<main>
+  <!-- 24시간 이내 아이템 모음 -->
+  <section id="queue"></section>
+
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="캐릭터명·메모 검색">
+    <select id="filter">
+      <option value="all">전체 캐릭터</option>
+      <option value="urgent">24시간 이내 있는 캐릭터</option>
+      <option value="expired">만료된 아이템 있는 캐릭터</option>
+    </select>
+    <select id="sort">
+      <option value="urgent">급한 순</option>
+      <option value="name">이름 순</option>
+    </select>
+    <span class="stats" id="stats"></span>
+  </div>
+
+  <section id="grid"></section>
+
+  <details class="log">
+    <summary>최근 기록 (누가 언제 연장했는지)</summary>
+    <ul id="logList"></ul>
+  </details>
+</main>
+
+<!-- ============ 팝업: Firebase 설정 (나중에 사용) ============ -->
+<div class="modal-bg" id="mSetup">
+  <div class="modal">
+    <h3>Firebase 연결 설정</h3>
+    <p class="hint">Firebase 콘솔 → 프로젝트 설정 → 내 앱(웹)에 있는 <b>firebaseConfig</b> 코드를 통째로 붙여넣으세요.
+      연결하면 여러 명이 실시간으로 같은 데이터를 보게 됩니다. 지금 로컬 데이터는 사라지지 않으니,
+      필요하면 먼저 <b>JSON 저장</b>을 해두고 연결 후 <b>JSON 불러오기</b>로 옮기세요.</p>
+    <label for="cfgText">firebaseConfig</label>
+    <textarea id="cfgText" placeholder='const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  databaseURL: "https://xxxx-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "...",
+  ...
+};'></textarea>
+    <div class="err" id="cfgErr"></div>
+    <div class="row">
+      <button class="btn" data-close>취소</button>
+      <button class="btn primary" id="cfgSave">연결하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 팝업: 캐릭터 추가/수정 ============ -->
+<div class="modal-bg" id="mChar">
+  <div class="modal">
+    <h3 id="charTitle">캐릭터 추가</h3>
+    <label for="cName">캐릭터명</label>
+    <input type="text" id="cName" maxlength="20">
+    <label for="cMemo">메모 (계정 주인 등, 선택)</label>
+    <input type="text" id="cMemo" maxlength="30">
+    <label>게임에 보이는 남은 시간 입력 (비워두면 미보유)</label>
+    <div class="timein" style="border:0;padding-top:0;margin-top:0">
+      <span></span><span class="unit-head">일</span><span class="unit-head">시간</span><span class="unit-head">분</span><span class="unit-head">연장 횟수</span><span></span>
+    </div>
+    <div id="timeTop"></div>
+    <div class="acc-head">
+      <span>악세사리 <span id="accCount">0/4</span></span><span class="spacer"></span>
+      <button class="btn sm" type="button" id="accAdd">+ 악세사리 추가</button>
+    </div>
+    <div id="accRows"></div>
+    <div id="timeBottom" style="margin-top:12px"></div>
+    <p class="hint">저장하는 순간을 기준으로 만료 날짜가 계산됩니다. 연장 횟수는 게임에서 이미 연장한 횟수를 맞춰 넣어주세요.</p>
+    <div class="err" id="charErr"></div>
+    <div class="row">
+      <button class="btn" data-close>취소</button>
+      <button class="btn primary" id="charSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 팝업: JSON 불러오기 확인 ============ -->
+<div class="modal-bg" id="mImport">
+  <div class="modal">
+    <h3>JSON 불러오기</h3>
+    <div class="import-sum" id="importSum"></div>
+    <label class="radio"><input type="radio" name="impMode" value="replace" checked>
+      <span>전체 바꾸기<small>지금 데이터를 지우고 파일 내용으로 바꿉니다.</small></span></label>
+    <label class="radio"><input type="radio" name="impMode" value="merge">
+      <span>합치기<small>같은 이름의 캐릭터는 파일 내용으로 덮어쓰고, 없는 캐릭터는 추가합니다.</small></span></label>
+    <div class="err" id="importErr"></div>
+    <div class="row">
+      <button class="btn" data-close>취소</button>
+      <button class="btn primary" id="importApply">불러오기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 팝업: 관리자 ============ -->
+<div class="modal-bg" id="mAdmin">
+  <div class="modal">
+    <h3>관리자</h3>
+    <div id="adminSetupBox">
+      <p class="hint">아직 관리자 비밀번호가 없습니다. 처음 한 번 정해주세요.</p>
+      <label for="newPw1">새 비밀번호</label>
+      <input type="password" id="newPw1">
+      <label for="newPw2">새 비밀번호 확인</label>
+      <input type="password" id="newPw2">
+    </div>
+    <div id="adminMainBox">
+      <label for="adminPw">관리자 비밀번호</label>
+      <input type="password" id="adminPw" autocomplete="off">
+
+      <hr>
+      <h4>일괄 시간 증가 (서버 점검 보상 등)</h4>
+      <div class="timein" style="border:0;grid-template-columns:1fr 64px 64px 64px">
+        <span class="lbl">증가량</span>
+        <input type="number" id="bD" min="0" placeholder="일">
+        <input type="number" id="bH" min="0" placeholder="시간">
+        <input type="number" id="bM" min="0" placeholder="분">
+      </div>
+      <label for="bTarget">적용 대상</label>
+      <select id="bTarget">
+        <option value="all">전체 아이템</option>
+        <option value="hammer">망치 아이템만 (목걸이·드라코·악세사리)</option>
+        <option value="rune">메테리얼만</option>
+      </select>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--text)">
+        <input type="checkbox" id="bSkipExpired" checked> 이미 만료된 아이템은 제외
+      </label>
+      <p class="hint" id="bPreview"></p>
+      <p class="hint">일괄 증가는 연장 횟수에 포함되지 않습니다.</p>
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn primary" id="bApply">일괄 적용</button>
+      </div>
+      <hr>
+      <details>
+        <summary style="cursor:pointer;color:var(--muted)">비밀번호 변경</summary>
+        <label for="chPw1">새 비밀번호 (위에 현재 비밀번호 입력 필요)</label>
+        <input type="password" id="chPw1">
+        <div class="row" style="justify-content:flex-start">
+          <button class="btn" id="chPwBtn">비밀번호 변경</button>
+        </div>
+      </details>
+    </div>
+    <hr>
+    <h4>저장 방식</h4>
+    <p class="hint" id="modeDesc"></p>
+    <div class="row" style="justify-content:flex-start">
+      <button class="btn" id="btnFbSetup">Firebase 연결 설정</button>
+      <button class="btn danger" id="btnToLocal">로컬 모드로 돌아가기</button>
+    </div>
+    <div class="err" id="adminErr"></div>
+    <div class="row">
+      <button class="btn" data-close>닫기</button>
+      <button class="btn primary" id="adminSetBtn">비밀번호 설정</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   [사용 방법 요약]
+   - 그냥 열면 "로컬 모드" — 데이터는 이 브라우저에 자동 저장됩니다.
+   - 상단 [JSON 저장]으로 파일을 받아두고, [JSON 불러오기]로 다시 읽어옵니다.
+   - 나중에 Firebase를 쓰려면 관리자 → [Firebase 연결 설정]에서 설정을 넣거나,
+     아래 EMBEDDED_CONFIG 에 firebaseConfig 를 넣어두면 됩니다.
+===================================================================== */
+const EMBEDDED_CONFIG = null;
+
+const APP_ID = "r2-item-timer";   // JSON 파일이 이 프로그램 것인지 확인하는 표시
+const DATA_VERSION = 2;            // v2: 연장 횟수(count), 악세사리 여러 개
+const LOCAL_KEY = "r2_local_data"; // 로컬 모드 자동 저장 위치
+const DB_ROOT = "r2timer";         // Firebase 안에서 쓸 폴더 이름
+const MIN = 60 * 1000;
+const HOUR = 60 * MIN;
+const DAY = 24 * HOUR;
+const EXTEND_MS = 7 * DAY;         // 한 번 연장 시 7일
+const MAX_LOGS = 100;
+const MAX_ACC = 4;                 // 악세사리 최대 개수
+
+/* =====================================================================
+   아이템 정의
+   rule: "24h" = 남은 시간 24시간 이내일 때만 연장 가능 / "any" = 언제든
+   max : 최대 연장 횟수 (없으면 제한 없음)
+   ---------------------------------------------------------------------
+   저장 구조: 캐릭터.items 안에 모든 아이템이 들어갑니다.
+     items.necklace = { expireAt, count }          ← 고정 아이템
+     items.acc_xxxx = { name, expireAt, count }    ← 악세사리 (최대 4개)
+===================================================================== */
+const FIXED = {
+  necklace: { name:"변신 목걸이",   tool:"황금 망치", rule:"24h", cls:"t-gold", max:10 },
+  draco:    { name:"드라코반지",    tool:"황금 망치", rule:"24h", cls:"t-gold", max:10 },
+  hunter:   { name:"헌터 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune" },
+  sage:     { name:"현자 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune" },
+  hero:     { name:"영웅 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune" },
+};
+const TOP_KEYS = ["necklace", "draco"];          // 카드 위쪽 (그 아래 악세사리)
+const BOTTOM_KEYS = ["hunter", "sage", "hero"];  // 카드 아래쪽
+const ACC_DEF = { tool:"카오스 망치", rule:"24h", cls:"t-chaos" };
+
+// 악세사리 키인지 확인 ("accessory"는 예전 버전 파일 호환용)
+function isAccKey(k){ return k === "accessory" || k.startsWith("acc_"); }
+function accDef(item){ return Object.assign({ name: (item && item.name) || "악세사리", isAcc:true }, ACC_DEF); }
+function defFor(key, item){ return FIXED[key] || accDef(item); }
+
+// 캐릭터 한 명의 아이템을 화면 순서대로 정리 → [{key, def, item}]
+function slotsOf(c){
+  const items = (c && c.items) || {};
+  const accKeys = Object.keys(items).filter(isAccKey).sort();
+  return [
+    ...TOP_KEYS.map(k => ({ key:k, def:FIXED[k], item:items[k] })),
+    ...accKeys.map(k => ({ key:k, def:accDef(items[k]), item:items[k] })),
+    ...BOTTOM_KEYS.map(k => ({ key:k, def:FIXED[k], item:items[k] })),
+  ];
+}
+
+/* ===================== 1. 화면에서 쓰는 데이터 ===================== */
+let chars = {};           // { 캐릭터ID: {name, memo, items:{...}} }
+let logs = [];            // 최신 기록이 앞쪽
+let adminHash = null;     // 관리자 비밀번호(해시값)
+let serverOffset = 0;     // Firebase 모드에서 서버 시계 보정
+let editingId = null;     // 수정 중인 캐릭터 ID (null 이면 새로 추가)
+let pendingImport = null; // 불러오기 확인 중인 데이터
+let Store = null;         // 저장소 (로컬 또는 Firebase)
+
+const $ = id => document.getElementById(id);
+const now = () => Date.now() + serverOffset;
+
+/* ===================== 2. 작은 도우미 함수들 ===================== */
+function esc(s){ // 이름 등에 <, > 같은 문자가 있어도 화면이 깨지지 않게
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function pad(n){ return String(n).padStart(2,"0"); }
+
+// 남은 시간: 24시간 넘으면 "6일 23시간 12분", 이내면 "23:12:05"
+function fmtRemain(ms){
+  if (ms <= 0) return "만료됨";
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
+        m = Math.floor(s % 3600 / 60), sec = s % 60;
+  if (ms <= DAY) return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  return `${d}일 ${h}시간 ${m}분`;
+}
+const WEEK = ["일","월","화","수","목","금","토"];
+function fmtDate(ts){
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()}(${WEEK[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtFull(ts){
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtLogTime(ts){
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function newId(prefix){ return (prefix || "c") + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// 아이템 상태: none(미보유) / expired(만료) / urgent(24시간 이내) / normal
+function itemState(item){
+  if (!item || !item.expireAt) return "none";
+  const rem = item.expireAt - now();
+  if (rem <= 0) return "expired";
+  if (rem <= DAY) return "urgent";
+  return "normal";
+}
+// 연장할 수 없는 이유 (연장 가능하면 빈 문자열) — 연장 규칙은 이 함수 하나에 모았습니다
+function blockReason(def, item){
+  const st = itemState(item);
+  if (st === "none") return "미보유 아이템입니다";
+  if (st === "expired") return "이미 만료된 아이템입니다";
+  if (def.max && (item.count || 0) >= def.max) return `최대 ${def.max}회 연장을 모두 사용했습니다`;
+  if (def.rule === "24h" && st !== "urgent") return "24시간 이내가 되어야 연장할 수 있습니다";
+  return "";
+}
+function canExtend(def, item){ return blockReason(def, item) === ""; }
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+}
+function nick(){ return localStorage.getItem("r2_nick") || "이름없음"; }
+function setConn(cls, text){
+  $("conn").className = "conn " + cls;
+  $("conn").querySelector("span").textContent = text;
+}
+function toInt(v, min, max){ const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min; }
+
+/* SHA-256 해시 (비밀번호를 그대로 저장하지 않기 위해 사용, 외부 라이브러리 없음) */
+function sha256(ascii){
+  function rr(v,a){ return (v>>>a)|(v<<(32-a)); }
+  const maxWord = Math.pow(2,32); let result = "";
+  const words = []; const bitLen = ascii.length * 8;
+  let hash = [], k = []; let pc = 0; const comp = {};
+  for (let c = 2; pc < 64; c++){
+    if (!comp[c]){
+      for (let i = 0; i < 313; i += c) comp[i] = c;
+      hash[pc] = (Math.pow(c,.5) * maxWord) | 0;
+      k[pc++] = (Math.pow(c,1/3) * maxWord) | 0;
+    }
+  }
+  ascii += "\x80";
+  while (ascii.length % 64 - 56) ascii += "\x00";
+  for (let i = 0; i < ascii.length; i++){
+    const j = ascii.charCodeAt(i);
+    words[i>>2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = (bitLen / maxWord) | 0;
+  words[words.length] = bitLen;
+  for (let j = 0; j < words.length;){
+    const w = words.slice(j, j += 16); const old = hash; hash = hash.slice(0,8);
+    for (let i = 0; i < 64; i++){
+      const w15 = w[i-15], w2 = w[i-2], a = hash[0], e = hash[4];
+      const t1 = hash[7] + (rr(e,6)^rr(e,11)^rr(e,25)) + ((e&hash[5])^((~e)&hash[6])) + k[i]
+        + (w[i] = (i < 16) ? w[i] : (w[i-16] + (rr(w15,7)^rr(w15,18)^(w15>>>3)) + w[i-7] + (rr(w2,17)^rr(w2,19)^(w2>>>10))) | 0);
+      const t2 = (rr(a,2)^rr(a,13)^rr(a,22)) + ((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash = [(t1 + t2) | 0].concat(hash); hash[4] = (hash[4] + t1) | 0;
+    }
+    for (let i = 0; i < 8; i++) hash[i] = (hash[i] + old[i]) | 0;
+  }
+  for (let i = 0; i < 8; i++) for (let j = 3; j + 1; j--){
+    const b = (hash[i] >> (j*8)) & 255; result += ((b < 16) ? 0 : "") + b.toString(16);
+  }
+  return result;
+}
+function hashPw(pw){ return sha256(unescape(encodeURIComponent("r2timer::" + pw))); }
+
+/* =====================================================================
+   3. 저장소 — "로컬"과 "Firebase"가 같은 함수 이름을 가집니다.
+      화면 쪽 코드는 Store.xxx() 만 부르면 되고, 어디에 저장되는지는 몰라도 됩니다.
+===================================================================== */
+
+/* ---------- 3-1. 로컬 저장소 (브라우저 localStorage) ---------- */
+function createLocalStore(){
+  let data = { characters:{}, settings:{}, logs:[] };
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+    if (saved) data = Object.assign(data, saved);
+  } catch(e){ console.warn("로컬 데이터 읽기 실패", e); }
+
+  function persist(){
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+    markDirty(true);
+    publish();
+  }
+  function publish(){ // 화면용 변수에 반영하고 다시 그리기
+    chars = data.characters || {};
+    adminHash = (data.settings || {}).adminHash || null;
+    logs = (data.logs || []).slice();
+    renderAll(); renderLogs();
+  }
+  function log(text){
+    data.logs.unshift({ at: Date.now(), by: nick(), text });
+    data.logs = data.logs.slice(0, MAX_LOGS);
+  }
+
+  return {
+    mode: "local",
+    start(){ setConn("local", "로컬 모드 (이 브라우저에 저장)"); publish(); },
+    saveChar(id, c, logText){
+      data.characters[id || newId()] = c; log(logText); persist();
+      return Promise.resolve();
+    },
+    removeChar(id, logText){
+      delete data.characters[id]; log(logText); persist();
+      return Promise.resolve();
+    },
+    extend(id, key){
+      const c = data.characters[id];
+      const it = c?.items?.[key];
+      const def = defFor(key, it);
+      if (!canExtend(def, it)) return Promise.resolve(null);
+      it.expireAt += EXTEND_MS;
+      it.count = (it.count || 0) + 1;
+      log(`${c.name}의 ${def.name}을(를) ${def.tool}로 7일 연장 (${it.count}회째)`);
+      persist();
+      return Promise.resolve(it);
+    },
+    bulkAdd(list, ms, logText){
+      list.forEach(t => {
+        const it = data.characters[t.id]?.items?.[t.key];
+        if (it && it.expireAt) it.expireAt += ms;
+      });
+      log(logText); persist();
+      return Promise.resolve();
+    },
+    setAdminHash(h, onlyIfEmpty, logText){
+      if (onlyIfEmpty && data.settings.adminHash) return Promise.resolve(false);
+      data.settings.adminHash = h; log(logText); persist();
+      return Promise.resolve(true);
+    },
+    replaceAll(newChars, newHash, logText){
+      data.characters = newChars;
+      if (newHash !== undefined) data.settings.adminHash = newHash;
+      log(logText); persist();
+      return Promise.resolve();
+    },
+  };
+}
+
+/* ---------- 3-2. Firebase 저장소 (나중에 사용) ---------- */
+function loadScript(src){
+  return new Promise((ok, fail) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = ok; s.onerror = () => fail(new Error(src + " 로딩 실패"));
+    document.head.appendChild(s);
+  });
+}
+function createFirebaseStore(cfg){
+  let db = null;
+  const R = p => db.ref(DB_ROOT + (p ? "/" + p : ""));
+  const TS = () => firebase.database.ServerValue.TIMESTAMP;
+  function log(text){ R("logs").push({ at: TS(), by: nick(), text }); }
+
+  return {
+    mode: "firebase",
+    async start(){
+      setConn("", "Firebase 연결 중…");
+      // Firebase 라이브러리는 이 모드일 때만 인터넷에서 불러옵니다 (로컬 모드는 오프라인 가능)
+      await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+      await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js");
+      firebase.initializeApp(cfg);
+      db = firebase.database();
+
+      db.ref(".info/connected").on("value", s => {
+        const on = s.val() === true;
+        setConn(on ? "on" : "", on ? "Firebase 실시간 연결됨" : "연결 끊김 (재연결 시도 중)");
+      });
+      db.ref(".info/serverTimeOffset").on("value", s => { serverOffset = s.val() || 0; });
+      R("characters").on("value", s => { chars = s.val() || {}; renderAll(); }, err => {
+        $("grid").innerHTML = `<div class="empty">데이터를 읽을 수 없습니다: ${esc(err.message)}<br>
+          Firebase 콘솔 → Realtime Database → 규칙(Rules)에서 읽기/쓰기 권한을 확인하세요.</div>`;
+      });
+      R("settings/adminHash").on("value", s => { adminHash = s.val(); });
+      R("logs").limitToLast(40).on("value", s => {
+        logs = []; s.forEach(c => { logs.push(c.val()); }); logs.reverse(); renderLogs();
+      });
+    },
+    saveChar(id, c, logText){
+      const ref = id ? R("characters/" + id) : R("characters").push();
+      return ref.set(Object.assign({}, c, { updatedAt: TS() })).then(() => log(logText));
+    },
+    removeChar(id, logText){ return R("characters/" + id).remove().then(() => log(logText)); },
+    extend(id, key){
+      // transaction: 두 사람이 동시에 눌러도 한 번만 연장되도록 서버 값으로 다시 확인
+      return R(`characters/${id}/items/${key}`).transaction(cur => {
+        if (!cur || !canExtend(defFor(key, cur), cur)) return;   // undefined = 취소
+        return Object.assign({}, cur, { expireAt: cur.expireAt + EXTEND_MS, count: (cur.count || 0) + 1 });
+      }).then(r => {
+        if (!r.committed) return null;
+        const it = r.snapshot.val(), def = defFor(key, it);
+        log(`${chars[id]?.name}의 ${def.name}을(를) ${def.tool}로 7일 연장 (${it.count}회째)`);
+        return it;
+      });
+    },
+    bulkAdd(list, ms, logText){
+      const updates = {};
+      list.forEach(t => { updates[`characters/${t.id}/items/${t.key}/expireAt`] = t.expireAt + ms; });
+      return R().update(updates).then(() => log(logText));
+    },
+    setAdminHash(h, onlyIfEmpty, logText){
+      return R("settings/adminHash").transaction(cur => (onlyIfEmpty && cur) ? undefined : h)
+        .then(r => { if (r.committed) log(logText); return r.committed; });
+    },
+    replaceAll(newChars, newHash, logText){
+      const updates = { characters: newChars };
+      if (newHash !== undefined) updates["settings/adminHash"] = newHash;
+      return R().update(updates).then(() => log(logText));
+    },
+  };
+}
+
+/* ===================== 4. 화면 그리기 ===================== */
+function charUrgency(c){ // 정렬용: 가장 급한 아이템의 남은 시간
+  let min = Infinity;
+  for (const s of slotsOf(c)){
+    if (s.item && s.item.expireAt){ const r = s.item.expireAt - now(); if (r > 0 && r < min) min = r; }
+  }
+  return min;
+}
+
+// "연장 3/10" 같은 횟수 표시
+function countHTML(def, item){
+  if (!item || !item.expireAt) return "";
+  const n = item.count || 0;
+  if (def.max) return ` · <span class="cnt ${n >= def.max ? "full" : ""}">연장 ${n}/${def.max}</span>`;
+  return n ? ` · <span class="cnt">연장 ${n}회</span>` : "";
+}
+
+function itemHTML(id, slot){
+  const { key, def, item } = slot;
+  const st = itemState(item);
+  const rem = item && item.expireAt ? item.expireAt - now() : 0;
+  let remTxt, expTxt;
+  if (st === "none"){ remTxt = "미보유"; expTxt = ""; }
+  else { remTxt = fmtRemain(rem); expTxt = (st === "expired" ? "만료 " : "") + fmtDate(item.expireAt); }
+
+  const reason = blockReason(def, item);
+  const tip = reason || `${def.tool} 사용 → 7일 연장`;
+
+  return `<div class="item ${def.cls} ${st}" data-id="${id}" data-key="${key}">
+    <div style="min-width:0">
+      <div class="iname" title="${esc(def.name)}">${esc(def.name)}</div>
+      <div class="sub">${def.tool}${countHTML(def, item)}</div>
+    </div>
+    <div class="txt"><div class="rem num">${remTxt}</div><div class="exp num">${expTxt}</div></div>
+    <button class="btn" data-extend="${id}|${key}" ${reason ? "disabled" : ""} title="${tip}">+7일</button>
+  </div>`;
+}
+
+function renderAll(){ renderQueue(); renderGrid(); }
+
+function renderQueue(){
+  const rows = [];
+  for (const [id, c] of Object.entries(chars)){
+    for (const s of slotsOf(c)){
+      if (itemState(s.item) === "urgent") rows.push({ id, c, ...s, rem: s.item.expireAt - now() });
+    }
+  }
+  rows.sort((a, b) => a.rem - b.rem);
+  const q = $("queue");
+  if (!rows.length){
+    q.className = "calm";
+    q.innerHTML = `<h2>24시간 이내로 남은 아이템이 없습니다</h2>
+      <p class="sub" style="margin:0">남은 시간이 24시간 이내가 되면 여기에 모아서 보여줍니다.</p>`;
+    return;
+  }
+  q.className = "";
+  q.innerHTML = `<h2>24시간 이내 아이템 ${rows.length}개</h2>
+    <p class="sub">접속해서 연장한 뒤 +7일 버튼을 눌러주세요.</p>
+    <div class="qlist">${rows.map(r => {
+      const reason = blockReason(r.def, r.item);
+      return `<div class="qrow ${r.def.cls}">
+        <span class="who">${esc(r.c.name)} <small>${esc(r.def.name)}${r.def.max ? ` ${r.item.count || 0}/${r.def.max}` : ""}</small></span>
+        <span><span class="rem num" data-exp="${r.item.expireAt}">${fmtRemain(r.rem)}</span>
+          <span class="exp num">${fmtDate(r.item.expireAt)}</span></span>
+        <button class="btn sm" data-extend="${r.id}|${r.key}" ${reason ? "disabled" : ""} title="${reason || "7일 연장"}">${reason ? "최대" : "+7일"}</button>
+      </div>`;
+    }).join("")}</div>`;
+}
+
+function renderGrid(){
+  const kw = $("search").value.trim().toLowerCase();
+  const filter = $("filter").value;
+  let list = Object.entries(chars);
+
+  if (kw) list = list.filter(([, c]) => (c.name + " " + (c.memo || "")).toLowerCase().includes(kw));
+  if (filter !== "all") list = list.filter(([, c]) => slotsOf(c).some(s => itemState(s.item) === filter));
+  if ($("sort").value === "name") list.sort((a, b) => a[1].name.localeCompare(b[1].name, "ko"));
+  else list.sort((a, b) => charUrgency(a[1]) - charUrgency(b[1]));
+
+  let nU = 0, nE = 0;
+  for (const c of Object.values(chars)) for (const s of slotsOf(c)){
+    const st = itemState(s.item);
+    if (st === "urgent") nU++; if (st === "expired") nE++;
+  }
+  $("stats").innerHTML = `캐릭터 <b>${Object.keys(chars).length}</b> · 24시간 이내 <b style="color:var(--ember)">${nU}</b> · 만료 <b>${nE}</b>`;
+
+  const g = $("grid");
+  if (!Object.keys(chars).length){
+    g.innerHTML = `<div class="empty">등록된 캐릭터가 없습니다.<br>
+      캐릭터를 추가하거나, 저장해둔 JSON 파일을 불러오세요.<br>
+      <button class="btn primary" data-action="add">+ 캐릭터 추가</button>
+      <button class="btn" data-action="load">JSON 불러오기</button></div>`;
+    return;
+  }
+  if (!list.length){
+    g.innerHTML = `<div class="empty">조건에 맞는 캐릭터가 없습니다. 검색어나 필터를 바꿔보세요.</div>`;
+    return;
+  }
+  g.innerHTML = list.map(([id, c]) => {
+    const slots = slotsOf(c);
+    const urgentCnt = slots.filter(s => itemState(s.item) === "urgent").length;
+    return `<article class="card ${urgentCnt ? "has-urgent" : ""}">
+      <div class="card-head">
+        <span class="name" title="${esc(c.name)}">${esc(c.name)}</span>
+        ${c.memo ? `<span class="memo" title="${esc(c.memo)}">${esc(c.memo)}</span>` : ""}
+        ${urgentCnt ? `<span class="badge">${urgentCnt}</span>` : ""}
+        <span class="spacer"></span>
+        <button class="btn sm" data-edit="${id}">수정</button>
+        <button class="btn sm danger" data-del="${id}">삭제</button>
+      </div>
+      ${slots.map(s => itemHTML(id, s)).join("")}
+    </article>`;
+  }).join("");
+}
+
+function renderLogs(){
+  $("logList").innerHTML = logs.length
+    ? logs.map(l => `<li><span class="num">${l.at ? fmtLogTime(l.at) : ""}</span> · <b>${esc(l.by)}</b> ${esc(l.text)}</li>`).join("")
+    : `<li>아직 기록이 없습니다.</li>`;
+}
+
+// 1초마다 남은 시간 숫자만 갱신 (화면 전체를 다시 그리지 않아서 가볍습니다)
+function tick(){
+  document.querySelectorAll(".item[data-id]").forEach(el => {
+    const it = chars[el.dataset.id]?.items?.[el.dataset.key];
+    if (it && it.expireAt) el.querySelector(".rem").textContent = fmtRemain(it.expireAt - now());
+  });
+  document.querySelectorAll("#queue .rem[data-exp]").forEach(el => {
+    el.textContent = fmtRemain(Number(el.dataset.exp) - now());
+  });
+}
+
+/* ===================== 5. 연장 (+7일) ===================== */
+function extendItem(id, key){
+  const c = chars[id]; const it = c?.items?.[key];
+  if (!c) return;
+  const def = defFor(key, it);
+  const reason = blockReason(def, it);
+  if (reason){ toast(reason); return; }
+  const nextCnt = (it.count || 0) + 1;
+  const cntTxt = def.max ? ` (${nextCnt}/${def.max}회째)` : ` (${nextCnt}회째)`;
+  if (!confirm(`[${c.name}] ${def.name}\n${def.tool}을(를) 사용해서 7일 연장했나요?${cntTxt}\n확인을 누르면 만료 시간이 7일 늘어납니다.`)) return;
+
+  Store.extend(id, key).then(res => {
+    if (res) toast(`${c.name} ${def.name} 7일 연장 완료 → ${fmtDate(res.expireAt)}${def.max ? ` (${res.count}/${def.max})` : ""}`);
+    else toast("이미 다른 사람이 연장했거나 연장할 수 없는 상태입니다.");
+  }).catch(e => toast("저장 실패: " + e.message));
+}
+
+/* ===================== 6. 캐릭터 추가/수정/삭제 ===================== */
+// 남은 시간 → 일/시간/분 숫자로 나누기
+function splitRemain(item){
+  if (!item || !item.expireAt) return { d:"", h:"", m:"" };
+  const rem = Math.max(0, item.expireAt - now());
+  return { d: Math.floor(rem / DAY), h: Math.floor(rem % DAY / HOUR), m: Math.floor(rem % HOUR / MIN) };
+}
+
+// 시간 입력 한 줄 만들기
+function timeRowHTML(key, def, item, isAcc){
+  const t = splitRemain(item);
+  const label = isAcc
+    ? `<input type="text" class="acc-name" maxlength="12" placeholder="예: 귀걸이" value="${esc(item && item.name || "")}">`
+    : `<span class="lbl">${def.name}<small>${def.tool}</small></span>`;
+  const cnt = def.max
+    ? `<input type="number" min="0" max="${def.max}" data-k="${key}" data-u="c" value="${item && item.expireAt ? (item.count || 0) : ""}" title="최대 ${def.max}회">`
+    : `<span></span>`;
+  return `<div class="timein ${def.cls} ${isAcc ? "acc-row" : ""}" data-row="${key}">
+    ${label}
+    <input type="number" min="0" max="365" data-k="${key}" data-u="d" value="${t.d}">
+    <input type="number" min="0" max="23" data-k="${key}" data-u="h" value="${t.h}">
+    <input type="number" min="0" max="59" data-k="${key}" data-u="m" value="${t.m}">
+    ${cnt}
+    <button class="btn sm ${isAcc ? "danger" : ""}" type="button" ${isAcc ? `data-accdel="${key}"` : `data-clear="${key}"`}>${isAcc ? "삭제" : "지우기"}</button>
+  </div>`;
+}
+
+function updateAccCount(){
+  const n = $("accRows").querySelectorAll(".acc-row").length;
+  $("accCount").textContent = `${n}/${MAX_ACC}`;
+  $("accAdd").disabled = n >= MAX_ACC;
+}
+
+function openChar(id){
+  editingId = id;
+  const c = id ? chars[id] : null;
+  const items = (c && c.items) || {};
+  $("charTitle").textContent = id ? "캐릭터 수정" : "캐릭터 추가";
+  $("cName").value = c ? c.name : "";
+  $("cMemo").value = c ? (c.memo || "") : "";
+  $("charErr").textContent = "";
+
+  $("timeTop").innerHTML = TOP_KEYS.map(k => timeRowHTML(k, FIXED[k], items[k], false)).join("");
+  $("timeBottom").innerHTML = BOTTOM_KEYS.map(k => timeRowHTML(k, FIXED[k], items[k], false)).join("");
+  $("accRows").innerHTML = Object.keys(items).filter(isAccKey).sort()
+    .map(k => timeRowHTML(k, accDef(items[k]), items[k], true)).join("");
+  updateAccCount();
+  showModal("mChar");
+  setTimeout(() => $("cName").focus(), 50);
+}
+
+function addAccRow(){
+  if ($("accRows").querySelectorAll(".acc-row").length >= MAX_ACC){ toast(`악세사리는 최대 ${MAX_ACC}개까지입니다.`); return; }
+  $("accRows").insertAdjacentHTML("beforeend", timeRowHTML(newId("acc_"), accDef(null), null, true));
+  updateAccCount();
+  const rows = $("accRows").querySelectorAll(".acc-name");
+  rows[rows.length - 1].focus();
+}
+
+function saveChar(){
+  const name = $("cName").value.trim();
+  if (!name){ $("charErr").textContent = "캐릭터명을 입력하세요."; return; }
+  const dup = Object.entries(chars).find(([cid, c]) => c.name === name && cid !== editingId);
+  if (dup){ $("charErr").textContent = "같은 이름의 캐릭터가 이미 있습니다."; return; }
+
+  const oldItems = (editingId && chars[editingId]?.items) || {};
+  const val = (key, u) => { const el = $("mChar").querySelector(`input[data-k="${key}"][data-u="${u}"]`); return el ? el.value.trim() : ""; };
+
+  // 입력한 남은 시간 → 만료 시각 (비어 있으면 null)
+  function readExpire(key){
+    const d = val(key,"d"), h = val(key,"h"), m = val(key,"m");
+    if (d === "" && h === "" && m === "") return null;
+    const ms = (+d || 0) * DAY + (+h || 0) * HOUR + (+m || 0) * MIN;
+    if (ms <= 0) return null;
+    // 수정할 때 숫자를 안 바꿨다면 기존 만료시각 그대로 유지 (초 단위 오차 방지)
+    const old = splitRemain(oldItems[key]);
+    if (oldItems[key]?.expireAt && old.d === (+d||0) && old.h === (+h||0) && old.m === (+m||0)) return oldItems[key].expireAt;
+    return now() + ms;
+  }
+
+  const items = {};
+  for (const k of [...TOP_KEYS, ...BOTTOM_KEYS]){
+    const exp = readExpire(k);
+    if (!exp) continue;
+    const def = FIXED[k];
+    const count = def.max ? toInt(val(k,"c"), 0, def.max) : (oldItems[k]?.count || 0);
+    items[k] = { expireAt: exp };
+    if (count) items[k].count = count;
+  }
+  const accRows = [...$("accRows").querySelectorAll(".acc-row")];
+  if (accRows.length > MAX_ACC){ $("charErr").textContent = `악세사리는 최대 ${MAX_ACC}개까지입니다.`; return; }
+  accRows.forEach((row, i) => {
+    const k = row.dataset.row;
+    const accName = row.querySelector(".acc-name").value.trim() || `악세사리 ${i + 1}`;
+    const it = { name: accName };
+    const exp = readExpire(k);
+    if (exp) it.expireAt = exp;
+    if (exp && oldItems[k]?.count) it.count = oldItems[k].count;
+    items[k] = it;
+  });
+
+  const data = { name, memo: $("cMemo").value.trim(), items, updatedBy: nick() };
+  const wasEdit = !!editingId;
+  Store.saveChar(editingId, data, wasEdit ? `${name} 정보 수정` : `${name} 캐릭터 추가`).then(() => {
+    hideModal("mChar");
+    toast(wasEdit ? "수정했습니다." : "추가했습니다.");
+  }).catch(e => { $("charErr").textContent = "저장 실패: " + e.message; });
+}
+
+function deleteChar(id){
+  const c = chars[id]; if (!c) return;
+  if (!confirm(`[${c.name}] 캐릭터를 삭제할까요?`)) return;
+  Store.removeChar(id, `${c.name} 캐릭터 삭제`).then(() => toast("삭제했습니다."));
+}
+
+/* =====================================================================
+   7. JSON 저장 / 불러오기
+   ---------------------------------------------------------------------
+   저장되는 JSON 구조 (v2)
+   {
+     "app": "r2-item-timer", "version": 2,
+     "savedAt": "2026-10-23 14:20", "savedBy": "승진",
+     "adminHash": "...",
+     "characters": {
+       "c...": {
+         "name": "캐릭터명", "memo": "메모",
+         "items": {
+           "necklace":  { "expireAt": 1761800000000, "expireText": "2026-10-30 14:20", "count": 3 },
+           "acc_xxxx":  { "name": "귀걸이", "expireAt": ..., "expireText": "...", "count": 1 },
+           ...
+         }
+       }
+     }
+   }
+   expireAt = 만료 시각(밀리초) / expireText = 사람이 읽는 용도 / count = 연장 횟수
+   ※ 예전(v1) 파일의 "accessory" 항목도 그대로 불러와집니다.
+===================================================================== */
+function buildExport(){
+  const out = {};
+  for (const [id, c] of Object.entries(chars)){
+    const items = {};
+    for (const s of slotsOf(c)){
+      if (!s.item) continue;
+      const o = {};
+      if (s.def.isAcc) o.name = s.item.name || "악세사리";
+      if (s.item.expireAt){ o.expireAt = s.item.expireAt; o.expireText = fmtFull(s.item.expireAt); }
+      if (s.item.count) o.count = s.item.count;
+      if (Object.keys(o).length) items[s.key] = o;
+    }
+    out[id] = { name: c.name, memo: c.memo || "", items };
+  }
+  return {
+    app: APP_ID, version: DATA_VERSION,
+    savedAt: fmtFull(now()), savedBy: nick(),
+    adminHash: adminHash || null,
+    characters: out,
+  };
+}
+
+function saveJson(){
+  const data = buildExport();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  const d = new Date();
+  a.href = URL.createObjectURL(blob);
+  a.download = `R2_캐쉬템_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  markDirty(false);
+  toast(`캐릭터 ${Object.keys(data.characters).length}명을 JSON 파일로 저장했습니다.`);
+}
+
+// 파일 내용을 검사해서 프로그램이 쓸 수 있는 모양으로 정리합니다
+function parseImport(text){
+  let raw;
+  try { raw = JSON.parse(text); } catch(e){ throw new Error("JSON 형식이 아닙니다. 파일이 깨졌는지 확인하세요."); }
+  if (!raw || typeof raw !== "object") throw new Error("내용이 비어 있습니다.");
+  if (raw.app && raw.app !== APP_ID) throw new Error("이 프로그램에서 저장한 파일이 아닙니다.");
+  const src = raw.characters;
+  if (!src || typeof src !== "object") throw new Error("characters 항목이 없습니다.");
+
+  const result = {}; let skipped = 0;
+  // 배열 형태([{name..}, ...])로 직접 만든 파일도 받아줍니다
+  const entries = Array.isArray(src) ? src.map(c => [newId(), c]) : Object.entries(src);
+  for (const [id, c] of entries){
+    if (!c || typeof c.name !== "string" || !c.name.trim()){ skipped++; continue; }
+    const items = {}; let accN = 0;
+    for (const [k, v] of Object.entries(c.items || {})){
+      if (!v || typeof v !== "object") continue;
+      const exp = Number(v.expireAt);
+      const hasExp = Number.isFinite(exp) && exp > 0;
+      if (FIXED[k]){
+        if (!hasExp) continue;
+        items[k] = { expireAt: exp };
+        const cnt = toInt(v.count, 0, FIXED[k].max || 999);
+        if (cnt) items[k].count = cnt;
+      } else if (isAccKey(k) && accN < MAX_ACC){
+        accN++;
+        const key = k === "accessory" ? "acc_" + "0legacy" : (/^acc_[A-Za-z0-9]{1,30}$/.test(k) ? k : newId("acc_"));
+        items[key] = { name: String(v.name || "악세사리").slice(0,12) };
+        if (hasExp) items[key].expireAt = exp;
+        const cnt = toInt(v.count, 0, 999);
+        if (hasExp && cnt) items[key].count = cnt;
+      }
+    }
+    const safeId = /^[A-Za-z0-9_-]{1,40}$/.test(id) ? id : newId();
+    result[safeId] = { name: c.name.trim().slice(0,20), memo: String(c.memo || "").slice(0,30), items };
+  }
+  return { characters: result, adminHash: typeof raw.adminHash === "string" ? raw.adminHash : undefined,
+           savedAt: raw.savedAt, savedBy: raw.savedBy, skipped };
+}
+
+function onFilePicked(file){
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { pendingImport = parseImport(reader.result); }
+    catch(e){ alert("불러오기 실패: " + e.message); return; }
+    const list = Object.values(pendingImport.characters);
+    $("importSum").innerHTML = `
+      <div><b>${esc(file.name)}</b></div>
+      <div style="color:var(--muted)">${pendingImport.savedAt ? "저장 시각 " + esc(pendingImport.savedAt) : ""}
+        ${pendingImport.savedBy ? " · 저장한 사람 " + esc(pendingImport.savedBy) : ""}</div>
+      <div style="margin-top:6px">캐릭터 <b>${list.length}</b>명${pendingImport.skipped ? ` (형식 오류로 ${pendingImport.skipped}개 제외)` : ""}</div>
+      <ul>${list.map(c => `<li>${esc(c.name)} — 아이템 ${Object.keys(c.items).length}개</li>`).join("")}</ul>`;
+    $("importErr").textContent = "";
+    showModal("mImport");
+  };
+  reader.onerror = () => alert("파일을 읽지 못했습니다.");
+  reader.readAsText(file, "utf-8");
+}
+
+function applyImport(){
+  if (!pendingImport) return;
+  const mode = document.querySelector('input[name="impMode"]:checked').value;
+  let next;
+  if (mode === "replace"){
+    if (Object.keys(chars).length && !confirm("지금 있는 캐릭터를 모두 지우고 파일 내용으로 바꿉니다. 계속할까요?")) return;
+    next = pendingImport.characters;
+  } else {
+    // 합치기: 이름이 같으면 기존 ID 자리에 덮어쓰기
+    next = JSON.parse(JSON.stringify(chars));
+    for (const c of Object.values(pendingImport.characters)){
+      const hit = Object.entries(next).find(([, o]) => o.name === c.name);
+      next[hit ? hit[0] : newId()] = c;
+    }
+  }
+  // 관리자 비밀번호는 지금 없을 때만 파일 것을 가져옵니다 (기존 비밀번호를 몰래 바꾸지 않도록)
+  const hash = (!adminHash && pendingImport.adminHash) ? pendingImport.adminHash : undefined;
+  const n = Object.keys(pendingImport.characters).length;
+  Store.replaceAll(next, hash, `JSON 불러오기 (${mode === "replace" ? "전체 바꾸기" : "합치기"}, ${n}명)`)
+    .then(() => { hideModal("mImport"); markDirty(false); pendingImport = null; toast(`캐릭터 ${n}명을 불러왔습니다.`); })
+    .catch(e => { $("importErr").textContent = "불러오기 실패: " + e.message; });
+}
+
+// JSON 저장 이후 바뀐 내용이 있으면 저장 버튼에 빨간 점 표시
+function markDirty(on){
+  if (on && Store && Store.mode !== "local") return; // Firebase 모드에선 표시 안 함
+  $("btnSaveJson").classList.toggle("dirty", on);
+  $("btnSaveJson").title = on ? "JSON 저장 이후 바뀐 내용이 있습니다" : "현재 데이터를 JSON 파일로 내려받습니다";
+  localStorage.setItem("r2_dirty", on ? "1" : "0");
+}
+
+/* ===================== 8. 관리자 ===================== */
+function openAdmin(){
+  $("adminErr").textContent = "";
+  $("adminPw").value = ""; $("newPw1").value = ""; $("newPw2").value = ""; $("chPw1").value = "";
+  const first = !adminHash;
+  $("adminSetupBox").style.display = first ? "" : "none";
+  $("adminMainBox").style.display = first ? "none" : "";
+  $("adminSetBtn").style.display = first ? "" : "none";
+  const isLocal = Store.mode === "local";
+  $("modeDesc").textContent = isLocal
+    ? "지금은 로컬 모드입니다. 데이터는 이 브라우저에만 저장되며, 다른 사람과는 JSON 파일로 주고받습니다."
+    : "지금은 Firebase 모드입니다. 같은 설정을 쓰는 모든 사람이 실시간으로 같은 데이터를 봅니다.";
+  $("btnFbSetup").style.display = isLocal ? "" : "none";
+  $("btnToLocal").style.display = isLocal ? "none" : "";
+  updatePreview();
+  showModal("mAdmin");
+}
+
+function setFirstPw(){
+  const a = $("newPw1").value, b = $("newPw2").value;
+  if (a.length < 4){ $("adminErr").textContent = "비밀번호는 4자 이상으로 정해주세요."; return; }
+  if (a !== b){ $("adminErr").textContent = "두 비밀번호가 다릅니다."; return; }
+  Store.setAdminHash(hashPw(a), true, "관리자 비밀번호 설정").then(ok => {
+    if (!ok){ $("adminErr").textContent = "이미 다른 사람이 비밀번호를 정했습니다."; return; }
+    adminHash = hashPw(a);
+    toast("관리자 비밀번호를 설정했습니다.");
+    openAdmin();
+  });
+}
+
+function checkPw(){
+  if (hashPw($("adminPw").value) !== adminHash){ $("adminErr").textContent = "관리자 비밀번호가 틀렸습니다."; return false; }
+  $("adminErr").textContent = "";
+  return true;
+}
+
+function bulkTargets(){
+  const target = $("bTarget").value, skip = $("bSkipExpired").checked;
+  const out = [];
+  for (const [id, c] of Object.entries(chars)){
+    for (const s of slotsOf(c)){
+      if (!s.item || !s.item.expireAt) continue;
+      if (target === "hammer" && s.def.rule !== "24h") continue;
+      if (target === "rune" && s.def.rule !== "any") continue;
+      if (skip && s.item.expireAt <= now()) continue;
+      out.push({ id, key: s.key, expireAt: s.item.expireAt });
+    }
+  }
+  return out;
+}
+function bulkMs(){ return (+$("bD").value||0)*DAY + (+$("bH").value||0)*HOUR + (+$("bM").value||0)*MIN; }
+function fmtAdd(ms){
+  const d = Math.floor(ms/DAY), h = Math.floor(ms%DAY/HOUR), m = Math.floor(ms%HOUR/MIN);
+  return [d && d+"일", h && h+"시간", m && m+"분"].filter(Boolean).join(" ");
+}
+function updatePreview(){
+  const n = bulkTargets().length, ms = bulkMs();
+  $("bPreview").textContent = ms > 0
+    ? `대상 아이템 ${n}개에 ${fmtAdd(ms)}을(를) 더합니다.`
+    : `대상 아이템 ${n}개 · 더할 시간을 입력하세요.`;
+}
+
+function applyBulk(){
+  if (!checkPw()) return;
+  const ms = bulkMs();
+  if (ms <= 0){ $("adminErr").textContent = "더할 시간을 입력하세요."; return; }
+  const list = bulkTargets();
+  if (!list.length){ $("adminErr").textContent = "적용할 아이템이 없습니다."; return; }
+  if (!confirm(`아이템 ${list.length}개에 ${fmtAdd(ms)}을(를) 더합니다.\n되돌리려면 수정 화면에서 직접 고쳐야 하니 확인 후 눌러주세요.`)) return;
+
+  const tName = $("bTarget").selectedOptions[0].textContent;
+  Store.bulkAdd(list, ms, `[관리자] 일괄 시간 증가 ${fmtAdd(ms)} (${tName}, ${list.length}개)`).then(() => {
+    toast(`${list.length}개 아이템에 ${fmtAdd(ms)} 추가 완료`);
+    $("bD").value = $("bH").value = $("bM").value = "";
+    updatePreview();
+  }).catch(e => { $("adminErr").textContent = "적용 실패: " + e.message; });
+}
+
+function changePw(){
+  if (!checkPw()) return;
+  const n = $("chPw1").value;
+  if (n.length < 4){ $("adminErr").textContent = "새 비밀번호는 4자 이상으로 정해주세요."; return; }
+  Store.setAdminHash(hashPw(n), false, "관리자 비밀번호 변경").then(() => {
+    toast("비밀번호를 변경했습니다."); $("chPw1").value = "";
+  });
+}
+
+/* Firebase 설정 붙여넣기 → 객체로 변환 */
+function parseConfigText(txt){
+  const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
+  if (a < 0 || b < a) throw new Error("{ } 로 감싸진 설정을 찾지 못했습니다.");
+  const obj = new Function("return (" + txt.slice(a, b+1) + ");")();
+  if (!obj.databaseURL) throw new Error("databaseURL 항목이 없습니다. Realtime Database를 먼저 만들어주세요.");
+  if (!obj.apiKey) throw new Error("apiKey 항목이 없습니다.");
+  return obj;
+}
+
+/* ===================== 9. 팝업·버튼 연결 ===================== */
+function showModal(id){ $(id).classList.add("show"); }
+function hideModal(id){ $(id).classList.remove("show"); }
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => b.closest(".modal-bg").classList.remove("show"));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-bg.show").forEach(m => m.classList.remove("show"));
+});
+
+// 화면 안 여러 버튼을 한 곳에서 처리 (이벤트 위임)
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.extend){ const [id, key] = t.dataset.extend.split("|"); extendItem(id, key); }
+  else if (t.dataset.edit) openChar(t.dataset.edit);
+  else if (t.dataset.del) deleteChar(t.dataset.del);
+  else if (t.dataset.clear) $("mChar").querySelectorAll(`input[data-k="${t.dataset.clear}"]`).forEach(i => i.value = "");
+  else if (t.dataset.accdel){ t.closest(".acc-row").remove(); updateAccCount(); }
+  else if (t.dataset.action === "add") openChar(null);
+  else if (t.dataset.action === "load") $("fileInput").click();
+});
+
+$("btnAdd").onclick = () => openChar(null);
+$("charSave").onclick = saveChar;
+$("accAdd").onclick = addAccRow;
+$("btnSaveJson").onclick = saveJson;
+$("btnLoadJson").onclick = () => $("fileInput").click();
+$("fileInput").onchange = e => { onFilePicked(e.target.files[0]); e.target.value = ""; };
+$("importApply").onclick = applyImport;
+$("btnAdmin").onclick = openAdmin;
+$("adminSetBtn").onclick = setFirstPw;
+$("bApply").onclick = applyBulk;
+$("chPwBtn").onclick = changePw;
+["bD","bH","bM"].forEach(id => $(id).addEventListener("input", updatePreview));
+$("bTarget").addEventListener("change", updatePreview);
+$("bSkipExpired").addEventListener("change", updatePreview);
+["search","filter","sort"].forEach(id => $(id).addEventListener("input", renderGrid));
+
+$("btnFbSetup").onclick = () => { hideModal("mAdmin"); $("cfgErr").textContent = ""; showModal("mSetup"); };
+$("btnToLocal").onclick = () => {
+  if (!confirm("이 브라우저를 로컬 모드로 돌립니다. (Firebase에 있는 데이터는 지워지지 않습니다)")) return;
+  localStorage.removeItem("r2_fbcfg"); location.reload();
+};
+$("cfgSave").onclick = () => {
+  try {
+    const cfg = parseConfigText($("cfgText").value);
+    localStorage.setItem("r2_fbcfg", JSON.stringify(cfg));
+    location.reload();
+  } catch(e){ $("cfgErr").textContent = "설정을 읽지 못했습니다: " + e.message; }
+};
+
+$("btnNick").onclick = () => {
+  const v = prompt("기록에 남길 내 이름(닉네임)을 입력하세요.", localStorage.getItem("r2_nick") || "");
+  if (v !== null){ localStorage.setItem("r2_nick", v.trim().slice(0,15)); $("nickView").textContent = nick(); }
+};
+$("nickView").textContent = localStorage.getItem("r2_nick") || "미설정";
+
+/* ===================== 10. 시작 ===================== */
+(function boot(){
+  let cfg = EMBEDDED_CONFIG;
+  if (!cfg){ try { cfg = JSON.parse(localStorage.getItem("r2_fbcfg") || "null"); } catch(e){ cfg = null; } }
+
+  if (cfg){
+    Store = createFirebaseStore(cfg);
+    Store.start().catch(e => {
+      // Firebase 실패 시 로컬 모드로 자동 전환 → 프로그램은 계속 쓸 수 있습니다
+      console.error(e);
+      Store = createLocalStore(); Store.start();
+      toast("Firebase 연결 실패 — 로컬 모드로 실행합니다. (" + e.message + ")");
+    });
+  } else {
+    Store = createLocalStore();
+    Store.start();
+    markDirty(localStorage.getItem("r2_dirty") === "1");
+  }
+  setInterval(tick, 1000);        // 1초마다 남은 시간 숫자 갱신
+  setInterval(renderAll, 30000);  // 30초마다 상태(강조·버튼) 다시 판정
+})();
+</script>
+</body>
+</html>
