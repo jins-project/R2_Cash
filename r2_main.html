@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R2 길드 자금 관리</title>
+<style>
+:root{
+  --bg:#0b1016; --top:#080c11; --panel:#141b24; --panel2:#1a232e; --head:#1f2a37; --field:#0d131a;
+  --line:#2a3646; --line2:#3b4c61; --text:#e7edf4; --muted:#93a1b3;
+  --teal:#35c4a6; --teal-soft:rgba(53,196,166,.15);
+  --green:#46d391; --green-soft:rgba(70,211,145,.14);
+  --red:#ff7272; --red-soft:rgba(255,114,114,.14);
+  --coin:#f2b84b; --coin-soft:rgba(242,184,75,.16);
+  --blue:#6cb2ff; --blue-soft:rgba(108,178,255,.15);
+  --purple:#c9a0ff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:110px}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:14px/1.55 "Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:15px} h3{font-size:14px}
+.muted{color:var(--muted)} .small{font-size:12px}
+.pre{white-space:pre-line;margin:0}
+.nowrap{white-space:nowrap}
+
+/* ---------- 상단 ---------- */
+.top{position:sticky;top:0;z-index:20;background:var(--top);border-bottom:1px solid var(--line)}
+.top-in{max-width:1240px;margin:0 auto;padding:12px 16px 0}
+.brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+.brand h1{font-size:19px}
+.brand h1 small{font-size:12px;color:var(--muted);font-weight:500;margin-left:8px}
+.tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.save{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line2)}
+.save.ok{color:var(--teal)} .save.warn{color:var(--red);border-color:var(--red)}
+.bk{font-size:12px;color:var(--muted)} .bk.warn{color:var(--coin)}
+.tabs{display:flex;gap:4px;margin-top:12px;overflow-x:auto}
+.tab{background:var(--panel);border:1px solid var(--line);border-bottom:0;border-top:3px solid transparent;border-radius:8px 8px 0 0;
+  padding:9px 20px;cursor:pointer;color:var(--muted);font-weight:700;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--bg);color:var(--text);border-top-color:var(--teal);margin-bottom:-1px;padding-bottom:10px}
+main{max-width:1240px;margin:0 auto;padding:20px 16px 90px}
+
+/* ---------- 카드(항목 구분) ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:20px;overflow:hidden}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;
+  background:var(--head);background:linear-gradient(90deg,color-mix(in srgb,var(--c,var(--teal)) 18%,var(--head)),var(--head) 70%);
+  border-bottom:1px solid var(--line);border-left:5px solid var(--c,var(--teal))}
+.card-b{padding:16px}
+.c-teal{--c:var(--teal)} .c-coin{--c:var(--coin)} .c-green{--c:var(--green)} .c-red{--c:var(--red)} .c-blue{--c:var(--blue)} .c-purple{--c:var(--purple)}
+.sub{border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0}
+.sub-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;background:var(--head);border-left:4px solid var(--c);font-weight:700}
+
+/* ---------- 버튼/입력 ---------- */
+.btn{border:1px solid var(--line2);background:var(--panel2);padding:7px 13px;border-radius:6px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--teal);background:#223040}
+.btn:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#04241d}
+.btn.primary:hover{filter:brightness(1.1);background:var(--teal)}
+.btn.gold{background:var(--coin);border-color:var(--coin);color:#2b1c00}
+.btn.gold:hover{filter:brightness(1.08);background:var(--coin)}
+.btn.danger{background:var(--red);border-color:var(--red);color:#2a0606}
+.btn.ghost{background:transparent}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.lg{padding:11px 22px;font-size:15px}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+input,select,textarea{background:var(--field);border:1px solid var(--line2);border-radius:6px;padding:7px 9px;min-width:0}
+input[type=number]{text-align:right}
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal);padding:0}
+input::placeholder,textarea::placeholder{color:#5f6f82}
+textarea{width:100%;resize:vertical}
+.w100{width:100%}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>label{font-size:12px;color:var(--muted)}
+.inl{display:flex;align-items:center;gap:6px}
+.mi{display:inline-flex;flex-direction:column;gap:2px;vertical-align:top}
+.mi input{width:140px}
+.field .mi{display:flex} .field .mi input{width:100%}
+[data-money]{text-align:right}
+input.big{font-size:22px;font-weight:800;height:50px}
+.mfmt{font-size:11.5px;color:var(--coin);min-height:16px;text-align:right;white-space:nowrap}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;align-items:start}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips[hidden]{display:none}
+.chip{display:inline-block;padding:1px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.chip.in{color:var(--green);border-color:var(--green);background:var(--green-soft)}
+.chip.out{color:var(--red);border-color:var(--red);background:var(--red-soft)}
+.chip.coin{color:var(--coin);border-color:var(--coin);background:var(--coin-soft)}
+.chip.blue{color:var(--blue);border-color:var(--blue);background:var(--blue-soft)}
+.chip.cls-kn{color:#ff9f7a;border-color:#ff9f7a;background:rgba(255,159,122,.13)}
+.chip.cls-rg{color:var(--green);border-color:var(--green);background:var(--green-soft)}
+.chip.cls-el{color:var(--teal);border-color:var(--teal);background:var(--teal-soft)}
+.chip.cls-sm{color:var(--purple);border-color:var(--purple);background:rgba(201,160,255,.14)}
+.chip.sm2{font-size:11px;padding:0 7px;margin-left:6px;font-weight:600}
+.chip.link{cursor:pointer;padding:3px 11px}
+.chip.link:hover{filter:brightness(1.35);border-color:var(--teal);color:var(--text)}
+.notice{padding:8px 12px;border-radius:6px;border:1px solid var(--line2);background:var(--field);font-size:13px;margin:10px 0 0}
+.notice.ok{border-color:var(--teal);color:var(--teal)}
+.notice.warn{border-color:var(--coin);color:var(--coin)}
+.notice.bad{border-color:var(--red);color:var(--red)}
+.hint{font-size:12.5px;color:var(--muted);margin:0 0 12px;padding:8px 12px;border-left:3px solid var(--line2);background:var(--field);border-radius:0 6px 6px 0}
+.empty{padding:26px 12px;text-align:center;color:var(--muted)}
+.pos{color:var(--green)} .neg{color:var(--red)} .coin{color:var(--coin)}
+
+/* ---------- 입출금 입력 폼 ---------- */
+.ledform{display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(280px,1fr);gap:22px}
+@media (max-width:860px){.ledform{grid-template-columns:1fr}}
+.ledform .lf-l,.ledform .lf-r{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lf-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--field);padding:9px 20px;font-weight:800;cursor:pointer;color:var(--muted);font-size:15px;flex:1 1 0;min-width:96px;white-space:nowrap}
+.seg button.on.in{background:var(--green-soft);color:var(--green)}
+.seg button.on.out{background:var(--red-soft);color:var(--red)}
+
+/* ---------- 잔액 막대 ---------- */
+.vault{display:grid;grid-template-columns:minmax(230px,1fr) 2fr;gap:24px;align-items:center}
+@media (max-width:760px){.vault{grid-template-columns:1fr}}
+.vault .lbl{color:var(--muted);font-size:13px}
+.vault .val{font-size:42px;font-weight:800;line-height:1.15;letter-spacing:-.02em}
+.vault .val small{font-size:15px;color:var(--muted);font-weight:500;margin-left:6px}
+.vault .sub2{font-size:12px;color:var(--muted)}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.legend div{display:flex;flex-direction:column;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.legend .k{font-size:12px;color:var(--muted)}
+.legend .v{font-size:17px;font-weight:700}
+.prog{height:10px;border-radius:999px;background:var(--field);border:1px solid var(--line2);overflow:hidden;margin-top:8px}
+.prog>i{display:block;height:100%;background:var(--coin);width:0}
+
+/* ---------- 표 ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table.tbl{width:100%;border-collapse:collapse;min-width:620px}
+.tbl th,.tbl td{padding:9px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.tbl th{background:#101820;font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap;border-bottom:2px solid var(--line2)}
+.tbl tbody tr:nth-child(even) td{background:rgba(255,255,255,.028)}
+.tbl tbody tr:hover td{background:rgba(255,255,255,.06)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td.num,.tbl th.num{text-align:right;white-space:nowrap}
+.tbl tfoot td{background:var(--head);font-weight:800;border-top:2px solid var(--line2);border-bottom:0}
+.tbl tr.off td{opacity:.45}
+/* 고정 레이아웃: 값이 바뀌어도 열 너비가 변하지 않음 */
+table.tbl.fixed{table-layout:fixed;width:100%;min-width:0}
+.fixed th,.fixed td{overflow:hidden;text-overflow:ellipsis}
+.fixed td.wrap{white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
+.fixed td.act{text-align:right;padding-left:6px;padding-right:8px}
+.fixed td.act .btn{margin-left:4px}
+table.dist{table-layout:fixed;width:100%}
+.dist th,.dist td{overflow:hidden;text-overflow:ellipsis}
+.dist tbody td{height:58px;padding-top:4px;padding-bottom:4px}
+.dist .mi{display:block;position:relative}
+.dist .mi input{width:100%}
+.dist .mfmt{position:absolute;left:0;right:0;top:100%;margin-top:1px;line-height:1;font-size:10.5px;min-height:0}
+.dist input[type=number]{width:100%}
+.rankb{font-size:11px;color:var(--coin);margin-right:5px}
+.mat td.cellp{cursor:pointer;font-weight:600}
+.mat td.cellp.paid{color:var(--green)}
+.mat td.cellp.paid::before{content:"✓ ";font-size:11px}
+.mat td.cellp.unpaid{color:var(--red);background:var(--red-soft)!important}
+.mat td:first-child,.mat th:first-child{position:sticky;left:0;background:var(--panel2);z-index:1;font-weight:700}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,500px),1fr));gap:16px;align-items:start}
+.rowsel td{cursor:pointer}
+.rowsel tr.sel td{background:var(--blue-soft)!important}
+
+/* ---------- 분배 Rule ---------- */
+.comp{border:1px solid var(--line);border-left:4px solid var(--cc,var(--line2));border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--panel2)}
+.comp.t-base{--cc:var(--blue)} .comp.t-equal{--cc:var(--teal)} .comp.t-perCount{--cc:var(--green)} .comp.t-rank{--cc:var(--coin)} .comp.t-bonus{--cc:var(--purple)}
+.comp.dis{opacity:.5}
+.comp-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.comp-h input[type=text]{width:200px;font-weight:700}
+.comp-b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;color:var(--muted)}
+.comp-b input[type=number]{width:90px}
+.comp-b .mi input{width:130px}
+.rule-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:14px}
+.ro{padding:7px 11px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);font-weight:800;font-size:16px;min-height:36px}
+.sumbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0 0}
+.sumbox div{display:flex;flex-direction:column;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.sumbox .k{font-size:12px;color:var(--muted)} .sumbox .v{font-size:17px;font-weight:700}
+details.hist{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;background:var(--panel2);overflow:hidden}
+details.hist>summary{cursor:pointer;padding:11px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-weight:700;background:var(--head);border-left:4px solid var(--coin)}
+details.hist .inner{padding:14px}
+.stack{display:flex;height:16px;border-radius:999px;overflow:hidden;background:var(--field);border:1px solid var(--line2);margin:0 0 12px}
+.stack i{display:block;height:100%}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+
+/* ---------- 레이드 ---------- */
+.raidgrid{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:20px;align-items:start}
+@media (max-width:1120px){.raidgrid{grid-template-columns:1fr}.raidside{order:-1;position:static!important;max-height:none!important}}
+.raidside{position:sticky;top:116px;max-height:calc(100vh - 130px);overflow:auto;border-radius:10px}
+.raidside .card{margin-bottom:0}
+.stocklist{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;margin:12px 0}
+.stockitem{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line2);border-radius:8px;cursor:pointer;background:var(--field);font-weight:700}
+.stockitem:hover{border-color:var(--coin)}
+.stockitem.sel{border-color:var(--coin);background:var(--coin-soft);color:var(--coin)}
+.stockitem .x,.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:17px;line-height:1;padding:0 4px}
+.stockitem .x:hover,.x:hover{color:var(--red)}
+.sellform{border:1px solid var(--coin);border-radius:10px;padding:12px;background:var(--coin-soft);display:flex;flex-direction:column;gap:10px}
+.stockadd{display:flex;gap:6px}
+.stockadd .sn{flex:1;min-width:0}
+.stockadd .sq{width:64px}
+.eq{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.eqb{flex:1 1 170px;border-radius:10px;padding:12px 16px;border:1px solid var(--line2);background:var(--panel2)}
+.eqb span{display:block;font-size:12px;color:var(--muted)}
+.eqb b{font-size:21px}
+.eqb.in{border-color:var(--green);background:var(--green-soft)} .eqb.in b{color:var(--green)}
+.eqb.out{border-color:var(--red);background:var(--red-soft)} .eqb.out b{color:var(--red)}
+.eqb.net{border-color:var(--teal);background:var(--teal-soft)}
+.op{align-self:center;font-size:26px;font-weight:800;color:var(--muted)}
+.expadd{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr auto;gap:8px;margin-top:12px;align-items:start}
+@media (max-width:820px){.expadd{grid-template-columns:1fr 1fr}}
+.expadd input{width:100%}
+.expadd .mi{display:flex;width:100%}
+
+.stockitem{cursor:default}
+.stockitem:hover{border-color:var(--line2)}
+.lotadd{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.lotadd .ln{width:240px;max-width:100%} .lotadd .lq{width:72px}
+.biddergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;max-height:250px;overflow:auto;padding:8px;border:1px solid var(--line2);border-radius:8px;background:var(--field)}
+.bd{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;min-width:0}
+.bd:hover{border-color:var(--teal)}
+.bd span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd input:checked+span{color:var(--teal);font-weight:800}
+.bdtools{display:flex;gap:6px;margin:0 0 8px}
+.drawres{margin:10px 0;padding:10px 12px;border:1px solid var(--coin);border-radius:8px;background:var(--coin-soft);font-weight:800;color:var(--coin)}
+.bal2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.bal2{grid-template-columns:1fr}}
+.bal{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--panel2)}
+.bal.cash{border-color:var(--purple)}
+.bal .lbl{color:var(--muted);font-size:13px}
+.bal .val{font-size:38px;font-weight:800;line-height:1.15;letter-spacing:-.02em}
+.bal .val small{font-size:15px;color:var(--muted);font-weight:500;margin-left:6px}
+.bal .sub2{font-size:12px;color:var(--muted);min-height:18px}
+.bal .legend{margin-top:12px}
+.seg.nav button.on{background:var(--teal-soft);color:var(--teal)}
+.seg.nav{margin:0 0 20px}
+
+/* ---------- 보물상자 뽑기 ---------- */
+#drawRoot:empty{display:none}
+.dr-overlay{position:fixed;inset:0;background:rgba(5,7,12,.82);z-index:150;display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto}
+.dr-box{width:min(760px,100%);max-height:96vh;overflow:auto;background:linear-gradient(160deg,#1c2231,#12161f);border:1px solid #80612d;border-radius:18px;padding:20px;box-shadow:0 0 60px #f4c76b22}
+.dr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.dr-eyebrow{color:var(--coin);font-size:11px;letter-spacing:3px;font-weight:800}
+.dr-head h3{font-size:22px;margin-top:4px}
+.dr-sub{margin:8px 0;color:var(--muted)}
+.dr-bidders{display:flex;gap:6px;flex-wrap:wrap;max-height:84px;overflow:auto;margin-bottom:8px}
+.dr-stage{position:relative;border:1px solid #80612d66;border-radius:14px;background:radial-gradient(ellipse at 50% 20%,#2e2848,#10131b 75%);padding:34px 10px 16px;overflow:hidden;margin:10px 0}
+.dr-chests{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:relative;z-index:2}
+.dr-cw{text-align:center;min-width:0}
+.dr-chest{position:relative;width:100%;max-width:170px;aspect-ratio:1/1;margin:0 auto;perspective:700px}
+.dr-glow{position:absolute;left:50%;top:50%;width:90%;height:90%;transform:translate(-50%,-50%) scale(.8);border-radius:50%;background:radial-gradient(circle,#f4c76baa 0,#f4c76b33 45%,transparent 70%);animation:drPulse 2.2s ease-in-out infinite}
+.dr-body{position:absolute;left:10%;right:10%;bottom:8%;height:44%;background:linear-gradient(#7b5630,#45301a);border:3px solid #d9a441;border-radius:6px 6px 14px 14px;box-shadow:inset 0 0 14px #0007}
+.dr-body:before{content:"";position:absolute;left:0;right:0;top:34%;height:4px;background:#d9a44188}
+.dr-lock{position:absolute;left:50%;top:-9px;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff0b8,#d9a441);border:2px solid #7a5a18;z-index:2}
+.dr-lid{position:absolute;left:7%;right:7%;bottom:50%;height:32%;background:linear-gradient(#9a6a3a,#5d3e20);border:3px solid #d9a441;border-radius:70px 70px 6px 6px/46px 46px 6px 6px;transform-origin:50% 100%;transition:transform .8s cubic-bezier(.2,1.5,.4,1);z-index:1;box-shadow:inset 0 5px 10px #fff2}
+.dr-loot{position:absolute;left:50%;bottom:44%;transform:translate(-50%,40%) scale(.2);font-size:clamp(34px,6vw,54px);opacity:0;transition:all .7s .25s cubic-bezier(.2,1.6,.4,1);z-index:3;text-shadow:0 0 18px #f4c76b}
+.dr-chest.open .dr-lid{transform:rotateX(-118deg)}
+.dr-chest.open .dr-glow{animation:none;transform:translate(-50%,-50%) scale(2.1);opacity:1;background:radial-gradient(circle,#fff3c2dd 0,#f4c76b88 35%,transparent 70%)}
+.dr-chest.open .dr-loot{opacity:1;transform:translate(-50%,-55%) scale(1)}
+.dr-chest.win .dr-body{border-color:#fff0b8;box-shadow:0 0 28px #f4c76bcc,inset 0 0 14px #0007}
+.dr-chest.charge .dr-glow{animation-duration:.7s}
+.dr-chest.shake{animation:drShake .34s infinite}
+.dr-chest.shake.hard{animation-duration:.16s}
+.dr-who{margin-top:10px;font-weight:800;min-height:24px;color:var(--muted);overflow-wrap:anywhere;font-size:14px}
+.dr-who.win{color:var(--coin);font-size:16px;text-shadow:0 0 12px #f4c76b88}
+.dr-stage canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+.dr-count{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:4;font-size:clamp(80px,18vw,150px);font-weight:900;color:#ffe6a3;text-shadow:0 0 36px #f4c76b,0 0 8px #fff}
+.dr-count span{animation:drPop 1s ease-out forwards}
+.dr-burst{position:absolute;left:50%;top:48%;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;background:radial-gradient(circle,#fff8d8 0,#f4c76b 32%,#f4c76b00 70%);animation:drBurst 1s ease-out forwards;z-index:3;pointer-events:none}
+.dr-flash{position:absolute;inset:0;background:#fff3c2;opacity:0;pointer-events:none;z-index:5}
+.dr-flash.on{animation:drFlash .7s ease-out}
+.dr-status{text-align:center;color:var(--coin);font-weight:800;margin:8px 0;min-height:24px}
+.dr-winners{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;min-height:62px;margin-bottom:6px}
+.dr-wchip{opacity:0;border:1px solid #b9974c;background:#3d3018;border-radius:14px;padding:8px 16px;text-align:center;color:#ffe7a7}
+.dr-wchip small{display:block;font-size:11px;color:#d9c07f}
+.dr-wchip strong{font-size:20px}
+.dr-wchip.show{animation:drWin .7s cubic-bezier(.2,1.6,.4,1) forwards}
+.dr-wchip.cur{box-shadow:0 0 30px #f4c76bcc;border-color:#fff0b8;background:#5a4720}
+.dr-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.dr-foot [hidden]{display:none}
+@keyframes drPulse{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(.8)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
+@keyframes drShake{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-3px,1px) rotate(-3deg)}40%{transform:translate(4px,-2px) rotate(3deg)}60%{transform:translate(-4px,0) rotate(-4deg)}80%{transform:translate(3px,2px) rotate(4deg)}}
+@keyframes drPop{0%{transform:scale(2.4);opacity:0}22%{opacity:1}100%{transform:scale(.75);opacity:.15}}
+@keyframes drBurst{0%{transform:scale(.1);opacity:1}100%{transform:scale(9);opacity:0}}
+@keyframes drFlash{0%{opacity:.85}100%{opacity:0}}
+@keyframes drWin{0%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.dr-chest.shake,.dr-glow,.dr-burst,.dr-count span,.dr-wchip.show,.dr-flash.on{animation:none}.dr-wchip.show{opacity:1}.dr-lid,.dr-loot{transition:none}}
+
+.tab .cnt{display:inline-block;min-width:20px;padding:0 6px;margin-left:7px;border-radius:999px;background:var(--coin);color:#2b1c00;font-size:11px;font-weight:800;text-align:center;vertical-align:middle}
+.tab .cnt:empty{display:none}
+.ratio td input[type=text],.ratio td select{width:100%}
+.ratio td input.pct{width:100%;text-align:right}
+.ratio td[colspan]{white-space:normal}
+.ratio td .rk{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted)}
+.ratio td .rk input{width:130px}
+
+.tab.tablink{text-decoration:none;display:inline-block;color:var(--blue);border-top-color:transparent}
+.tab.tablink:hover{color:var(--text);border-top-color:var(--blue)}
+.tab.gear{padding:9px 12px;font-size:14px}
+.tab[hidden]{display:none}
+.lockd{opacity:.5;cursor:not-allowed}
+.lockbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 16px;margin-bottom:18px;border:1px solid var(--line2);border-left:5px solid var(--coin);border-radius:10px;background:var(--panel);color:var(--muted)}
+.lockbar b{color:var(--text)}
+.seg.nav button{min-width:190px}
+input:disabled,select:disabled,textarea:disabled{opacity:.6;cursor:not-allowed}
+
+.chip.purple{color:var(--purple);border-color:var(--purple);background:rgba(201,160,255,.14)}
+/* ---------- 공지사항(메인) ---------- */
+.nhero{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:22px 24px;margin-bottom:16px;border:1px solid var(--line2);border-radius:14px;
+  background:radial-gradient(900px 220px at 0% 0%,rgba(53,196,166,.20),transparent 70%),radial-gradient(700px 200px at 100% 100%,rgba(201,160,255,.14),transparent 70%),var(--panel)}
+.nhero .neye{font-size:11px;letter-spacing:3px;color:var(--teal);font-weight:800}
+.nhero h2{font-size:26px;margin:4px 0 4px;letter-spacing:-.02em}
+.nhero p{margin:0 0 12px}
+.nstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px}
+.nstat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s,transform .15s}
+.nstat:hover{border-color:var(--teal);transform:translateY(-1px)}
+.nstat .k{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.nstat .v{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.nsplit{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:20px;align-items:start}
+.nsec-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;margin-bottom:12px;border-radius:10px;background:var(--head);border:1px solid var(--line);border-left:5px solid var(--c);font-weight:800}
+.ncard{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.ncard.pin{border-color:var(--coin);border-left-color:var(--coin);background:linear-gradient(135deg,var(--coin-soft),var(--panel) 60%);box-shadow:0 0 0 1px var(--coin-soft),0 6px 20px #0003}
+.ncard h3{font-size:18px;margin:8px 0 4px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.nhead{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.nmeta{font-size:12.5px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+.nbody{margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;color:#d3dbe6}
+.nbody.clamp{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.nbody a{color:var(--blue);text-decoration:underline}
+.natt{margin-top:10px;font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.natt b{color:var(--purple)}
+.nact{display:flex;gap:6px;justify-content:flex-end;align-items:center;margin-top:12px;flex-wrap:wrap}
+.nact .btn.link{border:0;background:none;color:var(--teal);padding:3px 6px}
+.nempty{padding:26px 12px;text-align:center;color:var(--muted);border:1px dashed var(--line2);border-radius:12px;background:var(--panel)}
+.nrecent{display:flex;flex-direction:column;gap:6px}
+.nrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);cursor:pointer}
+.nrow:hover{border-color:var(--coin)}
+.nrow .nd{color:var(--muted);font-size:12.5px;min-width:96px}
+.nrow b{flex:1;min-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nmonth{margin:18px 0 8px;font-weight:800;color:var(--coin);display:flex;align-items:center;gap:10px}
+.nmonth:after{content:"";flex:1;height:1px;background:var(--line)}
+details.nh{border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;margin-bottom:8px;background:var(--panel2);overflow:hidden}
+details.nh>summary{cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;list-style:none}
+details.nh>summary::-webkit-details-marker{display:none}
+details.nh>summary:before{content:"▸";color:var(--muted);transition:transform .15s}
+details.nh[open]>summary:before{transform:rotate(90deg)}
+details.nh .nd{color:var(--muted);font-size:12.5px;min-width:96px}
+details.nh .nt{flex:1;min-width:160px;overflow-wrap:anywhere}
+details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
+.chk{display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 0}
+.nt-type button{min-width:150px}
+
+/* ---------- 모달/토스트 ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:12px;width:min(500px,100%);max-height:90vh;overflow:auto;padding:20px}
+.modal.wide{width:min(720px,100%)}
+.modal h3{font-size:16px;margin-bottom:12px}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.mbody .field{margin-bottom:12px}
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:#e7edf4;color:#0b1016;padding:9px 16px;border-radius:8px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:200;max-width:90vw}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div class="brand">
+    <h1>R2 길드 자금 관리<small>자금 · 분배 · 레이드 정산</small></h1>
+    <div class="tools">
+      <span id="adminStatus" class="save">🔒 읽기 전용</span>
+      <button class="btn sm" id="adminBtn" data-act="adminAuth">관리자 인증</button>
+      <span id="cloudStatus" class="save">☁ 로컬 저장</span>
+      <button class="btn sm ghost" data-act="cloudOpen">☁ 클라우드</button>
+      <span id="saveStatus" class="save ok">불러오는 중…</span>
+      <span id="bkInfo" class="bk"></span>
+      <button class="btn sm" data-act="exportJson" title="전체 데이터를 JSON 파일로 저장합니다">JSON 내보내기</button>
+      <button class="btn sm" data-act="importJson" title="JSON 파일로 데이터를 복원합니다">JSON 불러오기</button>
+      <button class="btn sm ghost" data-act="sample">엑셀 예시 데이터</button>
+      <button class="btn sm ghost" data-act="resetAll">초기화</button>
+      <input type="file" id="fileIn" accept=".json,application/json" hidden>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="메뉴">
+    <button class="tab" data-act="tab" data-tab="notice">공지사항</button>
+    <button class="tab" data-act="tab" data-tab="ledger">길자금 현황</button>
+    <button class="tab" data-act="tab" data-tab="dist">길자금 분배</button>
+    <button class="tab" data-act="tab" data-tab="raid">레이드 정산</button>
+    <button class="tab" data-act="tab" data-tab="stock">미판매 재고템<span class="cnt" id="stockCnt"></span></button>
+    <button class="tab" data-act="tab" data-tab="member">길드원 관리</button>
+    <a class="tab tablink" id="hammerTab" href="#" target="_blank" rel="noopener noreferrer">망치질 관리 ↗</a><button class="tab gear" id="hammerGear" data-act="hammerSet" title="링크 주소 변경 (관리자)" aria-label="망치질 관리 링크 변경" hidden>⚙</button>
+  </nav>
+</div></div>
+<main id="view"></main>
+<div id="modalRoot"></div>
+<div id="drawRoot"></div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   0. 저장소(Repo)
+   - 지금은 브라우저 localStorage 에 JSON 으로 저장합니다.
+   - 나중에 Firebase 로 옮길 때는 이 Repo 객체의 load()/save() 만 바꾸면 됩니다.
+   ===================================================================== */
+const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
+const KEY = 'r2_guild_fund_v1';
+/* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
+   비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
+   예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
+const FIREBASE_CONFIG = null;
+const memStore = {data:null};
+const Repo = {
+  async load(){
+    try{ const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
+    catch(e){ return memStore.data; }
+  },
+  async save(data){
+    try{ localStorage.setItem(KEY, JSON.stringify(data)); return true; }
+    catch(e){ memStore.data = JSON.parse(JSON.stringify(data)); return false; }
+  }
+};
+
+/* =====================================================================
+   1. 유틸  (모든 금액은 '만 실버' 정수: 1억 = 10,000)
+   ===================================================================== */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc = s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = ()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
+const num = v=>{ const x=parseFloat(String(v==null?'':v).replace(/,/g,'')); return isFinite(x)?x:0; };
+const r6 = n=>Math.round((+n||0)*1e6)/1e6;
+const r2 = n=>Math.round((+n||0)*100)/100;
+const clamp = (n,a,b)=>Math.min(b,Math.max(a,n));
+const floorTo = (n,u)=>{ u=u>0?u:1; return r6(Math.floor(n/u+1e-9)*u); };
+const fmtN = n=>r2(n).toLocaleString('ko-KR',{maximumFractionDigits:2});
+const fmtM = n=>{   // 500억 / 1억 2,345만 / 5,000만
+  n=Math.round(+n||0); if(n===0) return '0';
+  const neg=n<0; n=Math.abs(n);
+  const eok=Math.floor(n/10000), man=n%10000, L=x=>x.toLocaleString('ko-KR');
+  const s = eok&&man ? L(eok)+'억 '+L(man)+'만' : eok ? L(eok)+'억' : L(man)+'만';
+  return (neg?'-':'')+s;
+};
+const fmtAxis = n=>{ const a=Math.abs(n); const s=a>=10000?(Math.round(a/1000)/10).toLocaleString('ko-KR')+'억':a.toLocaleString('ko-KR')+'만'; return (n<0?'-':'')+s; };
+const niceMax = v=>{ v=Math.max(1,v); const p=Math.pow(10,Math.floor(Math.log10(v))), f=v/p; return (f<=1?1:f<=2?2:f<=5?5:10)*p; };
+const pad = n=>String(n).padStart(2,'0');
+const today = ()=>{ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+const DOW = ['일','월','화','수','목','금','토'];
+const fmtDate = s=>{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s||'')) return s||'-';
+  const [y,m,d]=s.split('-').map(Number); return s+'('+DOW[new Date(y,m-1,d).getDay()]+')';
+};
+const fmtInputVal = v=>{ const d=String(v==null?'':v).replace(/[^\d]/g,''); return d===''?'':Number(d).toLocaleString('ko-KR'); };
+// 금액 입력칸: 천 단위 쉼표 자동 + 아래에 "= 5억 0만" 표시
+const moneyIn = (attrs,val,cls)=>'<span class="mi"><input type="text" inputmode="numeric" autocomplete="off" data-money '+(cls?'class="'+cls+'" ':'')+attrs+' value="'+(val===''||val==null?'':esc(fmtInputVal(Math.max(0,Math.round(num(val))))))+'"><small class="mfmt"></small></span>';
+const fmtWon = n=>{   // 1억 2,345만 6,789원
+  n=Math.round(+n||0); const neg=n<0; n=Math.abs(n);
+  const eok=Math.floor(n/1e8), man=Math.floor((n%1e8)/1e4), won=n%1e4, L=x=>x.toLocaleString('ko-KR'); let s='';
+  if(eok) s+=L(eok)+'억'; if(man) s+=(s?' ':'')+L(man)+'만'; if(won) s+=(s?' ':'')+L(won); if(!s) s='0';
+  return (neg?'-':'')+s+'원';
+};
+const wonIn = (attrs,val,cls)=>moneyIn(attrs+' data-won',val,cls);
+function moneyHint(el){
+  const mi=el.closest('.mi'); if(!mi) return; const h=mi.querySelector('.mfmt'); if(!h) return;
+  const n=num(el.value); h.textContent=n?('= '+(el.hasAttribute('data-won')?fmtWon(n):fmtM(n))):'';
+}
+function formatMoneyInput(el){
+  const pos=el.selectionStart==null?el.value.length:el.selectionStart;
+  const before=el.value.slice(0,pos).replace(/\D/g,'').length;
+  const f=fmtInputVal(el.value); el.value=f;
+  let i=0,d=0; while(i<f.length&&d<before){ if(/\d/.test(f[i])) d++; i++; }
+  try{ el.setSelectionRange(i,i); }catch(e){}
+}
+
+/* =====================================================================
+   2. 기본 데이터 / 정규화 / 이전 버전 변환
+   ===================================================================== */
+const PRESET_INCOME = ['롱쉴드','거친','다마','어쎄메일','5어쎄글러브','고줌','향태반','잡무기','잡방어구','잡주문서','불강 셋트(2)'];
+const PRESET_EXPENSE = ['봉줌 1층','봉줌 2층','봉줌 3층','봉줌 4층','이계상인'];
+const MEMBERS0 = ['와꾸','빵양','미륵','마린','콜라','리즈','구슬','스페','봉대장','허리','젠키','꿀꿀이','짜잔','애무','수박'];
+const HAMMER_URL = 'https://jins-project.github.io/R2_Cash/r2_item_timer.html';   // 이전에 만든 캐쉬템 잔여 시간 페이지 (관리자가 ⚙ 로 변경 가능)
+const CLASSES = ['나이트','레인저','엘프','서머너'];
+const CLASS_CSS = {'나이트':'kn','레인저':'rg','엘프':'el','서머너':'sm'};
+const classChip = (c,small)=>c&&CLASS_CSS[c]?'<span class="chip cls-'+CLASS_CSS[c]+(small?' sm2':'')+'">'+esc(c)+'</span>':'<span class="chip'+(small?' sm2':'')+'">미지정</span>';
+const COMP_TYPES = {bonus:'포상(수고비)', base:'고정 기본급(1인당 금액)', guild:'길드자금 적립', equal:'균등 지급(기본급)', perCount:'횟수 비례 분배', rank:'순위 상금'};
+const RATIO_LABEL = {guild:'길드자금 적립 (지급 안 함)', perCount:'횟수 비례 분배', equal:'균등 지급 (기본급)', rank:'순위 상금'};
+const isAmt = c=>c.type==='bonus'||c.type==='base';
+const DEFAULT_RATIOS = ()=>[{type:'guild',name:'길드자금',pct:20},{type:'perCount',name:'분배',pct:50},{type:'equal',name:'기본급',pct:30}];
+const COMP_COLOR = {bonus:'var(--purple)',base:'var(--blue)',guild:'#5fa8d3',equal:'var(--teal)',perCount:'var(--green)',rank:'var(--coin)'};
+const NEW_COMP = {
+  bonus:()=>({type:'bonus',name:'포상(수고비)'}),
+  base:()=>({type:'base',name:'고정 기본급',amount:10000}),
+  guild:()=>({type:'guild',name:'길드자금',pct:20}),
+  equal:()=>({type:'equal',name:'균등 분배',pct:50}),
+  perCount:()=>({type:'perCount',name:'모니터링 횟수 비례',pct:50}),
+  rank:()=>({type:'rank',name:'순위 상금',pct:20,tiers:[50,30,20],tie:'split'})
+};
+function makeComps(list){ return list.map(c=>Object.assign({id:uid(),enabled:true},c)); }
+function defaultData(){
+  return {
+    schemaVersion:SCHEMA,
+    meta:{createdAt:new Date().toISOString(),updatedAt:null},
+    settings:{unit:'만 실버',distThreshold:500000,lastExportAt:null,hammerUrl:HAMMER_URL,
+      itemPresets:{income:PRESET_INCOME.slice(),expense:PRESET_EXPENSE.slice()}},
+    rule:{roundUnit:1,bonusInit:true,ratioInit:true,components:makeComps([{type:'bonus',name:'포상(수고비)'}].concat(DEFAULT_RATIOS()))},
+    members:MEMBERS0.map(n=>({id:uid(),name:n,cls:'',status:'active',memo:''})),
+    ledger:[], raids:[], distributions:[], stock:[], stockSales:[], cash:[], draws:[], notices:[]
+  };
+}
+// 레이드의 판매/지출 내역 → 길자금 입출금 내역(자동 기록)
+function buildRaidEntries(r,members){
+  const out=[];
+  (r.items||[]).forEach(it=>(it.sales||[]).forEach(s=>{
+    const isExp=it.type==='expense';
+    let by=s.buyer||''; if(s.buyerId&&members){ const m=members.find(x=>x.id===s.buyerId); if(m) by=m.name; }
+    out.push({id:'rs_'+s.id,date:s.date||r.date,type:isExp?'expense':'income',category:isExp?'레이드 지출':'레이드 판매',
+      amount:Math.round(num(s.price)),memo:(r.title||'레이드')+' · '+it.name+(by?(isExp?' ('+by+')':' → '+by):''),
+      ref:{kind:'raid',id:r.id,saleId:s.id}});
+  }));
+  return out;
+}
+function migrateV2(d){      // 백만 실버 → 만 실버 (×100)
+  const x=n=>Math.round((+n||0)*100);
+  if(d.settings){ if(d.settings.distThreshold!=null) d.settings.distThreshold=x(d.settings.distThreshold); d.settings.unit='만 실버'; }
+  if(d.rule){
+    if(d.rule.roundUnit!=null) d.rule.roundUnit=Math.max(1,x(d.rule.roundUnit));
+    (d.rule.components||[]).forEach(c=>{ if(c.type==='base') c.amount=x(c.amount); });
+  }
+  (d.ledger||[]).forEach(e=>{ e.amount=x(e.amount); e.distPortion=x(e.distPortion); e.distUsed=x(e.distUsed); });
+  (d.raids||[]).forEach(r=>{
+    (r.items||[]).forEach(i=>(i.sales||[]).forEach(s=>{ s.price=x(s.price); }));
+    if(r.snap){ r.snap.net=x(r.snap.net); r.snap.guildAmt=x(r.snap.guildAmt); r.snap.distAmt=x(r.snap.distAmt); }
+  });
+  (d.distributions||[]).forEach(dd=>{
+    dd.poolAmount=x(dd.poolAmount);
+    if(dd.unitSnap!=null) dd.unitSnap=Math.max(1,x(dd.unitSnap));
+    (dd.compsSnap||[]).forEach(c=>{ if(c.type==='base') c.amount=x(c.amount); });
+    if(dd.summary) ['totalPayout','poolUsed','overage','leftover'].forEach(k=>{ dd.summary[k]=x(dd.summary[k]); });
+    (dd.results||[]).forEach(r=>{ r.total=x(r.total); Object.keys(r.parts||{}).forEach(k=>{ r.parts[k]=x(r.parts[k]); }); });
+  });
+  d.schemaVersion=2;
+}
+function migrateV3(d){      // 분배 대기금 제거 + 레이드: 판매 내역을 길자금에 건별 자동 기록
+  d.raids=d.raids||[]; d.ledger=d.ledger||[];
+  d.ledger=d.ledger.filter(e=>!(e.ref&&e.ref.kind==='raid'&&!e.ref.saleId));
+  d.ledger.forEach(e=>{ delete e.distPortion; delete e.distUsed; });
+  d.raids.forEach(r=>{
+    const dt=(r.snap&&r.snap.incomeDate)||r.date;
+    r.items=(r.items||[]).filter(i=>(i.sales||[]).length);
+    r.items.forEach(i=>i.sales.forEach(s=>{ if(!s.id) s.id=uid(); if(!s.date) s.date=dt; }));
+    r.stock=r.stock||[];
+    delete r.status; delete r.snap; delete r.ledgerId; delete r.distPct;
+    buildRaidEntries(r,d.members).forEach(e=>d.ledger.push(e));
+  });
+  if(d.rule){ delete d.rule.guildPct; delete d.rule.distPct; }
+  d.schemaVersion=3;
+}
+function migrateV4(d){      // 레이드 건별 자동기록 → 레이드당 1건 / 재고 이월 / 현금·뽑기 기록 추가
+  d.stock=d.stock||[]; d.cash=d.cash||[]; d.draws=d.draws||[]; d.ledger=d.ledger||[];
+  (d.raids||[]).forEach(r=>{
+    (r.stock||[]).forEach(x=>d.stock.push({id:x.id||uid(),name:x.name,from:r.id,fromTitle:r.title||'',date:r.date}));
+    d.ledger=d.ledger.filter(e=>!(e.ref&&e.ref.kind==='raid'&&e.ref.id===r.id));
+    const lots=[], expenses=[]; let last=r.date, inc=0, exp=0;
+    (r.items||[]).forEach(it=>(it.sales||[]).forEach(s=>{
+      const price=Math.round(num(s.price)); if(s.date&&s.date>last) last=s.date;
+      if(it.type==='expense'){ expenses.push({id:s.id||uid(),name:it.name,price,note:s.buyer||'',date:s.date||r.date}); exp+=price; }
+      else{
+        const b=s.buyerId&&s.buyerId!=='__ext'?{id:s.buyerId,name:s.buyer||''}:{id:'__ext',name:s.buyer||'외부/기타'};
+        lots.push({id:s.id||uid(),name:it.name,qty:1,state:'sold',price,buyers:[b],bidders:[],soldDate:s.date||r.date}); inc+=price;
+      }
+    }));
+    r.lots=lots; r.expenses=expenses; delete r.items; delete r.stock;
+    const net=inc-exp;
+    if(lots.length||expenses.length){
+      r.status='completed'; const lid=uid(); r.ledgerId=lid; r.snap={date:last,net,inc,exp};
+      if(net!==0) d.ledger.push({id:lid,date:last,type:net>0?'income':'expense',category:'레이드 정산',amount:Math.abs(net),
+        memo:(r.title||'레이드')+' · 판매 수입 '+fmtM(inc)+' − 지출 '+fmtM(exp),ref:{kind:'raid',id:r.id}});
+    } else r.status='draft';
+  });
+  d.schemaVersion=4;
+}
+function migrate(d){
+  if((d.schemaVersion||1)<2) migrateV2(d);
+  if((d.schemaVersion||2)<3) migrateV3(d);
+  if((d.schemaVersion||3)<4) migrateV4(d);
+  return d;
+}
+function normalize(d){
+  const D = defaultData(); d = (d && typeof d==='object') ? migrate(d) : {};
+  const bonusInit = !!(d.rule && d.rule.bonusInit), ratioInit = !!(d.rule && d.rule.ratioInit);
+  const o = {schemaVersion:SCHEMA, meta:Object.assign({createdAt:new Date().toISOString(),updatedAt:null}, d.meta||{})};
+  o.settings = Object.assign({}, D.settings, d.settings||{});
+  o.settings.unit='만 실버';
+  o.settings.hammerUrl=o.settings.hammerUrl||D.settings.hammerUrl;
+  o.settings.itemPresets = Object.assign({}, D.settings.itemPresets, (d.settings&&d.settings.itemPresets)||{});
+  o.rule = Object.assign({}, D.rule, d.rule||{});
+  o.rule.components = Array.isArray(o.rule.components) ? o.rule.components : D.rule.components;
+  o.rule.components.forEach(c=>{ if(!c.id) c.id=uid(); if(c.enabled===undefined) c.enabled=true; if(c.type==='rank'&&!Array.isArray(c.tiers)) c.tiers=[50,30,20]; });
+  if(!bonusInit && !o.rule.components.some(c=>c.type==='bonus')) o.rule.components.unshift({id:uid(),type:'bonus',name:'포상(수고비)',enabled:true});
+  o.rule.bonusInit=true;
+  if(!ratioInit){   // 분배 비율을 길드자금 20% · 분배 50% · 기본급 30%로 재구성 (포상 항목은 유지)
+    o.rule.components=o.rule.components.filter(c=>c.type==='bonus').concat(makeComps(DEFAULT_RATIOS()));
+  }
+  o.rule.ratioInit=true;
+  ['members','ledger','raids','distributions','stock','stockSales','cash','draws','notices'].forEach(k=>{ o[k]=Array.isArray(d[k])?d[k]:(d[k]===undefined&&k==='members'?D.members:[]); });
+  o.members.forEach(m=>{ if(!CLASSES.includes(m.cls)) m.cls=''; delete m.joinedAt; });
+  o.notices.forEach(n=>{ n.type=n.type==='meeting'?'meeting':'notice'; n.status=n.status==='archived'?'archived':'active'; n.title=n.title||''; n.body=n.body||''; n.date=n.date||today(); n.attendees=Array.isArray(n.attendees)?n.attendees:[]; n.pinned=!!n.pinned; });
+  o.raids.forEach(r=>{ r.lots=Array.isArray(r.lots)?r.lots:[]; r.expenses=Array.isArray(r.expenses)?r.expenses:[]; r.status=r.status==='completed'?'completed':'draft';
+    r.lots.forEach(l=>{ l.buyers=Array.isArray(l.buyers)?l.buyers:[]; l.bidders=Array.isArray(l.bidders)?l.bidders:[]; l.qty=Math.max(1,Math.round(num(l.qty))||1); }); });
+  o.distributions.forEach(x=>{ x.rows=Array.isArray(x.rows)?x.rows:[]; });
+  return o;
+}
+
+/* =====================================================================
+   3. 계산 (화면과 분리된 순수 함수)
+   ===================================================================== */
+let S = null;
+function pools(){
+  let inc=0, exp=0;
+  for(const e of S.ledger){ if(e.type==='income') inc+=num(e.amount); else exp+=num(e.amount); }
+  return {inc:Math.round(inc),exp:Math.round(exp),bal:Math.round(inc-exp)};
+}
+function ledgerRows(){
+  const rows=S.ledger.map((e,i)=>({e,i})).sort((a,b)=>a.e.date===b.e.date?a.i-b.i:(a.e.date<b.e.date?-1:1));
+  let bal=0; rows.forEach(r=>{ bal+= r.e.type==='income'?num(r.e.amount):-num(r.e.amount); r.bal=Math.round(bal); });
+  return rows;
+}
+// 월별 수입/지출/월말 잔액 (오래된 달 → 최근 달)
+function monthlyData(){
+  const map={};
+  S.ledger.forEach(e=>{
+    if(!/^\d{4}-\d{2}/.test(e.date||'')) return;
+    const m=e.date.slice(0,7); const o=map[m]||(map[m]={m,inc:0,exp:0,cnt:0});
+    if(e.type==='income') o.inc+=num(e.amount); else o.exp+=num(e.amount); o.cnt++;
+  });
+  const list=Object.keys(map).sort().map(k=>map[k]); let bal=0;
+  list.forEach(o=>{ o.inc=Math.round(o.inc); o.exp=Math.round(o.exp); bal+=o.inc-o.exp; o.bal=bal; });
+  return list;
+}
+const lotSold = l=>l.state==='sold';
+const lotTotal = l=>Math.round(num(l.price)*(l.buyers||[]).length);
+function raidTotals(r){
+  const inc=r.lots.filter(lotSold).reduce((a,l)=>a+lotTotal(l),0);
+  const exp=Math.round(r.expenses.reduce((a,e)=>a+num(e.price),0));
+  return {inc,exp,net:inc-exp};
+}
+function cashPools(){
+  let i=0,o=0; S.cash.forEach(e=>{ if(e.type==='in') i+=num(e.amount); else o+=num(e.amount); });
+  return {in:Math.round(i),out:Math.round(o),bal:Math.round(i-o)};
+}
+
+/* 분배 계산
+   ① 포상(수고비)과 기본급을 먼저 뺀다 → ② 남은 금액에 각 항목의 %를 적용한다.
+   지급 단위(roundUnit): 개인 지급액을 이 단위로 내림. 남은 금액은 길자금에 그대로 남음. */
+function calcDist(pool, rule, rows){
+  const unit = rule.roundUnit>0 ? rule.roundUnit : 1;
+  const comps = rule.components.filter(c=>c.enabled);
+  const out = rows.map(r=>({memberId:r.memberId, join:!!r.join, count:num(r.count), bonus:r.bonus||{}, parts:{}, total:0}));
+  const act = out.filter(o=>o.join), n = act.length;
+  const errors=[], warns=[], info={};
+  let baseTotal=0, bonusTotal=0;
+  comps.forEach(c=>{
+    out.forEach(o=>{ o.parts[c.id]=0; });
+    if(c.type==='base'){ const a=num(c.amount); act.forEach(o=>{ o.parts[c.id]=floorTo(a,unit); }); baseTotal+=a*n; }
+    else if(c.type==='bonus'){ out.forEach(o=>{ const v=Math.max(0,Math.round(num(o.bonus[c.id]))); o.parts[c.id]=v; bonusTotal+=v; }); }
+  });
+  let R = pool - bonusTotal - baseTotal;
+  if(R < -1e-9){
+    errors.push((bonusTotal?'포상('+fmtM(bonusTotal)+')과 고정 기본급('+fmtM(baseTotal)+') 합계가':'고정 기본급 합계('+fmtM(baseTotal)+')가')+' 분배 대상 금액('+fmtM(pool)+')보다 큽니다.'); R=0;
+  }
+  let pctSum=0, retained=0, ratioCnt=0;
+  comps.filter(c=>!isAmt(c)).forEach(c=>{
+    const pct=num(c.pct); pctSum+=pct; ratioCnt++;
+    const pc=R*pct/100; const inf={pool:pc}; info[c.id]=inf;
+    if(c.type==='guild'){ inf.retained=pc; retained+=pc; }
+    else if(c.type==='equal'){
+      if(n>0){ const v=floorTo(pc/n,unit); act.forEach(o=>{ o.parts[c.id]=v; }); }
+    } else if(c.type==='perCount'){
+      const tc=act.reduce((a,o)=>a+o.count,0); inf.totalCount=tc;
+      if(tc>0){ const per=pc/tc; inf.per=per; act.forEach(o=>{ o.parts[c.id]=floorTo(o.count*per,unit); }); }
+      else if(pct>0){ warns.push('"'+c.name+'": 모니터링 횟수 합계가 0이라 지급되지 않습니다.'); }
+    } else if(c.type==='rank'){
+      const tiers=(c.tiers||[]).map(num);
+      if(tiers.reduce((a,b)=>a+b,0)>100.0001) errors.push('"'+c.name+'": 순위별 비율 합계가 100%를 넘습니다.');
+      const cnts=Array.from(new Set(act.filter(o=>o.count>0).map(o=>o.count))).sort((a,b)=>b-a);
+      inf.tiers=[];
+      tiers.forEach((tp,i)=>{
+        const cnt=cnts[i]; const tierPool=pc*tp/100;
+        const ms = cnt===undefined ? [] : act.filter(o=>o.count===cnt);
+        const each = ms.length ? (c.tie==='full' ? tierPool : tierPool/ms.length) : 0;
+        ms.forEach(o=>{ o.parts[c.id]=floorTo(each,unit); });
+        inf.tiers.push({rank:i+1,count:cnt,people:ms.length,each:each,tierPool:tierPool});
+      });
+    }
+  });
+  if(!ratioCnt) errors.push('분배 비율 항목이 없습니다. 합계가 100%가 되도록 추가하세요.');
+  else if(Math.abs(pctSum-100)>0.0001) errors.push('분배 비율 합계가 100%가 아닙니다 (현재 '+r2(pctSum)+'%).');
+  if(n===0 && bonusTotal===0) errors.push('참여자가 없습니다.');
+  out.forEach(o=>{ o.total = r6(comps.reduce((a,c)=>a+(o.parts[c.id]||0),0)); });
+  const totalPayout = r6(out.reduce((a,o)=>a+o.total,0));
+  return {persons:out,n,totalPayout,bonusTotal,retained:Math.round(retained),
+    overage:Math.round(Math.max(0,totalPayout-pool)), leftover:Math.round(Math.max(0,pool-totalPayout)),
+    pctSum, baseTotal, remain:R, errors, warns, info, comps};
+}
+
+/* =====================================================================
+   4. 저장 / 렌더 공통
+   ===================================================================== */
+const ui = {tab:'notice', nView:'now', nf:{type:'',month:'',q:''}, nOpen:new Set(), admin:false, adminUntil:0, authFail:0, authBlock:0, distView:'', sf:'', ledSub:'silver', cf:{month:''}, raidId:null, stockSel:null, lf:{month:'',q:''}, mq:'', ms:'active', mc:'', focusFk:null, open:new Set()};
+let saveOk=true, lastSaved=null, saveTimer=null;
+
+function doSave(){
+  S.meta.updatedAt=new Date().toISOString();
+  const pr=Repo.save(S).then(ok=>{ saveOk=ok; lastSaved=new Date(); updateStatus(); });
+  cloudSchedule();                       // 관리자 로그인 상태면 바뀐 문서만 클라우드에 반영
+  return pr;
+}
+function commit(){ clearTimeout(saveTimer); cloudMarkDirty(); doSave(); render(); }
+function quiet(){ clearTimeout(saveTimer); cloudMarkDirty(); saveTimer=setTimeout(doSave,250); }
+window.addEventListener('beforeunload',()=>{ if(saveTimer){ clearTimeout(saveTimer); S.meta.updatedAt=new Date().toISOString(); try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} } });
+
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
+
+function modal(o){
+  return new Promise(res=>{
+    const root=$('#modalRoot');
+    root.innerHTML='<div class="overlay"><div class="modal'+(o.wide?' wide':'')+'" role="dialog" aria-modal="true"><h3>'+esc(o.title)+'</h3><div class="mbody">'+o.body+'</div><div class="mfoot">'+
+      (o.hideCancel?'':'<button class="btn ghost" data-m="cancel">'+(o.cancel||'취소')+'</button>')+
+      '<button class="btn '+(o.danger?'danger':'primary')+'" data-m="ok">'+(o.ok||'확인')+'</button></div></div></div>';
+    const close=v=>{ root.innerHTML=''; document.removeEventListener('keydown',onKey,true); res(v); };
+    const onKey=e=>{ if(e.key==='Escape'){ e.stopPropagation(); close(null); } };
+    document.addEventListener('keydown',onKey,true);
+    const c=root.querySelector('[data-m=cancel]'); if(c) c.addEventListener('click',()=>close(null));
+    root.querySelector('[data-m=ok]').addEventListener('click',()=>{
+      const v=o.onOk?o.onOk(root):true; if(v===false) return; close(v===undefined?true:v);
+    });
+    $$('[data-money]',root).forEach(moneyHint);
+    if(o.onOpen) o.onOpen(root);
+    const f=root.querySelector('input:not([type=hidden]),textarea,select'); if(f) f.focus();
+  });
+}
+/* ---- 관리자 인증 ----
+   읽기는 누구나, 입력·수정·삭제·백업·복구·초기화는 관리자 인증 후에만 가능합니다.
+   ※ 브라우저 안에서만 동작하는 최소한의 잠금입니다. 비밀번호는 코드에 해시로만 들어 있지만,
+     진짜 보안(데이터 접근 차단)은 Firebase 이관 시 서버 인증/규칙으로 처리해야 합니다. */
+const ADMIN_HASH='f850db87b72f4e96504ea27160caf3ddcb0a17dd401c061847fdc106414b9803', ADMIN_SALT='r2guild:', ADMIN_TTL=30*60*1000;
+function sha256(str){
+  const rr=(v,n)=>(v>>>n)|(v<<(32-n)), s=unescape(encodeURIComponent(str)), len=s.length*8, m=[];
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  for(let i=0;i<s.length;i++) m[i>>2]=(m[i>>2]|0)|(s.charCodeAt(i)<<(24-(i%4)*8));
+  m[len>>5]=(m[len>>5]|0)|(0x80<<(24-len%32)); const last=(((len+64)>>9)<<4)+15; m[last]=len;
+  for(let i=0;i<=last;i++) m[i]=m[i]|0;
+  const w=new Array(64);
+  for(let j=0;j<m.length;j+=16){
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let i=0;i<64;i++){
+      if(i<16) w[i]=m[j+i]; else{ const s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3), s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10); w[i]=(w[i-16]+s0+w[i-7]+s1)|0; }
+      const S1=rr(e,6)^rr(e,11)^rr(e,25), ch=(e&f)^(~e&g), t1=(h+S1+ch+K[i]+w[i])|0, S0=rr(a,2)^rr(a,13)^rr(a,22), mj=(a&b)^(a&c)^(b&c), t2=(S0+mj)|0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+    }
+    H[0]=(H[0]+a)|0; H[1]=(H[1]+b)|0; H[2]=(H[2]+c)|0; H[3]=(H[3]+d)|0; H[4]=(H[4]+e)|0; H[5]=(H[5]+f)|0; H[6]=(H[6]+g)|0; H[7]=(H[7]+h)|0;
+  }
+  return H.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
+}
+const READ_ACT=new Set(['tab','cloudOpen','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
+const READ_CHG=new Set(['lfm','cfm','sfilter','ms','mcls','nfType','nfMonth']);
+const READ_INP=new Set(['lfq','mq','nfq']);
+function setAdmin(on){
+  ui.admin=!!on; ui.adminUntil=on?Date.now()+ADMIN_TTL:0;
+  try{ if(on) sessionStorage.setItem('r2_admin_until',String(ui.adminUntil)); else sessionStorage.removeItem('r2_admin_until'); }catch(e){}
+}
+function touchAdmin(){ if(ui.admin){ ui.adminUntil=Date.now()+ADMIN_TTL; try{ sessionStorage.setItem('r2_admin_until',String(ui.adminUntil)); }catch(e){} } }
+function initAdmin(){ try{ const u=+sessionStorage.getItem('r2_admin_until'); if(u>Date.now()){ ui.admin=true; ui.adminUntil=u; } }catch(e){} }
+function denyWrite(){
+  toast('🔒 읽기 전용입니다. 관리자 인증 후 이용할 수 있습니다');
+  if(!$('#modalRoot').children.length && window.R2 && window.R2.A) window.R2.A.adminAuth();
+}
+function guard(name,set){ if(ui.admin||set.has(name)) return true; denyWrite(); return false; }
+const lockBar=()=>ui.admin?'':'<div class="lockbar"><span>🔒 <b>읽기 전용 모드</b> — 입력·수정·삭제·JSON 백업/복구·초기화는 관리자 인증 후에 가능합니다.</span><button class="btn sm gold" data-act="adminAuth">관리자 인증</button></div>';
+function applyLock(){
+  if(ui.admin) return;
+  $$('#view input,#view select,#view textarea').forEach(el=>{ const c=el.dataset.chg, i=el.dataset.inp; if((c&&READ_CHG.has(c))||(i&&READ_INP.has(i))) return; el.disabled=true; });
+  $$('#view [data-act]').forEach(b=>{ if(!READ_ACT.has(b.dataset.act)){ b.classList.add('lockd'); b.title='관리자 인증이 필요합니다'; } });
+}
+setInterval(()=>{ if(ui.admin&&Date.now()>ui.adminUntil){ setAdmin(false); if(S) render(); toast('30분 동안 활동이 없어 관리자 모드가 해제되었습니다'); } },20000);
+
+const confirmBox=(msg,o={})=>modal({title:o.title||'확인',body:'<p class="pre">'+esc(msg)+'</p>',ok:o.ok||'확인',danger:o.danger});
+
+const card=(color,title,right,body,attr)=>'<section class="card c-'+color+'"'+(attr||'')+'><div class="card-h"><h2>'+title+'</h2><div class="tools">'+(right||'')+'</div></div><div class="card-b">'+body+'</div></section>';
+
+function render(){
+  const act=document.activeElement, sy=window.scrollY;
+  const fk = ui.focusFk || (act && act.dataset ? act.dataset.fk : null); ui.focusFk=null;
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ui.tab));
+  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,member:viewMember})[ui.tab]();
+  if(ui.tab==='dist') updateDistCalc();
+  if(ui.tab==='ledger') renderLedgerTable();
+  if(ui.tab==='member') renderMemberTable();
+  $$('#view [data-money]').forEach(moneyHint);
+  applyLock(); updateThresholdUI(); updateHeader();
+  window.scrollTo(0,sy);
+  if(fk){ const n=$('[data-fk="'+CSS.escape(fk)+'"]'); if(n){ n.focus(); if(n.select) try{n.select();}catch(e){} } }
+}
+function updateStatus(){
+  const el=$('#saveStatus'); if(!el) return;
+  if(!saveOk){ el.className='save warn'; el.textContent='브라우저 저장 불가 · JSON으로 내보내서 백업하세요'; }
+  else { el.className='save ok'; el.textContent=lastSaved?('자동 저장됨 '+pad(lastSaved.getHours())+':'+pad(lastSaved.getMinutes())+':'+pad(lastSaved.getSeconds())):'브라우저에 자동 저장'; }
+}
+function updateHeader(){
+  updateStatus(); updateCloudUI();
+  const as=$('#adminStatus'), ab=$('#adminBtn');
+  if(as){ as.className='save '+(ui.admin?'ok':''); as.textContent=ui.admin?'🔓 관리자 모드':'🔒 읽기 전용'; }
+  if(ab){ ab.textContent=ui.admin?'관리자 로그아웃':'관리자 인증'; ab.dataset.act=ui.admin?'adminLogout':'adminAuth'; }
+  $$('.tools [data-act]').forEach(b=>{ const w=!READ_ACT.has(b.dataset.act); b.classList.toggle('lockd',w&&!ui.admin); });
+  const ht=$('#hammerTab'); if(ht&&S){ ht.href=S.settings.hammerUrl||'#'; }
+  const hg=$('#hammerGear'); if(hg) hg.hidden=!ui.admin;
+  const sc=$('#stockCnt'); if(sc) sc.textContent=S.stock.length?String(S.stock.length):'';
+  const b=$('#bkInfo'), last=S.settings.lastExportAt;
+  const hasData=S.ledger.length||S.raids.length||S.distributions.length;
+  if(!last){ b.textContent=hasData?'백업 기록 없음':''; b.className='bk'+(hasData?' warn':''); }
+  else{
+    const days=Math.floor((Date.now()-new Date(last).getTime())/864e5);
+    b.textContent='마지막 백업 '+last.slice(0,10); b.className='bk'+(days>=7?' warn':'');
+  }
+}
+// 분배 가능 여부: 길자금 잔액 ≥ 분배 기준 금액
+function updateThresholdUI(){
+  const p=pools(), th=S.settings.distThreshold, ready=th>0&&p.bal>=th;
+  const pct=th>0?clamp(p.bal/th*100,0,100):0;
+  $$('.th-fill').forEach(e=>{ e.style.width=pct+'%'; e.style.background=ready?'var(--green)':'var(--coin)'; });
+  $$('.th-text').forEach(e=>{ e.textContent=th>0?('길자금 잔액 '+fmtM(p.bal)+' / 분배 기준 '+fmtM(th)):'분배 기준 금액이 설정되지 않았습니다'; });
+  $$('.th-chip').forEach(e=>{ e.textContent=ready?'분배 가능':'잔액 부족'; e.className='chip th-chip '+(ready?'in':'out'); });
+}
+
+/* =====================================================================
+   5. 탭 ① 길자금 현황
+   ===================================================================== */
+function viewLedger(){
+  const p=pools(), c=cashPools(), ms=monthlyData();
+  const top=card('teal','길드 자금 현황','','<div class="bal2">'+
+    '<div class="bal"><div class="lbl">실버 길자금 잔액</div><div class="val">'+fmtM(p.bal)+'<small>실버</small></div>'+
+      '<div class="sub2">'+(Math.abs(p.bal)>=10000?p.bal.toLocaleString('ko-KR')+'만 실버':'')+'</div>'+
+      '<div class="legend"><div><span class="k">누적 수입</span><span class="v pos">'+fmtM(p.inc)+'</span></div><div><span class="k">누적 지출</span><span class="v neg">'+fmtM(p.exp)+'</span></div></div></div>'+
+    '<div class="bal cash"><div class="lbl">현금 보유</div><div class="val">'+fmtWon(c.bal)+'</div>'+
+      '<div class="sub2">'+c.bal.toLocaleString('ko-KR')+'원</div>'+
+      '<div class="legend"><div><span class="k">누적 입금</span><span class="v pos">'+fmtWon(c.in)+'</span></div><div><span class="k">누적 출금</span><span class="v neg">'+fmtWon(c.out)+'</span></div></div></div></div>');
+  const nav='<div class="seg nav"><button type="button" data-act="ledSub" data-v="silver" class="'+(ui.ledSub==='silver'?'on':'')+'">실버 길자금</button><button type="button" data-act="ledSub" data-v="cash" class="'+(ui.ledSub==='cash'?'on':'')+'">현금</button></div>';
+  if(ui.ledSub==='cash') return top+nav+cashViewHtml();
+  return top+nav+
+    card('blue','입출금 직접 입력','',
+      '<p class="hint">금액은 <b>만 실버</b> 단위입니다. (1억 = 10,000) 레이드는 레이드 정산 탭에서 <b>판매 완료 → 길자금 수입</b>을 누르면 정산금이 1건으로 기록되고, 분배는 분배 탭에서 완료하면 자동으로 지출 처리됩니다.</p>'+
+      ledgerFormHtml(null)+'<div class="toolbar"><button class="btn primary lg" data-act="ledAdd">내역 추가</button></div>')+
+    flowCard(ms)+
+    card('teal','입출금 내역 <span class="chip coin" style="margin-left:10px">잔액 '+fmtM(p.bal)+'</span>',
+      '<select data-chg="lfm" aria-label="기간 선택"><option value="">전체 기간</option>'+ms.slice().reverse().map(o=>'<option value="'+o.m+'"'+(ui.lf.month===o.m?' selected':'')+'>'+o.m.replace('-','년 ')+'월</option>').join('')+'</select>'+
+      '<input type="search" placeholder="항목/메모 검색" data-inp="lfq" value="'+esc(ui.lf.q)+'" style="width:170px">','<div id="ledgerTable"></div>',' id="ledDetail"');
+}
+/* ---- 현금: 입금/출금만 관리 ---- */
+function cashFormHtml(e){
+  const isIn=!e||e.type==='in';
+  return '<div class="ledform cashform" id="cashForm"><div class="lf-l">'+
+    '<div class="lf-row"><div class="seg"><button type="button" class="in'+(isIn?' on':'')+'" data-act="cType" data-v="in">입금</button><button type="button" class="out'+(!isIn?' on':'')+'" data-act="cType" data-v="out">출금</button></div>'+
+      '<input type="date" id="cDate" value="'+esc(e?e.date:today())+'"></div>'+
+    '<input type="hidden" id="cType" value="'+(isIn?'in':'out')+'">'+
+    '<div class="field"><label>금액 (원)</label>'+wonIn('id="cAmt" placeholder="0"',e?e.amount:'','big')+'</div>'+
+    '<div class="chips">'+[10000,50000,100000,500000,1000000].map(v=>'<span class="chip link blue" data-act="cAmtAdd" data-v="'+v+'">+'+fmtWon(v)+'</span>').join('')+'<span class="chip link" data-act="cAmtClear">지우기</span></div></div>'+
+    '<div class="lf-r"><div class="field"><label>메모</label><input id="cMemo" placeholder="예: 후원금 입금, 길드 운영비 출금" value="'+esc(e?e.memo:'')+'"></div>'+
+    '<div class="chips">'+['후원금','판매 대금','길드 운영비','기타'].map(x=>'<span class="chip link" data-act="memoPick" data-v="'+x+'">'+x+'</span>').join('')+'</div></div></div>';
+}
+function readCashForm(root){
+  const g=id=>(root||document).querySelector('#'+id);
+  const type=g('cType').value, amount=Math.round(num(g('cAmt').value)), date=g('cDate').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('날짜를 선택하세요'); return null; }
+  if(amount<=0){ toast('금액을 입력하세요 (원 단위)'); return null; }
+  return {date,type,amount,memo:g('cMemo').value.trim()};
+}
+function cashRows(){
+  const rows=S.cash.map((e,i)=>({e,i})).sort((a,b)=>a.e.date===b.e.date?a.i-b.i:(a.e.date<b.e.date?-1:1));
+  let bal=0; rows.forEach(r=>{ bal+=r.e.type==='in'?num(r.e.amount):-num(r.e.amount); r.bal=Math.round(bal); });
+  return rows;
+}
+function cashViewHtml(){
+  const c=cashPools();
+  const months=Array.from(new Set(S.cash.map(e=>(e.date||'').slice(0,7)).filter(Boolean))).sort().reverse();
+  let rows=cashRows().filter(r=>!ui.cf.month||r.e.date.startsWith(ui.cf.month)).reverse();
+  let t;
+  if(!S.cash.length) t='<div class="empty">아직 현금 입출금 내역이 없습니다. 위에서 입금 또는 출금을 추가하세요.</div>';
+  else{
+    t='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:122px"><col style="width:84px"><col><col style="width:170px"><col style="width:170px"><col style="width:116px"></colgroup>'+
+      '<thead><tr><th>날짜</th><th>구분</th><th>메모</th><th class="num">금액</th><th class="num">잔액</th><th></th></tr></thead><tbody>';
+    rows.forEach(({e,bal})=>{
+      const isIn=e.type==='in';
+      t+='<tr><td class="nowrap">'+fmtDate(e.date)+'</td><td><span class="chip '+(isIn?'in':'out')+'">'+(isIn?'입금':'출금')+'</span></td><td class="wrap">'+esc(e.memo||'')+'</td>'+
+        '<td class="num '+(isIn?'pos':'neg')+'"><b>'+(isIn?'+':'-')+fmtWon(e.amount)+'</b></td><td class="num">'+fmtWon(bal)+'</td>'+
+        '<td class="act"><button class="btn ghost sm" data-act="cashEdit" data-id="'+esc(e.id)+'">수정</button><button class="btn ghost sm" data-act="cashDel" data-id="'+esc(e.id)+'">삭제</button></td></tr>';
+    });
+    t+='</tbody></table></div>';
+  }
+  return card('purple','현금 입출금 입력','',
+      '<p class="hint">현금은 <b>입금·출금만</b> 관리합니다. 레이드 정산이나 분배와는 연결되지 않으며, 보유 현금보다 많이 출금할 수 없습니다. 금액은 <b>원</b> 단위입니다.</p>'+
+      cashFormHtml(null)+'<div class="toolbar"><button class="btn primary lg" data-act="cashAdd">내역 추가</button></div>')+
+    card('purple','현금 입출금 내역 <span class="chip coin" style="margin-left:10px">보유 '+fmtWon(c.bal)+'</span>',
+      '<select data-chg="cfm" aria-label="기간 선택"><option value="">전체 기간</option>'+months.map(m=>'<option value="'+m+'"'+(ui.cf.month===m?' selected':'')+'>'+m.replace('-','년 ')+'월</option>').join('')+'</select>',t);
+}
+function ledgerFormHtml(e){
+  const isIn=!e||e.type==='income';
+  const chips=(t,list)=>'<div class="chips catchips" data-for="'+t+'"'+((t==='income')===isIn?'':' hidden')+'>'+list.map(x=>'<span class="chip link" data-act="catPick" data-v="'+x+'">'+x+'</span>').join('')+'</div>';
+  return '<div class="ledform" id="ledForm"><div class="lf-l">'+
+    '<div class="lf-row"><div class="seg"><button type="button" class="in'+(isIn?' on':'')+'" data-act="lType" data-v="income">수입</button><button type="button" class="out'+(!isIn?' on':'')+'" data-act="lType" data-v="expense">지출</button></div>'+
+      '<input type="date" id="lDate" value="'+esc(e?e.date:today())+'"></div>'+
+    '<input type="hidden" id="lType" value="'+(isIn?'income':'expense')+'">'+
+    '<div class="field"><label>금액 (만 실버)</label>'+moneyIn('id="lAmt" placeholder="0"',e?e.amount:'','big')+'</div>'+
+    '<div class="chips">'+[1000,5000,10000,50000,100000].map(v=>'<span class="chip link blue" data-act="amtAdd" data-v="'+v+'">+'+fmtM(v)+'</span>').join('')+'<span class="chip link" data-act="amtClear">지우기</span></div></div>'+
+    '<div class="lf-r"><div class="field"><label>항목</label><input id="lCat" list="dlCat" placeholder="직접 입력하거나 아래에서 선택" value="'+esc(e?e.category:'')+'"></div>'+
+    chips('income',['기타 수입','기부','경매 수익'])+chips('expense',['경매 입찰','길드 운영비','기타 지출'])+
+    '<div class="field"><label>메모</label><input id="lMemo" placeholder="선택 입력" value="'+esc(e?e.memo:'')+'"></div></div></div>';
+}
+function readLedgerForm(root){
+  const g=id=>(root||document).querySelector('#'+id);
+  const type=g('lType').value, amount=Math.round(num(g('lAmt').value));
+  const date=g('lDate').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('날짜를 선택하세요'); return null; }
+  if(amount<=0){ toast('금액을 입력하세요'); return null; }
+  return {date,type,amount,category:g('lCat').value.trim()||(type==='income'?'기타 수입':'기타 지출'),memo:g('lMemo').value.trim()};
+}
+// 전체 자금 흐름: 월별 수입·지출 막대 + 월말 잔액 선
+function flowChart(ms){
+  const W=920,H=300,L=74,R=74,T=18,B=40,iw=W-L-R,ih=H-T-B,n=ms.length;
+  const maxF=niceMax(Math.max(1,...ms.map(m=>Math.max(m.inc,m.exp))));
+  const bals=ms.map(m=>m.bal), mx=Math.max(0,...bals), mn=Math.min(0,...bals);
+  const hiB=mx>0?niceMax(mx):1, loB=mn<0?-niceMax(-mn):0;
+  const yF=v=>T+ih-(v/maxF)*ih, yB=v=>T+ih-((v-loB)/(hiB-loB))*ih;
+  let g='';
+  for(let i=0;i<=4;i++){
+    const y=T+ih-ih*i/4;
+    g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" style="stroke:var(--line)"/>'+
+      '<text x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end" style="fill:var(--muted);font-size:11px">'+fmtAxis(maxF*i/4)+'</text>'+
+      '<text x="'+(W-R+8)+'" y="'+(y+4)+'" style="fill:var(--teal);font-size:11px">'+fmtAxis(loB+(hiB-loB)*i/4)+'</text>';
+  }
+  const step=iw/n, bw=Math.min(26,step*0.3); let bars='',pts=[],dots='',xl='';
+  ms.forEach((m,i)=>{
+    const cx=L+step*(i+.5);
+    bars+='<rect x="'+(cx-bw-1)+'" y="'+yF(m.inc)+'" width="'+bw+'" height="'+Math.max(0,T+ih-yF(m.inc))+'" rx="2" style="fill:var(--green)"><title>'+m.m+' 수입 '+fmtM(m.inc)+'</title></rect>'+
+      '<rect x="'+(cx+1)+'" y="'+yF(m.exp)+'" width="'+bw+'" height="'+Math.max(0,T+ih-yF(m.exp))+'" rx="2" style="fill:var(--red)"><title>'+m.m+' 지출 '+fmtM(m.exp)+'</title></rect>';
+    pts.push(cx+','+yB(m.bal));
+    dots+='<circle cx="'+cx+'" cy="'+yB(m.bal)+'" r="3.5" style="fill:var(--teal)"><title>'+m.m+' 월말 잔액 '+fmtM(m.bal)+'</title></circle>';
+    if(n<=14||i%2===0) xl+='<text x="'+cx+'" y="'+(H-14)+'" text-anchor="middle" style="fill:var(--muted);font-size:11px">'+m.m.slice(2)+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="월별 수입, 지출, 월말 잔액 추이" style="width:100%;height:auto;min-width:'+Math.max(640,n*52)+'px">'+g+bars+
+    '<polyline points="'+pts.join(' ')+'" style="fill:none;stroke:var(--teal);stroke-width:2.5"/>'+dots+xl+'</svg>';
+}
+function flowCard(ms){
+  if(!ms.length) return card('green','전체 자금 흐름','','<div class="empty">입출금 내역이 쌓이면 월별 수입·지출과 잔액 추이가 여기에 나타납니다.</div>');
+  const shown=ms.slice(-24);
+  const legend='<div class="chips" style="margin-bottom:10px"><span class="chip in">수입</span><span class="chip out">지출</span><span class="chip" style="color:var(--teal);border-color:var(--teal)">월말 잔액 (오른쪽 축)</span>'+(ms.length>shown.length?'<span class="small muted" style="align-self:center">최근 24개월만 그래프에 표시</span>':'')+'</div>';
+  let t='<p class="small muted" style="margin:14px 0 8px">달을 누르면 아래 입출금 내역이 그 달만 보입니다. 다시 누르면 전체 기간으로 돌아갑니다.</p>'+
+    '<div class="tablewrap"><table class="tbl fixed"><colgroup><col style="width:120px"><col><col><col><col></colgroup><thead><tr><th>월</th><th class="num">수입</th><th class="num">지출</th><th class="num">증감</th><th class="num">월말 잔액</th></tr></thead><tbody>';
+  ms.slice().reverse().forEach(o=>{
+    const d=o.inc-o.exp;
+    t+='<tr class="'+(ui.lf.month===o.m?'sel':'')+'" style="cursor:pointer;'+(ui.lf.month===o.m?'outline:2px solid var(--teal);outline-offset:-2px':'')+'" data-act="monthPick" data-m="'+o.m+'"><td><b>'+o.m.replace('-','년 ')+'월</b></td><td class="num pos">'+fmtM(o.inc)+'</td><td class="num neg">'+fmtM(o.exp)+'</td><td class="num '+(d>=0?'pos':'neg')+'">'+(d>0?'+':'')+fmtM(d)+'</td><td class="num"><b>'+fmtM(o.bal)+'</b></td></tr>';
+  });
+  const ti=ms.reduce((a,o)=>a+o.inc,0), te=ms.reduce((a,o)=>a+o.exp,0);
+  t+='</tbody><tfoot><tr><td>전체</td><td class="num pos">'+fmtM(ti)+'</td><td class="num neg">'+fmtM(te)+'</td><td class="num">'+(ti-te>0?'+':'')+fmtM(ti-te)+'</td><td class="num">'+fmtM(ms[ms.length-1].bal)+'</td></tr></tfoot></table></div>';
+  return card('green','전체 자금 흐름',legend?'':'',legend+'<div class="tablewrap" style="border:0"><div style="overflow-x:auto">'+flowChart(shown)+'</div></div>'+t);
+}
+function ledgerSideHtml(type,rows){
+  const isIn=type==='income', sum=rows.reduce((a,r)=>a+num(r.e.amount),0);
+  let h='<div class="sub c-'+(isIn?'green':'red')+'"><div class="sub-h"><span>'+(isIn?'수입 내역':'지출 내역')+' <span class="small muted" style="font-weight:500">'+rows.length+'건</span></span>'+
+    '<span class="'+(isIn?'pos':'neg')+'">합계 '+(isIn?'+':'-')+fmtM(sum)+'</span></div>';
+  if(!rows.length) return h+'<div class="empty" style="padding:22px">내역이 없습니다</div></div>';
+  h+='<table class="tbl fixed"><colgroup><col style="width:122px"><col><col style="width:126px"><col style="width:116px"></colgroup>'+
+    '<thead><tr><th>날짜</th><th>항목 · 메모</th><th class="num">금액</th><th></th></tr></thead><tbody>';
+  rows.forEach(({e})=>{
+    let src='';
+    if(e.ref&&e.ref.kind==='raid') src='<span class="chip link blue" data-act="openRaidFrom" data-id="'+esc(e.ref.id)+'">레이드 보기</span>';
+    else if(e.ref&&e.ref.kind==='stock') src=S.raids.some(r=>r.id===e.ref.raidId)?'<span class="chip link blue" data-act="openRaidFrom" data-id="'+esc(e.ref.raidId)+'">출처 레이드</span>':'<span class="chip link coin" data-act="goStock">재고 판매</span>';
+    else if(e.ref&&e.ref.kind==='distribution') src='<span class="chip link coin" data-act="goDistHist">분배 정리</span>';
+    else src='<button class="btn ghost sm" data-act="ledEdit" data-id="'+esc(e.id)+'">수정</button><button class="btn ghost sm" data-act="ledDel" data-id="'+esc(e.id)+'">삭제</button>';
+    h+='<tr><td class="nowrap">'+fmtDate(e.date)+'</td><td class="wrap"><b>'+esc(e.category)+'</b>'+(e.memo?'<div class="small muted">'+esc(e.memo)+'</div>':'')+'</td>'+
+      '<td class="num '+(isIn?'pos':'neg')+'"><b>'+(isIn?'+':'-')+fmtM(e.amount)+'</b></td><td class="act">'+src+'</td></tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+// 좌측 수입 내역 / 우측 지출 내역 (기본: 전체 기간, 월 필터로 좁혀 보기)
+function ledgerTableHtml(){
+  const f=ui.lf;
+  if(!S.ledger.length) return '<div class="empty">아직 내역이 없습니다. 위에서 입출금을 추가하거나 레이드 정산에서 판매를 기록해 보세요.</div>';
+  const rows=ledgerRows().filter(r=>(!f.month||r.e.date.startsWith(f.month))&&
+    (!f.q||((r.e.category||'')+' '+(r.e.memo||'')).toLowerCase().includes(f.q.toLowerCase()))).reverse();
+  const label=f.month?'<p class="small muted" style="margin:0 0 10px">'+f.month.replace('-','년 ')+'월 내역만 표시 중 · 위 선택칸에서 "전체 기간"으로 돌아갈 수 있습니다.</p>':'';
+  return label+'<div class="split">'+ledgerSideHtml('income',rows.filter(r=>r.e.type==='income'))+ledgerSideHtml('expense',rows.filter(r=>r.e.type==='expense'))+'</div>';
+}
+function renderLedgerTable(){ const el=$('#ledgerTable'); if(el) el.innerHTML=ledgerTableHtml(); }
+
+/* =====================================================================
+   6. 탭 ② 길자금 분배
+   ===================================================================== */
+const draftDist=()=>S.distributions.find(d=>d.status==='draft')||null;
+const compById=id=>S.rule.components.find(c=>c.id===id);
+const activeMembers=()=>S.members.filter(m=>m.status!=='left');
+function syncDraft(d){
+  const active=activeMembers(), ids=new Set(active.map(m=>m.id));
+  d.rows=d.rows.filter(r=>ids.has(r.memberId));
+  active.forEach(m=>{ if(!d.rows.some(r=>r.memberId===m.id)) d.rows.push({memberId:m.id,join:true,count:0,bonus:{}}); });
+  const order=new Map(S.members.map((m,i)=>[m.id,i]));
+  d.rows.sort((a,b)=>order.get(a.memberId)-order.get(b.memberId));
+}
+function ensureDraft(){   // 분배 탭을 열면 활동 중 전체 길드원 목록이 항상 준비됨
+  let d=draftDist();
+  if(!d && activeMembers().length){
+    d={id:uid(),date:today(),status:'draft',poolAmount:S.settings.distThreshold,rows:[]}; S.distributions.push(d); quiet();
+  }
+  if(d){ syncDraft(d); d.poolAmount=S.settings.distThreshold; }   // 분배 대상 금액 = 분배 기준 금액 (자동 연동)
+  return d;
+}
+const draftBlank=d=>d.rows.every(r=>!num(r.count)&&!Object.values(r.bonus||{}).some(v=>num(v)>0));
+function viewDist(){
+  ensureDraft();
+  return ruleCardHtml()+
+    card('coin','분배 가능 여부','<span class="chip th-chip">-</span>','<span class="th-text" style="font-size:15px;font-weight:700"></span><div class="prog"><i class="th-fill"></i></div>'+
+      '<p class="hint" style="margin:12px 0 0">길자금 잔액이 분배 기준 금액 이상일 때만 분배를 완료할 수 있습니다. 잔액이 기준 금액보다 적으면 분배가 진행되지 않습니다.</p>')+
+    '<div id="sessionWrap">'+sessionHtml()+'</div>'+statusCardHtml();
+}
+const ratioSum=()=>S.rule.components.filter(c=>c.enabled&&!isAmt(c)).reduce((a,c)=>a+num(c.pct),0);
+function ruleCardHtml(){
+  const r=S.rule, ratio=r.components.filter(c=>!isAmt(c)), amts=r.components.filter(isAmt);
+  let b='<div class="rule-grid">'+
+    '<div class="field"><label>분배 기준 금액 (만 실버) · 분배 1회 지급 금액</label>'+moneyIn('data-chg="threshold"',S.settings.distThreshold)+'</div>'+
+    '<div class="field"><label>지급 단위</label><select data-chg="roundUnit">'+
+      [1,10,100,1000].map(u=>'<option value="'+u+'"'+(r.roundUnit==u?' selected':'')+'>'+fmtM(u)+' 실버 단위</option>').join('')+'</select></div></div>'+
+    '<p class="hint"><b>분배 기준 금액</b>: 분배 1회에 사용할 금액입니다. 분배 진행의 "분배 대상 금액"에 자동으로 적용되며, 길자금 잔액이 이 금액보다 적으면 분배할 수 없습니다.<br>'+
+    '<b>지급 단위</b>: 개인에게 줄 금액을 이 단위로 끊어서 지급합니다. 예) 계산 결과가 1,234만인데 단위가 100만이면 1,200만을 지급하고 나머지 34만은 길자금에 남습니다.</p>'+
+    '<h3 style="margin-bottom:8px">분배 비율 <span class="small muted" style="font-weight:500">항목을 추가·삭제·변경할 수 있고, 합계가 100%여야 분배할 수 있습니다</span></h3>'+
+    '<div class="stack" id="ratioBar" style="height:22px"></div>'+
+    '<div class="tablewrap"><table class="tbl fixed ratio"><colgroup><col><col style="width:220px"><col style="width:110px"><col style="width:150px"><col style="width:80px"></colgroup>'+
+    '<thead><tr><th>항목 이름</th><th>방식</th><th class="num">비율 (%)</th><th class="num">기준 금액 적용 시</th><th></th></tr></thead><tbody>';
+  if(!ratio.length) b+='<tr><td colspan="5"><div class="empty" style="padding:14px">비율 항목이 없습니다. 아래에서 추가하세요.</div></td></tr>';
+  ratio.forEach(c=>{
+    const id=esc(c.id);
+    b+='<tr><td><input type="text" value="'+esc(c.name)+'" data-chg="compName" data-comp="'+id+'" aria-label="항목 이름"></td>'+
+      '<td><select data-chg="compType" data-comp="'+id+'" aria-label="방식">'+Object.keys(RATIO_LABEL).map(k=>'<option value="'+k+'"'+(c.type===k?' selected':'')+'>'+RATIO_LABEL[k]+'</option>').join('')+'</select></td>'+
+      '<td class="num"><input type="number" class="pct" min="0" step="any" value="'+esc(c.pct)+'" data-inp="compNum" data-comp="'+id+'" data-k="pct" aria-label="비율"></td>'+
+      '<td class="num" data-ramt="'+id+'">-</td><td class="act"><button class="btn ghost sm" data-act="compDel" data-comp="'+id+'">삭제</button></td></tr>';
+    if(c.type==='rank') b+='<tr><td colspan="5" style="background:var(--field)"><div class="rk"><span>순위별 비율(%)</span><input type="text" value="'+esc((c.tiers||[]).join(','))+'" data-chg="compTiers" data-comp="'+id+'" title="1등,2등,3등 비율을 쉼표로 구분" style="text-align:left"><span>동순위</span>'+
+      '<select data-chg="compTie" data-comp="'+id+'"><option value="split"'+(c.tie!=='full'?' selected':'')+'>나눠 갖기</option><option value="full"'+(c.tie==='full'?' selected':'')+'>각자 전액 지급 (초과분도 길자금에서 지급)</option></select></div></td></tr>';
+  });
+  b+='</tbody><tfoot><tr><td>합계</td><td></td><td class="num"><span id="ratioTotal" class="chip">-</span></td><td class="num" data-ramt="__sum">-</td><td></td></tr></tfoot></table></div>'+
+    '<div class="toolbar"><select id="newRatioType">'+Object.keys(RATIO_LABEL).map(k=>'<option value="'+k+'">'+RATIO_LABEL[k]+'</option>').join('')+'</select>'+
+    '<button class="btn primary" data-act="ratioAdd">비율 항목 추가</button><span class="small muted">새 항목에는 남은 비율이 자동으로 들어갑니다</span></div><div id="ruleSum" class="notice"></div>'+
+    '<h3 style="margin:22px 0 8px">금액 항목 <span class="small muted" style="font-weight:500">비율 계산 전에 먼저 차감됩니다</span></h3>'+
+    '<p class="hint">포상(수고비)은 분배 진행 표에서 받을 사람에게만 금액을 입력합니다. 고정 기본급은 참여자 1인당 정해진 금액을 줍니다.</p>';
+  amts.forEach(c=>{ b+=compHtml(c); });
+  b+='<div class="toolbar"><select id="newCompType"><option value="bonus">'+COMP_TYPES.bonus+'</option><option value="base">'+COMP_TYPES.base+'</option></select><button class="btn" data-act="compAdd">금액 항목 추가</button></div>';
+  return card('blue','분배 RULE','<span class="small muted">바꾸는 즉시 저장됩니다</span>',b,' id="ruleCard"');
+}
+function compHtml(c){      // 금액 항목(포상/고정 기본급) 카드
+  const id=esc(c.id); let b='';
+  if(c.type==='base') b='참여자 1인당 '+moneyIn('data-inp="compNum" data-comp="'+id+'" data-k="amount"',c.amount)+' 만 실버 지급 (가장 먼저 차감)';
+  else b='분배 진행 표에서 <b>받을 사람을 골라 금액을 직접 입력</b>합니다. 전체 분배가 아니라 입력한 인원에게만 지급되며, 비율 계산보다 먼저 분배 대상 금액에서 차감됩니다.';
+  return '<div class="comp t-'+c.type+(c.enabled?'':' dis')+'"><div class="comp-h"><input type="checkbox" '+(c.enabled?'checked':'')+' data-chg="compEnable" data-comp="'+id+'" aria-label="사용">'+
+    '<input type="text" value="'+esc(c.name)+'" data-chg="compName" data-comp="'+id+'" aria-label="항목 이름"><span class="chip">'+COMP_TYPES[c.type]+'</span>'+
+    '<button class="btn ghost sm" style="margin-left:auto" data-act="compDel" data-comp="'+id+'">삭제</button></div><div class="comp-b">'+b+'</div></div>';
+}
+function updateRuleSum(){
+  const ratio=S.rule.components.filter(c=>c.enabled&&!isAmt(c)), sum=ratio.reduce((a,c)=>a+num(c.pct),0), th=Math.round(num(S.settings.distThreshold));
+  const bar=$('#ratioBar'); if(bar) bar.innerHTML=ratio.map(c=>'<i style="width:'+(num(c.pct)/Math.max(100,sum)*100)+'%;background:'+(COMP_COLOR[c.type]||'var(--muted)')+'" title="'+esc(c.name)+' '+r2(num(c.pct))+'%"></i>').join('');
+  const ok=Math.abs(sum-100)<=0.0001;
+  const tot=$('#ratioTotal'); if(tot){ tot.textContent=r2(sum)+'%'+(ok?' ✓':''); tot.className='chip '+(ok?'in':'out'); }
+  $$('[data-ramt]').forEach(el=>{ if(el.dataset.ramt==='__sum') el.textContent=fmtM(Math.round(th*sum/100)); else { const c=compById(el.dataset.ramt); el.textContent=c?fmtM(Math.round(th*num(c.pct)/100)):'-'; } });
+  const el=$('#ruleSum'); if(!el) return;
+  let cls,msg;
+  if(!ratio.length){ cls='bad'; msg='분배 비율 항목이 없습니다. 항목을 추가해 합계를 100%로 맞추세요.'; }
+  else if(ok){ cls='ok'; msg='분배 비율 합계 100% ✓ — '+ratio.map(c=>esc(c.name)+' '+r2(num(c.pct))+'%').join(' · '); }
+  else{ cls='bad'; const d=r2(100-sum); msg='분배 비율 합계 '+r2(sum)+'% — '+(d>0?d+'% 부족':(-d)+'% 초과')+'합니다. 합계가 100%가 되어야 분배를 완료할 수 있습니다.'; }
+  el.className='notice '+cls; el.innerHTML=msg;
+}
+function distTitleHtml(d){
+  const recent=S.raids.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,4).filter(r=>r.title);
+  return '<div class="field" style="margin-bottom:14px"><label>분배 제목 <span class="coin">필수</span> · 길자금 지출 내역에 그대로 표시됩니다</label>'+
+    '<input type="text" id="dTitleIn" maxlength="60" value="'+esc(d.title||'')+'" placeholder="예: 이프 3마리 레이드 정산" data-chg="dTitle">'+
+    (recent.length?'<div class="chips" style="margin-top:6px"><span class="small muted" style="align-self:center">최근 레이드:</span>'+recent.map(r=>'<span class="chip link" data-act="titlePick" data-v="'+esc(r.title+' 정산')+'">'+esc(r.title+' 정산')+'</span>').join('')+'</div>':'')+'</div>';
+}
+function sessionHtml(){
+  const d=draftDist(), p=pools();
+  if(!d) return card('coin','분배 진행','','<div class="empty">활동 중인 길드원이 없습니다. 길드원 관리 탭에서 길드원을 추가하세요.</div>');
+  const comps=S.rule.components.filter(c=>c.enabled&&c.type!=='guild');
+  const cw=[44,64,200,120].concat(comps.map(c=>c.type==='bonus'?170:150)).concat([170]);
+  let b=distTitleHtml(d)+'<div class="rule-grid"><div class="field"><label>분배일 (이 날짜로 길자금 지출 처리)</label><input type="date" value="'+esc(d.date)+'" data-chg="dDate"></div>'+
+    '<div class="field"><label>분배 대상 금액 · 분배 RULE의 분배 기준 금액과 자동 연동</label><div class="ro" id="poolShow"></div></div>'+
+    '<div class="field"><label>현재 길자금 잔액</label><div class="ro" id="balShow">'+fmtM(p.bal)+'</div></div></div>'+
+    '<div class="toolbar" style="margin:0 0 12px"><button class="btn sm" data-act="joinAll">전원 참여</button><button class="btn sm" data-act="joinNone">전원 제외</button><button class="btn sm" data-act="countReset">횟수 모두 0</button>'+
+    '<button class="btn sm ghost" style="margin-left:auto" data-act="distReset">입력 초기화</button></div>';
+  if(comps.some(c=>c.type==='bonus')) b+='<p class="hint"><b>포상(수고비)</b> 칸에는 별도로 수고비를 줄 길드원에게만 금액을 입력하세요. 분배에 참여하지 않는 사람에게도 줄 수 있고, 금액은 분배 대상 금액에서 먼저 차감됩니다.</p>';
+  if(!comps.length) b+='<div class="notice warn" style="margin:0 0 12px">사용 중인 분배 항목이 없습니다. 위 분배 RULE에서 항목을 켜 주세요.</div>';
+  b+='<div class="tablewrap"><table class="tbl dist" style="min-width:'+cw.reduce((a,x)=>a+x,0)+'px"><colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>'+
+    '<thead><tr><th>#</th><th>참여</th><th>길드원</th><th class="num">모니터링 횟수</th>'+comps.map(c=>'<th class="num">'+esc(c.name)+'</th>').join('')+'<th class="num">개인 정산금</th></tr></thead><tbody>';
+  d.rows.forEach((r,i)=>{
+    const m=S.members.find(x=>x.id===r.memberId); const mid=esc(r.memberId);
+    b+='<tr data-row="'+mid+'" class="'+(r.join?'':'off')+'"><td class="muted">'+(i+1)+'</td><td><input type="checkbox" '+(r.join?'checked':'')+' data-chg="dJoin" data-m="'+mid+'" aria-label="참여"></td>'+
+      '<td><b>'+esc(m?m.name:'?')+'</b>'+(m?classChip(m.cls,true):'')+'</td><td class="num"><input type="number" min="0" step="1" value="'+esc(r.count)+'" data-inp="dCount" data-m="'+mid+'" data-fk="cnt:'+mid+'"></td>'+
+      comps.map(c=>c.type==='bonus'
+        ?'<td class="num">'+moneyIn('data-inp="dBonus" data-m="'+mid+'" data-comp="'+esc(c.id)+'" data-fk="bn:'+esc(c.id)+':'+mid+'" placeholder="0"',(r.bonus&&r.bonus[c.id])||'')+'</td>'
+        :'<td class="num" data-cell="p:'+mid+':'+esc(c.id)+'">-</td>').join('')+'<td class="num" data-cell="t:'+mid+'"><b>0</b></td></tr>';
+  });
+  b+='</tbody><tfoot><tr><td></td><td></td><td data-cell="n">0명</td><td class="num" data-cell="cc">0</td>'+
+    comps.map(c=>'<td class="num" data-cell="ct:'+esc(c.id)+'">0</td>').join('')+'<td class="num" data-cell="tt">0</td></tr></tfoot></table></div>'+
+    '<div class="sumbox" id="dSum"></div><div id="dMsgs"></div>'+
+    '<div class="toolbar"><button class="btn gold lg" id="btnDistDone" data-act="distDone">분배 완료 → 길자금 지출 처리</button></div>';
+  return card('coin','분배 진행 <span class="small muted" style="font-weight:500;margin-left:6px">활동 중 '+d.rows.length+'명 · 모니터링 횟수를 입력하세요</span>','<span class="chip coin">입력 중</span>',b);
+}
+function renderSession(){ const el=$('#sessionWrap'); if(el){ el.innerHTML=sessionHtml(); $$('#sessionWrap [data-money]').forEach(moneyHint); updateDistCalc(); } }
+function updateDistCalc(){
+  updateRuleSum();
+  const d=draftDist(); if(!d) return;
+  const pool=Math.round(num(S.settings.distThreshold)); d.poolAmount=pool;
+  const ps=$('#poolShow'); if(ps) ps.textContent=fmtM(pool);
+  const p=pools(), res=calcDist(pool, S.rule, d.rows);
+  const bs=$('#balShow'); if(bs) bs.textContent=fmtM(p.bal);
+  const cells={}; $$('[data-cell]').forEach(e=>{ cells[e.dataset.cell]=e; });
+  const comps=res.comps;
+  res.persons.forEach(o=>{
+    const row=$('[data-row="'+CSS.escape(o.memberId)+'"]'); if(row) row.classList.toggle('off',!o.join&&!(o.total>0));
+    comps.forEach(c=>{
+      const el=cells['p:'+o.memberId+':'+c.id]; if(!el) return;
+      const v=o.parts[c.id]||0; let html=(o.join||v>0)?fmtM(v):'-';
+      if(o.join&&c.type==='rank'&&v>0){ const inf=res.info[c.id]; const t=inf&&inf.tiers&&inf.tiers.find(x=>x.count===o.count&&x.each>0); if(t) html='<span class="rankb">'+t.rank+'등</span>'+html; }
+      el.innerHTML=html;
+    });
+    const te=cells['t:'+o.memberId]; if(te) te.innerHTML='<b>'+((o.join||o.total>0)?fmtM(o.total):'-')+'</b>';
+  });
+  comps.forEach(c=>{ const el=cells['ct:'+c.id]; if(el) el.textContent=fmtM(res.persons.reduce((a,o)=>a+(o.parts[c.id]||0),0)); });
+  if(cells.n) cells.n.textContent='참여 '+res.n+'명';
+  if(cells.cc) cells.cc.textContent=fmtN(res.persons.filter(o=>o.join).reduce((a,o)=>a+o.count,0));
+  if(cells.tt) cells.tt.textContent=fmtM(res.totalPayout);
+  const errs=res.errors.slice(), notes=[];
+  if(pool<=0) errs.push('분배 RULE에서 분배 기준 금액을 입력하세요.');
+  else if(pool>p.bal) errs.push('분배 기준 금액('+fmtM(pool)+')이 길자금 잔액('+fmtM(p.bal)+')보다 많아 분배할 수 없습니다.');
+  else if(res.totalPayout>p.bal) errs.push('총 지급액('+fmtM(res.totalPayout)+')이 길자금 잔액('+fmtM(p.bal)+')보다 많아 분배할 수 없습니다.');
+  if(res.retained>0) notes.push('길드자금 적립 '+fmtM(res.retained)+'은 지급하지 않고 길자금에 그대로 남습니다.');
+  if(res.leftover-res.retained>0) notes.push('지급 단위로 내림하고 남는 금액 '+fmtM(res.leftover-res.retained)+'도 길자금에 남습니다.');
+  if(res.overage>0) notes.push('동순위 전액 지급으로 분배 대상 금액을 '+fmtM(res.overage)+' 초과합니다. 초과분도 길자금에서 지급됩니다.');
+  res.comps.forEach(c=>{ const inf=res.info[c.id]; if(inf&&inf.per!==undefined) notes.push('"'+c.name+'" 횟차별 비용: '+fmtM(inf.per)+' (총 '+fmtN(inf.totalCount)+'회)'); });
+  const sum=$('#dSum');
+  if(sum) sum.innerHTML='<div><span class="k">분배 대상 금액</span><span class="v">'+fmtM(pool)+'</span></div>'+
+    (res.bonusTotal>0?'<div><span class="k">포상(수고비) 합계</span><span class="v" style="color:var(--purple)">'+fmtM(res.bonusTotal)+'</span></div>':'')+
+    (res.retained>0?'<div><span class="k">길드자금 적립 (지급 안 함)</span><span class="v" style="color:var(--teal)">'+fmtM(res.retained)+'</span></div>':'')+
+    '<div><span class="k">총 지급액 (길자금 지출)</span><span class="v neg">'+fmtM(res.totalPayout)+'</span></div>'+
+    '<div><span class="k">분배 후 길자금 잔액</span><span class="v '+(p.bal-res.totalPayout<0?'neg':'')+'">'+fmtM(p.bal-res.totalPayout)+'</span></div>';
+  const msgs=$('#dMsgs');
+  if(msgs) msgs.innerHTML=errs.map(e=>'<div class="notice bad">'+esc(e)+'</div>').join('')+res.warns.map(e=>'<div class="notice warn">'+esc(e)+'</div>').join('')+notes.map(e=>'<div class="notice">'+esc(e)+'</div>').join('');
+  const btn=$('#btnDistDone'); if(btn) btn.disabled=errs.length>0;
+}
+
+const doneDists=()=>S.distributions.filter(x=>x.status==='completed').sort((a,b)=>a.date===b.date?(a.completedAt||'')<(b.completedAt||'')?-1:1:(a.date<b.date?-1:1));
+// 분배 현황: 날짜별 × 길드원별 표 (칸을 누르면 지급 완료/미지급 전환)
+function statusCardHtml(){
+  const done=doneDists();
+  let total=0, paid=0; done.forEach(d=>d.results.forEach(r=>{ total+=num(r.total); if(r.paid) paid+=num(r.total); }));
+  const stats=done.length?'<div class="sumbox" style="margin:0 0 14px"><div><span class="k">분배 횟수</span><span class="v">'+done.length+'회</span></div>'+
+    '<div><span class="k">누적 지급액</span><span class="v">'+fmtM(total)+'</span></div><div><span class="k">지급 완료</span><span class="v pos">'+fmtM(paid)+'</span></div>'+
+    '<div><span class="k">미지급</span><span class="v '+(total-paid>0?'neg':'')+'">'+fmtM(total-paid)+'</span></div>'+
+    '<div><span class="k">최근 분배</span><span class="v" style="font-size:14px">'+esc(done[done.length-1].title||'')+'<br><span class="small muted" style="font-weight:500">'+fmtDate(done[done.length-1].date)+'</span></span></div></div>':'';
+  const tabs='<div class="seg nav" role="tablist" style="margin:0 0 14px">'+
+    '<button type="button" role="tab" aria-selected="'+(ui.distView==='matrix')+'" data-act="distView" data-v="matrix" class="'+(ui.distView==='matrix'?'on':'')+'">길드원별 지급 현황</button>'+
+    '<button type="button" role="tab" aria-selected="'+(ui.distView==='history')+'" data-act="distView" data-v="history" class="'+(ui.distView==='history'?'on':'')+'">날짜별 분배 정리 ('+done.length+')</button></div>';
+  let body=stats+tabs;
+  if(!done.length) body+='<div class="empty">아직 완료된 분배가 없습니다. 분배를 완료하면 이곳에 쌓입니다.</div>';
+  else if(ui.distView==='matrix') body+=boardBody(done);
+  else if(ui.distView==='history') body+=historyBody();
+  else body+='<p class="hint" style="margin:0">위 탭을 누르면 전체 분배 내역이 표시됩니다. (다시 누르면 접힙니다)</p>';
+  return card('green','분배 현황','<span class="small muted">탭을 눌렀을 때만 내역이 표시됩니다</span>',body);
+}
+// 길드원별 × 날짜별 지급 현황 (칸을 누르면 지급 완료/미지급 전환)
+function boardBody(done){
+  const names=new Map(); done.forEach(d=>d.results.forEach(r=>{ if(!names.has(r.memberId)) names.set(r.memberId,r.name); }));
+  const order=new Map(S.members.map((m,i)=>[m.id,i]));
+  const ids=Array.from(names.keys()).sort((a,b)=>(order.has(a)?order.get(a):9999)-(order.has(b)?order.get(b):9999));
+  let total=0, paid=0; done.forEach(d=>d.results.forEach(r=>{ total+=num(r.total); if(r.paid) paid+=num(r.total); }));
+  let b='<p class="hint">길드원별 날짜별 지급액입니다. 칸을 클릭하면 <b class="pos">지급 완료</b> ↔ <b class="neg">미지급</b>으로 바뀝니다. 분배 방식은 "날짜별 분배 정리" 탭에서 확인하세요.</p>'+
+    '<div class="tablewrap"><table class="tbl mat" style="min-width:'+(260+done.length*150)+'px"><thead><tr><th>길드원</th>'+
+    done.map(d=>{ const pc=d.results.filter(r=>r.paid).length; return '<th class="num">'+esc(d.date)+'<br><span class="small" style="font-weight:600;color:var(--coin)">'+esc((d.title||'').slice(0,16))+'</span><br><span class="small" style="font-weight:500">정산 '+pc+'/'+d.results.length+'</span></th>'; }).join('')+
+    '<th class="num">합계</th><th class="num">미지급</th></tr></thead><tbody>';
+  ids.forEach(mid=>{
+    let sum=0, unp=0;
+    b+='<tr><td>'+esc(names.get(mid))+'</td>';
+    done.forEach(d=>{
+      const r=d.results.find(x=>x.memberId===mid);
+      if(!r){ b+='<td class="num muted">-</td>'; return; }
+      sum+=num(r.total); if(!r.paid) unp+=num(r.total);
+      b+='<td class="num cellp '+(r.paid?'paid':'unpaid')+'" data-act="togglePaid" data-d="'+esc(d.id)+'" data-m="'+esc(mid)+'" title="클릭하면 지급 완료/미지급이 바뀝니다">'+fmtM(r.total)+'</td>';
+    });
+    b+='<td class="num"><b>'+fmtM(sum)+'</b></td><td class="num '+(unp>0?'neg':'muted')+'">'+(unp>0?fmtM(unp):'-')+'</td></tr>';
+  });
+  return b+'</tbody><tfoot><tr><td>날짜별 합계</td>'+done.map(d=>'<td class="num">'+fmtM(d.summary.totalPayout)+'</td>').join('')+'<td class="num">'+fmtM(total)+'</td><td class="num">'+fmtM(total-paid)+'</td></tr></tfoot></table></div>';
+}
+// 분배 항목별로 "어떻게 나눴는지" 한 줄 설명
+function compHow(c,d){
+  if(c.type==='guild') return '지급하지 않고 길자금에 적립 ('+r2(num(c.pct))+'%)';
+  const rs=d.results.filter(r=>num(r.parts[c.id])>0);
+  if(!rs.length) return '지급 없음';
+  if(c.type==='base') return '참여자 1인당 '+fmtM(c.amount)+' × '+rs.length+'명';
+  if(c.type==='equal') return rs.length+'명 균등 · 1인당 '+fmtM(rs[0].parts[c.id])+' ('+r2(num(c.pct))+'%)';
+  if(c.type==='perCount'){
+    const info=(d.compInfo||{})[c.id]; const tc=info&&info.totalCount!==undefined?info.totalCount:rs.reduce((a,r)=>a+num(r.count),0);
+    const per=info&&info.per!==undefined?info.per:rs.reduce((a,r)=>a+num(r.parts[c.id]),0)/Math.max(1,tc);
+    return '횟차별 '+fmtM(per)+' × 총 '+fmtN(tc)+'회 ('+r2(num(c.pct))+'%)';
+  }
+  return rs.slice().sort((a,b)=>num(b.parts[c.id])-num(a.parts[c.id])).map(r=>esc(r.name)+' '+fmtM(r.parts[c.id])).join(' · ');
+}
+function historyBody(){
+  const done=doneDists().reverse();
+  if(!done.length) return '<div class="empty">아직 완료된 분배가 없습니다.</div>';
+  let b='';
+  done.forEach(d=>{
+    const pc=d.results.filter(r=>r.paid).length, comps=d.compsSnap||[], payComps=comps.filter(c=>c.type!=='guild'), info=d.compInfo||{};
+    const val=c=>c.type==='guild'?num((info[c.id]||{}).retained):d.results.reduce((a,r)=>a+num(r.parts[c.id]),0);
+    const sums=comps.map(c=>({c,sum:val(c)})).filter(x=>!(x.c.type==='bonus'&&x.sum===0));   // 포상을 주지 않았으면 행 생략
+    const allSum=sums.reduce((a,x)=>a+x.sum,0), den=(d.poolAmount>0?d.poolAmount:allSum)||1;
+    b+='<details class="hist" data-did="'+esc(d.id)+'"'+(ui.open.has(d.id)?' open':'')+'><summary><span>'+fmtDate(d.date)+'</span><span style="color:var(--coin)">'+esc(d.title||'(제목 없음)')+'</span><span>'+d.results.length+'명</span><span>총 '+fmtM(d.summary.totalPayout)+'</span>'+
+      '<span class="chip '+(pc===d.results.length?'in':'coin')+'">지급 '+pc+'/'+d.results.length+'</span></summary><div class="inner">'+
+      '<div class="sumbox" style="margin:0 0 14px"><div><span class="k">분배 대상 금액</span><span class="v">'+fmtM(d.poolAmount!=null?d.poolAmount:allSum)+'</span></div>'+
+      '<div><span class="k">총 지급액</span><span class="v neg">'+fmtM(d.summary.totalPayout)+'</span></div>'+
+      '<div><span class="k">지급 인원</span><span class="v">'+d.results.length+'명</span></div>'+
+      '<div><span class="k">길자금에 남은 금액</span><span class="v">'+fmtM(d.summary.leftover||0)+'</span></div></div>'+
+      '<h3 style="margin-bottom:8px">분배 비율과 방식</h3>'+
+      '<div class="stack">'+sums.map(x=>'<i style="width:'+(x.sum/den*100)+'%;background:'+(COMP_COLOR[x.c.type]||'var(--muted)')+'" title="'+esc(x.c.name)+' '+fmtM(x.sum)+'"></i>').join('')+'</div>'+
+      '<div class="tablewrap" style="margin-bottom:14px"><table class="tbl fixed"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:70px"><col></colgroup><thead><tr><th>분배 항목</th><th class="num">금액</th><th class="num">비중</th><th>어떻게 나눴나</th></tr></thead><tbody>'+
+      sums.map(x=>'<tr><td><span class="dot" style="background:'+(COMP_COLOR[x.c.type]||'var(--muted)')+'"></span><b>'+esc(x.c.name)+'</b></td><td class="num">'+fmtM(x.sum)+'</td><td class="num">'+Math.round(x.sum/den*100)+'%</td><td class="wrap">'+compHow(x.c,d)+'</td></tr>').join('')+
+      '</tbody><tfoot><tr><td>합계(지급+적립)</td><td class="num">'+fmtM(allSum)+'</td><td class="num">'+Math.round(allSum/den*100)+'%</td><td></td></tr></tfoot></table></div>'+
+      '<h3 style="margin-bottom:8px">개인별 상세</h3>'+
+      '<div class="tablewrap"><table class="tbl"><thead><tr><th>길드원</th><th class="num">횟수</th>'+payComps.map(c=>'<th class="num">'+esc(c.name)+'</th>').join('')+'<th class="num">개인 정산금</th><th>지급 여부</th></tr></thead><tbody>';
+    d.results.forEach(r=>{
+      const m=S.members.find(x=>x.id===r.memberId);
+      b+='<tr><td>'+esc(r.name)+(m?classChip(m.cls,true):'')+'</td><td class="num">'+fmtN(r.count)+'</td>'+payComps.map(c=>'<td class="num">'+(num(r.parts[c.id])?fmtM(r.parts[c.id]):'-')+'</td>').join('')+
+        '<td class="num"><b>'+fmtM(r.total)+'</b></td><td><label><input type="checkbox" '+(r.paid?'checked':'')+' data-chg="paid" data-d="'+esc(d.id)+'" data-m="'+esc(r.memberId)+'"> 지급 완료</label></td></tr>';
+    });
+    b+='</tbody></table></div><div class="toolbar"><button class="btn ghost sm" style="margin-left:auto" data-act="distCancel" data-id="'+esc(d.id)+'">분배 취소(되돌리기)</button></div></div></details>';
+  });
+  return '<p class="hint">날짜를 누르면 분배 비율·방식과 개인별 상세가 펼쳐집니다.</p>'+b;
+}
+
+/* =====================================================================
+   7. 탭 ③ 레이드 정산
+   - 판매 아이템 등록 → 판매 입력(입찰자 체크 · 필요하면 보물상자 뽑기) → 정리가 끝나면 "판매 완료 → 길자금 수입" 한 번으로 반영
+   - 판매되지 않은 아이템은 미판매 재고템으로 이월 (모든 레이드에서 다시 등록 가능)
+   ===================================================================== */
+const curRaid=()=>S.raids.find(r=>r.id===ui.raidId);
+const buyerNames=l=>(l.buyers||[]).map(b=>{ const m=S.members.find(x=>x.id===b.id); return m?m.name:(b.name||''); }).join(', ');
+const fmtDT=iso=>{ const d=new Date(iso); return isNaN(d)?'':d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); };
+function viewRaid(){
+  if(ui.raidId){ const r=curRaid(); if(r) return raidDetail(r); ui.raidId=null; }
+  return raidList();
+}
+function raidList(){
+  const list=S.raids.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  const right='<span class="chip coin link" data-act="goStock">미판매 재고 '+S.stock.length+'개 →</span><button class="btn sm" data-act="presetsEdit">기본 품목 설정</button><button class="btn primary" data-act="raidNew">새 레이드 정산</button>';
+  if(!list.length) return card('green','레이드 정산 목록',right,'<div class="empty">아직 정산한 레이드가 없습니다. "새 레이드 정산"으로 시작하세요.<br><span class="small">판매 아이템을 등록하고 입찰자를 체크해 판매를 입력한 뒤, 마지막에 <b>판매 완료 → 길자금 수입</b>을 누르면 길자금에 반영됩니다.</span></div>');
+  let b='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:120px"><col style="width:130px"><col style="width:130px"><col style="width:140px"></colgroup>'+
+    '<thead><tr><th>날짜</th><th>레이드</th><th class="num">판매 수입</th><th class="num">지출</th><th class="num">정산금</th><th>상태</th><th></th></tr></thead><tbody>';
+  list.forEach(r=>{
+    const t=raidTotals(r), done=r.status==='completed', wait=r.lots.filter(l=>!lotSold(l)).length;
+    b+='<tr><td class="nowrap">'+fmtDate(r.date)+'</td><td><b>'+esc(r.title||'(제목 없음)')+'</b></td><td class="num pos">'+fmtM(t.inc)+'</td><td class="num neg">'+(t.exp?'-'+fmtM(t.exp):'0')+'</td><td class="num"><b>'+fmtM(t.net)+'</b></td>'+
+      '<td><span class="chip '+(done?'in':'coin')+'">'+(done?'길자금 반영 완료':'작성 중'+(wait?' · 대기 '+wait:''))+'</span></td>'+
+      '<td class="act"><button class="btn sm" data-act="raidOpen" data-id="'+esc(r.id)+'">열기</button><button class="btn ghost sm" data-act="raidDel" data-id="'+esc(r.id)+'">삭제</button></td></tr>';
+  });
+  return card('green','레이드 정산 목록',right,b+'</tbody></table></div>');
+}
+function totalRows(r,type){
+  const m=new Map();
+  if(type==='income') r.lots.filter(lotSold).forEach(l=>{ const o=m.get(l.name)||{name:l.name,cnt:0,sum:0}; o.cnt+=l.buyers.length; o.sum+=lotTotal(l); m.set(l.name,o); });
+  else r.expenses.forEach(e=>{ const o=m.get(e.name)||{name:e.name,cnt:0,sum:0}; o.cnt+=1; o.sum+=Math.round(num(e.price)); m.set(e.name,o); });
+  return Array.from(m.values());
+}
+function totalList(r,type){
+  const rows=totalRows(r,type), isIn=type==='income';
+  const sum=rows.reduce((a,x)=>a+x.sum,0), cnt=rows.reduce((a,x)=>a+x.cnt,0);
+  let h='<div class="sub c-'+(isIn?'green':'red')+'"><div class="sub-h"><span>'+(isIn?'판매 수입 total 목록':'지출 품목 total 목록')+'</span><span class="chip '+(isIn?'in':'out')+'">'+rows.length+'개 품목</span></div>';
+  if(!rows.length) return h+'<div class="empty" style="padding:14px">입력된 내역이 없습니다</div></div>';
+  h+='<table class="tbl fixed"><colgroup><col><col style="width:70px"><col style="width:140px"></colgroup><thead><tr><th>품목</th><th class="num">건수</th><th class="num">합계</th></tr></thead><tbody>'+
+    rows.map(x=>'<tr><td>'+esc(x.name)+'</td><td class="num">'+x.cnt+'</td><td class="num '+(isIn?'pos':'neg')+'">'+(isIn?'':'-')+fmtM(x.sum)+'</td></tr>').join('')+
+    '</tbody><tfoot><tr><td>합계</td><td class="num">'+cnt+'</td><td class="num '+(isIn?'pos':'neg')+'">'+(isIn?'':'-')+fmtM(sum)+'</td></tr></tfoot></table></div>';
+  return h;
+}
+function lotsCard(r,edit){
+  const t=raidTotals(r); let b='';
+  if(!r.lots.length) b+='<div class="empty">등록된 판매 아이템이 없습니다. 아래에서 아이템을 등록하거나 오른쪽 미판매 재고템에서 "등록"을 누르세요.</div>';
+  else{
+    const cols=edit?[180,100,null,170,214]:[180,100,null,170];
+    b+='<div class="tablewrap"><table class="tbl fixed" style="min-width:'+(edit?780:540)+'px"><colgroup>'+cols.map(w=>'<col'+(w?' style="width:'+w+'px"':'')+'>').join('')+'</colgroup>'+
+      '<thead><tr><th>아이템</th><th>상태</th><th>구매자</th><th class="num">판매가</th>'+(edit?'<th></th>':'')+'</tr></thead><tbody>';
+    r.lots.forEach(l=>{
+      const sold=lotSold(l), id=esc(l.id);
+      b+='<tr><td><b>'+esc(l.name)+'</b>'+(l.qty>1?'<span class="chip sm2">×'+l.qty+'</span>':'')+'</td>'+
+        '<td><span class="chip '+(sold?'in':'coin')+'">'+(sold?'판매 완료':'판매 대기')+'</span></td>'+
+        '<td class="wrap">'+(sold?esc(buyerNames(l))+(l.drawId?'<span class="chip sm2 blue">뽑기</span>':''):'<span class="muted">-</span>')+'</td>'+
+        '<td class="num">'+(sold?'<b class="pos">+'+fmtM(lotTotal(l))+'</b>'+(l.buyers.length>1?'<div class="small muted">개당 '+fmtM(l.price)+' × '+l.buyers.length+'</div>':''):'<span class="muted">-</span>')+'</td>'+
+        (edit?'<td class="act">'+(sold
+          ?'<button class="btn ghost sm" data-act="lotSell" data-id="'+id+'">수정</button><button class="btn ghost sm" data-act="lotUndo" data-id="'+id+'" title="판매를 취소하고 판매 대기로 되돌립니다">취소</button>'
+          :'<button class="btn sm gold" data-act="lotSell" data-id="'+id+'">판매 입력</button><button class="btn ghost sm" data-act="lotUnsold" data-id="'+id+'" title="판매되지 않아 미판매 재고템으로 이월합니다">미판매</button><button class="btn ghost sm" data-act="lotDel" data-id="'+id+'">삭제</button>')+'</td>':'')+'</tr>';
+    });
+    b+='</tbody><tfoot><tr><td>판매 수입 합계</td><td>'+r.lots.filter(lotSold).length+'건</td><td></td><td class="num pos">+'+fmtM(t.inc)+'</td>'+(edit?'<td></td>':'')+'</tr></tfoot></table></div>';
+  }
+  if(edit) b+='<div class="lotadd"><input class="ln" list="dl_income" placeholder="판매 아이템 이름" data-fk="lotname" data-enter="lotAdd"><input class="lq" type="number" min="1" max="50" value="1" title="수량"><button class="btn primary" data-act="lotAdd">판매 아이템 등록</button></div>'+
+    '<div class="chips" style="margin-top:8px"><span class="small muted" style="align-self:center">빠른 등록:</span>'+S.settings.itemPresets.income.map(n=>'<span class="chip link" data-act="lotAddPreset" data-name="'+esc(n)+'" title="클릭하면 1개 등록">+ '+esc(n)+'</span>').join('')+'</div>';
+  return card('green','판매 수입 목록','<span class="small muted">등록 → 판매 입력(입찰자 체크 · 뽑기)</span>',b);
+}
+function expensesCard(r,edit){
+  let b='<p class="hint">레이드 진행 중 발생한 비용입니다. 정산금 계산에서 판매 수입에서 차감됩니다.</p>';
+  if(r.expenses.length){
+    b+='<div class="tablewrap"><table class="tbl fixed" style="min-width:600px"><colgroup><col style="width:180px"><col style="width:124px"><col><col style="width:150px">'+(edit?'<col style="width:90px">':'')+'</colgroup>'+
+      '<thead><tr><th>지출 항목</th><th>날짜</th><th>비고</th><th class="num">금액</th>'+(edit?'<th></th>':'')+'</tr></thead><tbody>'+
+      r.expenses.map(e=>'<tr><td><b>'+esc(e.name)+'</b></td><td class="nowrap">'+esc(e.date||'')+'</td><td class="wrap">'+esc(e.note||'')+'</td><td class="num neg"><b>-'+fmtM(e.price)+'</b></td>'+
+        (edit?'<td class="act"><button class="btn ghost sm" data-act="expDel" data-id="'+esc(e.id)+'">삭제</button></td>':'')+'</tr>').join('')+
+      '</tbody><tfoot><tr><td>지출 합계</td><td>'+r.expenses.length+'건</td><td></td><td class="num neg">-'+fmtM(raidTotals(r).exp)+'</td>'+(edit?'<td></td>':'')+'</tr></tfoot></table></div>';
+  }
+  if(edit) b+='<div class="expadd"><input class="en" list="dl_expense" placeholder="지출 항목 (예: 봉줌 1층)" data-enter="expAdd">'+
+    moneyIn('class="ea" data-enter="expAdd" placeholder="금액(만)"','')+'<input class="eb" placeholder="비고(선택)" data-enter="expAdd"><input type="date" class="ed" value="'+today()+'"><button class="btn" data-act="expAdd">지출 추가</button></div>';
+  return card('red','레이드 지출 목록 <span class="small muted" style="font-weight:500;margin-left:6px">판매 수입에서 차감</span>','',b);
+}
+function drawLogCard(r){
+  const list=S.draws.filter(x=>x.raidId===r.id).slice().reverse();
+  const b=!list.length?'<div class="empty" style="padding:16px">아직 뽑기 기록이 없습니다. 입찰자가 수량보다 많으면 판매 입력에서 뽑기를 실행합니다.</div>':
+    '<div class="tablewrap"><table class="tbl fixed" style="min-width:560px"><colgroup><col style="width:150px"><col style="width:150px"><col style="width:90px"><col></colgroup><thead><tr><th>일시</th><th>아이템</th><th class="num">입찰</th><th>당첨자</th></tr></thead><tbody>'+
+    list.map(x=>'<tr><td class="nowrap">'+fmtDT(x.at)+'</td><td><b>'+esc(x.item)+'</b></td><td class="num">'+x.bidders.length+'명</td><td class="wrap">'+x.winners.map(w=>esc(w.name)).join(', ')+'</td></tr>').join('')+'</tbody></table></div>';
+  return card('purple','뽑기 기록','<span class="small muted">추첨 즉시 자동 기록</span>',b);
+}
+function raidDetail(r){
+  const t=raidTotals(r), done=r.status==='completed', edit=!done, wait=r.lots.filter(l=>!lotSold(l));
+  const head=card('green',edit?'<input style="width:240px;font-weight:700" value="'+esc(r.title)+'" placeholder="레이드 이름 (예: 메테 3마리)" data-chg="raidTitle"> <input type="date" value="'+esc(r.date)+'" data-chg="raidDate">':
+      esc(r.title||'(제목 없음)')+' <span class="small muted" style="font-weight:500">'+fmtDate(r.date)+'</span> <span class="chip in" style="margin-left:8px">길자금 반영 완료</span>',
+    '<button class="btn sm" data-act="raidBack">← 목록</button><button class="btn sm" data-act="goStock">미판매 재고템 '+S.stock.length+'개 →</button>'+(edit?'<button class="btn sm" data-act="raidPaste">빠른 입력(붙여넣기)</button>':'<button class="btn sm" data-act="goLedger">입출금 내역 보기</button><button class="btn ghost sm" data-act="raidUncomplete">완료 취소</button>'),
+    edit?'<p class="hint" style="margin:0">① 판매할 아이템을 <b>등록</b> → ② <b>판매 입력</b>에서 판매가와 입찰 참여자를 체크 (입찰자가 수량보다 많으면 <b>뽑기</b>) → ③ 정리가 끝나면 <b>판매 완료 → 길자금 수입</b>. 판매되지 않은 아이템은 "미판매"를 눌러 <b>미판매 재고템 탭</b>으로 이월하세요.</p>':
+      '<p class="hint" style="margin:0">'+fmtDate(r.snap&&r.snap.date)+'에 정산금 <b>'+fmtM(t.net)+'</b>이(가) 길자금 현황에 1건으로 기록되었습니다. 수정하려면 "완료 취소"를 누르세요.</p>');
+  const summary=card('teal','정산 요약','',
+    '<div class="eq"><div class="eqb in"><span>판매 수입 합계</span><b>'+fmtM(t.inc)+'</b></div><div class="op">−</div>'+
+    '<div class="eqb out"><span>레이드 지출 합계</span><b>'+fmtM(t.exp)+'</b></div><div class="op">=</div>'+
+    '<div class="eqb net"><span>정산금 (길자금 수입)</span><b>'+fmtM(t.net)+'</b></div></div>'+
+    '<div class="split" style="margin-top:14px">'+totalList(r,'income')+totalList(r,'expense')+'</div>'+
+    (edit?'<div class="toolbar"><button class="btn gold lg" data-act="raidComplete">판매 완료 → 길자금 수입</button>'+(wait.length?'<span class="small muted">판매 대기 '+wait.length+'개는 미판매 재고템으로 이월됩니다</span>':'')+'</div>':''));
+  return head+summary+lotsCard(r,edit)+expensesCard(r,edit)+drawLogCard(r)+
+    '<datalist id="dl_income">'+S.settings.itemPresets.income.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+    '<datalist id="dl_expense">'+S.settings.itemPresets.expense.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>';
+}
+// 빠른 입력: "품목 금액 구매자" 줄 → 판매 완료된 아이템 / 지출로 바로 기록
+function parsePaste(text,r){
+  const res={added:0,bad:[]}; const exp=new Set(S.settings.itemPresets.expense);
+  text.split(/\r?\n/).forEach(line=>{
+    line=line.trim(); if(!line) return;
+    let type=null;
+    if(/^(지출|비용)\s+/.test(line)){ type='expense'; line=line.replace(/^(지출|비용)\s+/,''); }
+    const tk=line.split(/[\t,]+|\s+/).filter(Boolean);
+    const ix=tk.findIndex(x=>/^-?\d+(\.\d+)?$/.test(x));
+    if(ix<1){ res.bad.push(line); return; }
+    let name=tk.slice(0,ix).join(' '), price=parseFloat(tk[ix]); const buyerTxt=tk.slice(ix+1).join(' ');
+    if(name.startsWith('-')){ type='expense'; name=name.replace(/^-+\s*/,''); }
+    if(price<0){ type='expense'; price=-price; }
+    price=Math.round(price);
+    if(!name||!(price>0)){ res.bad.push(line); return; }
+    if(!type) type=exp.has(name)?'expense':'income';
+    if(type==='expense') r.expenses.push({id:uid(),name,price,note:buyerTxt,date:today()});
+    else{
+      const mem=buyerTxt&&S.members.find(m=>m.name===buyerTxt);
+      r.lots.push({id:uid(),name,qty:1,state:'sold',price,buyers:[mem?{id:mem.id,name:mem.name}:{id:'__ext',name:buyerTxt||'외부/기타'}],bidders:[],soldDate:today()});
+    }
+    res.added++;
+  });
+  return res;
+}
+
+/* ---- 판매 입력: 입찰 참여자 체크 → (수량 초과 시) 보물상자 뽑기 ---- */
+function openSaleModal(r,lot){
+  const pool=activeMembers().map(m=>({id:m.id,name:m.name,cls:m.cls})).concat([{id:'__ext',name:'외부/기타',cls:''}]);
+  const K=lot.qty;
+  const st={checked:new Set(lot.bidders&&lot.bidders.length?lot.bidders:(lot.buyers||[]).map(b=>b.id)),
+    draw:lot.drawId?(S.draws.find(x=>x.id===lot.drawId)||null):null};
+  const body='<p class="hint">'+(r&&r.title?'출처 레이드: <b>'+esc(r.title)+'</b> · ':'')+'<b>'+esc(lot.name)+'</b> × '+K+'개 — 입찰에 참여한 사람만 체크하세요. 입찰자가 수량보다 많으면 보물상자 뽑기로 낙찰자를 정합니다.</p>'+
+    '<div class="field"><label>판매가 — 1개당 (만 실버)</label>'+moneyIn('id="sP" placeholder="0"',lot.price||'','big')+'</div>'+
+    '<div class="field"><label>입찰 참여자 <span id="bdCnt" class="coin"></span></label>'+
+    '<div class="bdtools"><button type="button" class="btn sm" data-q="all">전체 선택</button><button type="button" class="btn sm" data-q="none">전체 해제</button></div>'+
+    '<div class="biddergrid">'+pool.map(p=>'<label class="bd"><input type="checkbox" data-bid="'+esc(p.id)+'"'+(st.checked.has(p.id)?' checked':'')+'><span>'+esc(p.name)+'</span>'+(p.cls?classChip(p.cls,true):'')+'</label>').join('')+'</div></div>'+
+    '<div id="bdState"></div>';
+  return modal({title:'판매 입력 — '+lot.name,wide:true,ok:'판매 확정',body,
+    onOpen(root){
+      const cnt=root.querySelector('#bdCnt'), state=root.querySelector('#bdState');
+      const checkedList=()=>pool.filter(p=>st.checked.has(p.id));
+      const update=()=>{
+        const N=st.checked.size; cnt.textContent='('+N+'명 입찰 · 수량 '+K+'개)';
+        let h='';
+        if(N===0) h='<div class="notice warn">입찰에 참여한 사람을 체크하세요.</div>';
+        else if(N<=K) h='<div class="notice ok">입찰 '+N+'명 ≤ 수량 '+K+'개 → 뽑기 없이 입찰자 전원이 낙찰됩니다.</div>';
+        else{
+          h='<div class="notice warn">입찰 '+N+'명 &gt; 수량 '+K+'개 → 뽑기로 '+K+'명을 정합니다.</div>'+
+            (st.draw?'<div class="drawres">🏆 당첨: '+st.draw.winners.map(w=>esc(w.name)).join(', ')+'</div><button type="button" class="btn" data-draw="1">🎲 다시 뽑기 (이전 결과도 기록에 남습니다)</button>':
+              '<div class="toolbar" style="margin:10px 0 0"><button type="button" class="btn gold lg" data-draw="1">🎁 뽑기 실행 (보물상자)</button></div>');
+        }
+        state.innerHTML=h;
+      };
+      const scope=root.querySelector('.mbody');
+      scope.addEventListener('change',e=>{
+        const cb=e.target.closest('[data-bid]'); if(!cb) return;
+        if(cb.checked) st.checked.add(cb.dataset.bid); else st.checked.delete(cb.dataset.bid);
+        if(st.draw&&!(st.draw.bidderIds.length===st.checked.size&&st.draw.bidderIds.every(id=>st.checked.has(id)))){ st.draw=null; lot.drawId=null; }
+        update();
+      });
+      scope.addEventListener('click',async e=>{
+        const q=e.target.closest('[data-q]');
+        if(q){ st.checked=new Set(q.dataset.q==='all'?pool.map(p=>p.id):[]); root.querySelectorAll('[data-bid]').forEach(cb=>{ cb.checked=st.checked.has(cb.dataset.bid); });
+          if(st.draw){ st.draw=null; lot.drawId=null; } update(); return; }
+        if(e.target.closest('[data-draw]')){
+          const rec=await runDraw({raidId:r.id,lotId:lot.id,raidTitle:r.title,item:lot.name,k:K,bidders:checkedList().map(p=>({id:p.id,name:p.name}))});
+          if(rec){ st.draw=rec; lot.drawId=rec.id; lot.bidders=Array.from(st.checked); quiet(); }
+          update();
+        }
+      });
+      update();
+    },
+    onOk(root){
+      const price=Math.round(num(root.querySelector('#sP').value)), N=st.checked.size;
+      if(!(price>0)){ toast('판매가를 입력하세요 (만 실버 단위)'); return false; }
+      if(N===0){ toast('입찰 참여자를 체크하세요'); return false; }
+      let buyers;
+      if(N<=K) buyers=pool.filter(p=>st.checked.has(p.id)).map(p=>({id:p.id,name:p.name}));
+      else{ if(!st.draw){ toast('입찰자가 수량보다 많습니다. 뽑기를 먼저 실행하세요'); return false; } buyers=st.draw.winners.map(w=>({id:w.id,name:w.name})); }
+      return {price,buyers,bidders:Array.from(st.checked),drawId:(N>K&&st.draw)?st.draw.id:null};
+    }});
+}
+
+/* ---- 보물상자 뽑기 (첨부 프로그램 연동 + 연출 추가) ----
+   상자 흔들림·빛 → 3초 카운트다운 → 3개 동시 개봉 → 황금빛 폭발·반짝임 → 당첨자 한 명씩 순서대로 공개 → 결과 자동 기록 */
+const DRAW_T={count:1000,open:900,reveal:1300};
+function randInt(n){
+  try{ const u=new Uint32Array(1), lim=Math.floor(4294967296/n)*n; let x; do{ window.crypto.getRandomValues(u); x=u[0]; }while(x>=lim); return x%n; }
+  catch(e){ return Math.floor(Math.random()*n); }
+}
+function secureShuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=randInt(i+1); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+function runDraw(o){
+  return new Promise(resolve=>{
+    const root=$('#drawRoot'), T=DRAW_T;
+    const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const k=Math.max(1,Math.min(o.k,o.bidders.length));
+    let rec=null, started=false, raf=0, parts=[], chestOf=[]; const timers=[];
+    const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
+    root.innerHTML='<div class="dr-overlay"><div class="dr-box" role="dialog" aria-modal="true" aria-label="보물상자 뽑기">'+
+      '<div class="dr-head"><div><div class="dr-eyebrow">GUILD TREASURE DRAW</div><h3>🏴‍☠️ '+esc(o.item)+' 뽑기</h3></div><button class="btn sm ghost" data-dr="close">닫기</button></div>'+
+      '<p class="dr-sub">'+esc(o.raidTitle||'레이드')+' · 당첨 '+k+'명 · 입찰 '+o.bidders.length+'명 (중복 없이 추첨)</p>'+
+      '<div class="dr-bidders">'+o.bidders.map(b=>'<span class="chip">'+esc(b.name)+'</span>').join('')+'</div>'+
+      '<div class="dr-stage" id="drStage"><canvas id="drCanvas"></canvas><div class="dr-flash"></div><div class="dr-chests">'+
+      [0,1,2].map(i=>'<div class="dr-cw"><div class="dr-chest charge" data-i="'+i+'"><div class="dr-glow"></div><div class="dr-lid"></div><div class="dr-body"><i class="dr-lock"></i></div><div class="dr-loot"></div></div><div class="dr-who">보물상자 '+(i+1)+'</div></div>').join('')+
+      '</div><div class="dr-count" id="drCount" aria-live="assertive"></div></div>'+
+      '<div class="dr-status" id="drStatus" aria-live="polite">준비 완료 — 보물상자를 열어 당첨자를 확인하세요</div>'+
+      '<div class="dr-winners" id="drWinners"></div>'+
+      '<div class="dr-foot"><button class="btn gold lg" data-dr="start">🔓 보물상자 열기</button><button class="btn" data-dr="copy" hidden>당첨 결과 복사</button><button class="btn" data-dr="close" id="drClose2">닫기</button></div></div></div>';
+    const q=sel=>root.querySelector(sel);
+    const stage=q('#drStage'), cv=q('#drCanvas'), chests=Array.from(root.querySelectorAll('.dr-chest')), whos=Array.from(root.querySelectorAll('.dr-who'));
+    const cnt=q('#drCount'), stat=q('#drStatus'), winEl=q('#drWinners'), startBtn=q('[data-dr=start]'), copyBtn=q('[data-dr=copy]');
+    let ctx=null; try{ ctx=cv.getContext?cv.getContext('2d'):null; }catch(e){ ctx=null; }
+    const fit=()=>{ const b=stage.getBoundingClientRect(); cv.width=Math.max(1,b.width); cv.height=Math.max(1,b.height); };
+    fit();
+    function loop(){
+      if(!ctx){ raf=0; return; }
+      ctx.clearRect(0,0,cv.width,cv.height);
+      parts=parts.filter(p=>p.l<p.life);
+      parts.forEach(p=>{ p.l++; p.vy+=0.13; p.x+=p.vx; p.y+=p.vy; const a=Math.max(0,1-p.l/p.life);
+        ctx.globalAlpha=a; ctx.fillStyle=p.c; ctx.shadowColor='#f4c76b'; ctx.shadowBlur=10; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*(0.4+a),0,6.2832); ctx.fill(); });
+      ctx.globalAlpha=1; ctx.shadowBlur=0;
+      raf=parts.length?requestAnimationFrame(loop):0;
+    }
+    function emit(el,n,spd){   // 해당 요소 중심에서 황금빛 입자 폭발
+      if(!ctx||reduce||!stage.getBoundingClientRect) return;
+      const sr=stage.getBoundingClientRect(), er=el.getBoundingClientRect(), x=er.left-sr.left+er.width/2, y=er.top-sr.top+er.height/2;
+      const cols=['#fff6d5','#ffe6a3','#f4c76b','#ffd35a'];
+      for(let i=0;i<n;i++){ const a=Math.random()*6.2832, v=(0.35+Math.random())*spd/10;
+        parts.push({x,y,vx:Math.cos(a)*v*1.6,vy:Math.sin(a)*v*1.6-spd/18,l:0,life:40+Math.random()*50,r:1.6+Math.random()*3.4,c:cols[Math.floor(Math.random()*cols.length)]}); }
+      if(!raf) raf=requestAnimationFrame(loop);
+    }
+    const showCount=n=>{ cnt.innerHTML='<span>'+n+'</span>'; stat.textContent='곧 열립니다… '+n; };
+    function openAll(){
+      cnt.innerHTML='';
+      chests.forEach((c,i)=>{ c.classList.remove('shake','hard','charge'); c.classList.add('open'); c.querySelector('.dr-loot').textContent=chestOf.includes(i)?'💎':'💨'; if(!chestOf.includes(i)) whos[i].textContent='빈 상자'; });
+      stage.insertAdjacentHTML('beforeend','<div class="dr-burst"></div>');
+      const fl=q('.dr-flash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
+      chests.forEach(c=>emit(c,70,80));
+      stat.textContent='✨ 보물상자 3개가 동시에 열렸습니다!';
+      rec.winners.forEach((w,i)=>later(()=>reveal(i),T.open+i*T.reveal));
+      later(finish,T.open+(rec.winners.length-1)*T.reveal+Math.round(T.reveal*0.8));
+    }
+    function reveal(i){
+      const w=rec.winners[i];
+      winEl.querySelectorAll('.dr-wchip').forEach(x=>x.classList.remove('cur'));
+      const chip=document.createElement('div'); chip.className='dr-wchip show cur';
+      chip.innerHTML='<small>'+(i+1)+'번째 당첨자</small><strong>👑 '+esc(w.name)+'</strong>'; winEl.appendChild(chip);
+      const ci=chestOf[i];
+      if(ci>=0){ chests[ci].classList.add('win'); whos[ci].textContent=w.name; whos[ci].classList.add('win'); emit(chests[ci],55,70); }
+      else emit(chests[1],55,70);
+      stat.textContent=(i+1)+' / '+rec.winners.length+'번째 당첨자 공개!';
+    }
+    function finish(){
+      stat.textContent='🎊 추첨 완료 — 당첨 결과가 기록되었습니다: '+rec.winners.map(w=>w.name).join(', ');
+      copyBtn.hidden=false; startBtn.hidden=true; const c2=q('#drClose2'); c2.className='btn gold lg'; c2.textContent='확인';
+    }
+    function start(){
+      if(started) return; started=true; startBtn.disabled=true;
+      const winners=secureShuffle(o.bidders).slice(0,k);      // 결과는 시작 즉시 확정·기록 (닫아도 바뀌지 않음)
+      rec={id:uid(),raidId:o.raidId,lotId:o.lotId,raidTitle:o.raidTitle||'',item:o.item,qty:k,
+        bidders:o.bidders.map(b=>b.name),bidderIds:o.bidders.map(b=>b.id),winners:winners.map(w=>({id:w.id,name:w.name})),at:new Date().toISOString()};
+      S.draws.push(rec); quiet();
+      if(rec.winners.length<=3){ const pos=secureShuffle([0,1,2]); chestOf=rec.winners.map((_,i)=>pos[i]); } else chestOf=rec.winners.map((_,i)=>i<3?i:-1);
+      if(!reduce) chests.forEach(c=>c.classList.add('shake'));
+      showCount(3);
+      later(()=>{ showCount(2); },T.count);
+      later(()=>{ showCount(1); if(!reduce) chests.forEach(c=>c.classList.add('hard')); },T.count*2);
+      later(openAll,T.count*3);
+    }
+    const onKey=e=>{ if(e.key==='Escape'){ e.stopImmediatePropagation(); e.preventDefault(); close(); } };
+    function close(){ timers.forEach(clearTimeout); if(raf) cancelAnimationFrame(raf); window.removeEventListener('keydown',onKey,true); root.innerHTML=''; resolve(rec); }
+    window.addEventListener('keydown',onKey,true);
+    q('.dr-overlay').addEventListener('click',function h(e){
+      const b=e.target.closest('[data-dr]'); if(!b) return;
+      if(b.dataset.dr==='start') start();
+      else if(b.dataset.dr==='close') close();
+      else if(b.dataset.dr==='copy'){
+        const t='['+(o.raidTitle||'레이드')+'] '+o.item+' 당첨자: '+rec.winners.map(w=>w.name).join(', ');
+        (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('당첨 결과를 복사했습니다')).catch(()=>toast(t));
+      }
+    });
+    startBtn.focus();
+  });
+}
+
+/* =====================================================================
+   7-2. 탭 ④ 미판매 재고템
+   - 레이드에서 판매되지 않은 아이템이 이월되는 곳 (어느 레이드에서 남았는지 함께 기록)
+   - 여기서 판매하면 길자금에 수입이 자동으로 기록되고, 출처 레이드가 내역에 남는다
+   ===================================================================== */
+const stockKey=x=>x.name+'|'+(x.from||'')+'|'+(x.from?'':(x.date||''));
+const stockSrc=x=>(x.from||x.fromTitle)?((x.fromTitle||'(제목 없음)')+(x.date?' · '+x.date:'')):'직접 추가';
+function stockGroups(){
+  const m=new Map();
+  S.stock.forEach(x=>{ const k=stockKey(x), g=m.get(k)||{key:k,name:x.name,from:x.from||'',fromTitle:x.fromTitle||'',date:x.date||'',at:x.at||x.date||'',items:[]}; g.items.push(x); m.set(k,g); });
+  return Array.from(m.values()).sort((a,b)=>(a.date<b.date?1:a.date>b.date?-1:(a.name<b.name?-1:1)));
+}
+function viewStock(){
+  const all=stockGroups();
+  const origins=[]; all.forEach(g=>{ if(!origins.some(o=>o.id===(g.from||'__none'))) origins.push({id:g.from||'__none',label:g.from?(g.fromTitle||'(제목 없음)')+' · '+g.date:'직접 추가'}); });
+  const groups=all.filter(g=>!ui.sf||(ui.sf==='__none'?!g.from:g.from===ui.sf));
+  let t;
+  if(!groups.length) t='<div class="empty">'+(S.stock.length?'선택한 출처의 재고템이 없습니다.':'미판매 재고템이 없습니다.<br><span class="small">레이드 정산에서 판매되지 않은 아이템에 "미판매"를 누르면 이곳으로 이월됩니다.</span>')+'</div>';
+  else{
+    t='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:190px"><col style="width:80px"><col><col style="width:120px"><col style="width:190px"></colgroup>'+
+      '<thead><tr><th>아이템</th><th class="num">수량</th><th>출처 레이드 (이월된 곳)</th><th>이월일</th><th></th></tr></thead><tbody>';
+    groups.forEach(g=>{
+      const k=esc(g.key);
+      t+='<tr><td><b>'+esc(g.name)+'</b></td><td class="num">'+g.items.length+'개</td><td class="wrap">'+(g.from||g.fromTitle?'<span class="chip blue">'+esc(g.fromTitle||'(제목 없음)')+'</span> <span class="small muted">'+esc(g.date)+'</span>':'<span class="muted">직접 추가</span>')+'</td>'+
+        '<td class="nowrap">'+esc(g.at)+'</td><td class="act"><button class="btn sm gold" data-act="stockSell" data-key="'+k+'">판매 입력</button><button class="btn ghost sm" data-act="stockDel" data-key="'+k+'">삭제</button></td></tr>';
+    });
+    t+='</tbody><tfoot><tr><td>미판매 재고 합계</td><td class="num">'+groups.reduce((a,g)=>a+g.items.length,0)+'개</td><td></td><td></td><td></td></tr></tfoot></table></div>';
+  }
+  const head=card('coin','미판매 재고템 <span class="chip coin" style="margin-left:8px">'+S.stock.length+'개</span>',
+    '<select data-chg="sfilter" aria-label="출처 레이드"><option value="">모든 출처</option>'+origins.map(o=>'<option value="'+esc(o.id)+'"'+(ui.sf===o.id?' selected':'')+'>'+esc(o.label)+'</option>').join('')+'</select>',
+    '<p class="hint">레이드에서 팔리지 않은 아이템이 이월되는 곳입니다. <b>판매 입력</b>에서 입찰자를 체크하고(필요하면 뽑기) 판매하면 <b>길자금에 수입이 자동으로 기록</b>되며, 어느 레이드에서 남았던 아이템인지 내역에 함께 남습니다.</p>'+t+
+    '<div class="stockadd" style="margin-top:14px;flex-wrap:wrap"><input class="sn" list="dl_income" placeholder="재고템 직접 추가 (아이템 이름)" data-enter="stockAdd"><input class="sq" type="number" min="1" max="50" value="1" title="수량">'+
+    '<select class="ss" aria-label="출처 레이드" style="max-width:220px"><option value="">출처: 직접 추가</option>'+S.raids.slice().sort((a,b)=>a.date<b.date?1:-1).map(r=>'<option value="'+esc(r.id)+'">'+esc((r.title||'(제목 없음)')+' · '+r.date)+'</option>').join('')+'</select><button class="btn" data-act="stockAdd">추가</button></div>');
+  const sales=S.stockSales.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  let sb;
+  if(!sales.length) sb='<div class="empty" style="padding:18px">아직 판매한 재고템이 없습니다.</div>';
+  else sb='<div class="tablewrap"><table class="tbl fixed" style="min-width:820px"><colgroup><col style="width:118px"><col style="width:170px"><col><col style="width:150px"><col style="width:150px"><col style="width:90px"></colgroup>'+
+    '<thead><tr><th>판매일</th><th>아이템</th><th>출처 레이드</th><th>구매자</th><th class="num">판매가</th><th></th></tr></thead><tbody>'+
+    sales.map(x=>'<tr><td class="nowrap">'+esc(x.date)+'</td><td><b>'+esc(x.name)+'</b>'+(x.qty>1?'<span class="chip sm2">×'+x.qty+'</span>':'')+(x.drawId?'<span class="chip sm2 blue">뽑기</span>':'')+'</td>'+
+      '<td class="wrap">'+(x.fromRaid&&S.raids.some(r=>r.id===x.fromRaid)?'<span class="chip link blue" data-act="openRaidFrom" data-id="'+esc(x.fromRaid)+'">'+esc(x.fromTitle||'(제목 없음)')+'</span>':esc(x.fromTitle||'직접 추가'))+' <span class="small muted">'+esc(x.fromDate||'')+'</span></td>'+
+      '<td class="wrap">'+esc(x.buyers.map(b=>b.name).join(', '))+'</td><td class="num pos"><b>+'+fmtM(x.price*x.buyers.length)+'</b>'+(x.buyers.length>1?'<div class="small muted">개당 '+fmtM(x.price)+'</div>':'')+'</td>'+
+      '<td class="act"><button class="btn ghost sm" data-act="stockSaleUndo" data-id="'+esc(x.id)+'" title="판매를 취소하고 재고로 되돌립니다">되돌리기</button></td></tr>').join('')+
+    '</tbody></table></div>';
+  return head+card('green','재고템 판매 내역','<span class="small muted">판매 즉시 길자금 수입으로 자동 기록</span>',sb)+
+    '<datalist id="dl_income">'+S.settings.itemPresets.income.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>';
+}
+
+/* =====================================================================
+   8. 탭 ④ 길드원 관리
+   ===================================================================== */
+function memberStats(){
+  const m={};
+  S.distributions.filter(d=>d.status==='completed').forEach(d=>d.results.forEach(r=>{
+    const s=m[r.memberId]||(m[r.memberId]={sum:0,n:0,last:''}); s.sum+=num(r.total); s.n++; if(d.date>s.last) s.last=d.date;
+  }));
+  return m;
+}
+function classCountHtml(){
+  const c={}; CLASSES.forEach(k=>c[k]=0); let none=0;
+  activeMembers().forEach(m=>{ if(c[m.cls]!==undefined) c[m.cls]++; else none++; });
+  return '<span class="small muted">활동 중 클래스별</span>'+CLASSES.map(k=>'<span>'+classChip(k)+' <b>'+c[k]+'명</b></span>').join('')+(none?'<span>'+classChip('')+' <b>'+none+'명</b></span>':'');
+}
+const classOptions=sel=>'<option value="">미지정</option>'+CLASSES.map(k=>'<option value="'+k+'"'+(sel===k?' selected':'')+'>'+k+'</option>').join('');
+function viewMember(){
+  const act=activeMembers().length;
+  return card('blue','길드원 추가','<span class="small muted">활동 '+act+'명 · 탈퇴 '+(S.members.length-act)+'명</span>',
+    '<div class="form-grid"><div class="field"><label>닉네임</label><input id="mName" data-enter="memAdd" placeholder="닉네임 입력 후 Enter"></div>'+
+    '<div class="field"><label>클래스</label><select id="mCls"><option value="">클래스 선택</option>'+CLASSES.map(k=>'<option value="'+k+'">'+k+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>메모</label><input id="mMemo" data-enter="memAdd"></div>'+
+    '<div class="field"><label>&nbsp;</label><div class="inl"><button class="btn primary" data-act="memAdd">추가</button><button class="btn" data-act="memBulk">여러 명 한 번에</button></div></div></div>'+
+    '<div class="chips" id="clsCount" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);gap:18px;align-items:center">'+classCountHtml()+'</div>')+
+    card('teal','길드원 목록','<select data-chg="ms"><option value="active"'+(ui.ms==='active'?' selected':'')+'>활동 중</option><option value="left"'+(ui.ms==='left'?' selected':'')+'>탈퇴</option><option value="all"'+(ui.ms==='all'?' selected':'')+'>전체</option></select>'+
+      '<select data-chg="mcls"><option value="">모든 클래스</option>'+CLASSES.map(k=>'<option value="'+k+'"'+(ui.mc===k?' selected':'')+'>'+k+'</option>').join('')+'</select>'+
+      '<input type="search" placeholder="닉네임 검색" data-inp="mq" value="'+esc(ui.mq)+'" style="width:160px">','<div id="memTable"></div>');
+}
+function renderMemberTable(){
+  const el=$('#memTable'); if(!el) return;
+  const st=memberStats(); const q=ui.mq.trim().toLowerCase();
+  const list=S.members.filter(m=>(ui.ms==='all'||(ui.ms==='left'?m.status==='left':m.status!=='left'))&&(!ui.mc||m.cls===ui.mc)&&(!q||m.name.toLowerCase().includes(q)));
+  if(!list.length){ el.innerHTML='<div class="empty">표시할 길드원이 없습니다.</div>'; return; }
+  let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:860px"><colgroup><col style="width:50px"><col style="width:170px"><col style="width:130px"><col style="width:110px"><col style="width:170px"><col style="width:140px"><col><col style="width:80px"></colgroup>'+
+    '<thead><tr><th>#</th><th>닉네임</th><th>클래스</th><th>상태</th><th class="num">누적 분배 수령</th><th>최근 분배일</th><th>메모</th><th></th></tr></thead><tbody>';
+  list.forEach((m,i)=>{
+    const s=st[m.id]||{sum:0,n:0,last:''}, id=esc(m.id);
+    h+='<tr class="'+(m.status==='left'?'off':'')+'"><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(m.name)+'" data-chg="memName" data-m="'+id+'"></td>'+
+      '<td><select class="w100" data-chg="memCls" data-m="'+id+'">'+classOptions(m.cls)+'</select></td>'+
+      '<td><select class="w100" data-chg="memStatus" data-m="'+id+'"><option value="active"'+(m.status!=='left'?' selected':'')+'>활동</option><option value="left"'+(m.status==='left'?' selected':'')+'>탈퇴</option></select></td>'+
+      '<td class="num">'+(s.n?fmtM(s.sum)+' <span class="small muted">('+s.n+'회)</span>':'-')+'</td><td class="nowrap">'+(s.last?fmtDate(s.last):'-')+'</td>'+
+      '<td><input class="w100" value="'+esc(m.memo||'')+'" data-chg="memMemo" data-m="'+id+'"></td><td class="act"><button class="btn ghost sm" data-act="memDel" data-id="'+id+'">삭제</button></td></tr>';
+  });
+  el.innerHTML=h+'</tbody></table></div>';
+}
+
+/* =====================================================================
+   8-2. 탭 ⓪ 공지사항 (메인)
+   - 전달 사항 / 길드 회의 내역을 메인에 보여주고, 지난 공지는 History에 보관
+   ===================================================================== */
+const NT={notice:{label:'전달 사항',icon:'📢',color:'blue'},meeting:{label:'길드 회의 내역',icon:'🗒',color:'purple'}};
+const MEETING_TPL='■ 안건\n- \n\n■ 논의 내용\n- \n\n■ 결정 사항\n- \n\n■ 다음 일정\n- ';
+const daysSince=ds=>{ if(!/^\d{4}-\d{2}-\d{2}$/.test(ds||'')) return 9999; const [y,m,d]=ds.split('-').map(Number), t=new Date(); return Math.floor((new Date(t.getFullYear(),t.getMonth(),t.getDate())-new Date(y,m-1,d))/864e5); };
+const noticeSort=(a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.date<b.date?1:a.date>b.date?-1:0)||((b.createdAt||'')<(a.createdAt||'')?-1:1);
+const activeNotices=()=>S.notices.filter(n=>n.status!=='archived').sort(noticeSort);
+const archivedNotices=()=>S.notices.filter(n=>n.status==='archived').sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:((b.archivedAt||'')<(a.archivedAt||'')?-1:1));
+function richText(t){      // 줄바꿈 유지 + http(s) 주소 자동 링크 (HTML은 모두 이스케이프)
+  const re=/https?:\/\/[A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]+/g; let out='', last=0, m;
+  while((m=re.exec(t))){ const u=m[0].replace(/[.,;:!?)]+$/,''); out+=esc(t.slice(last,m.index))+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(u)+'</a>'; last=m.index+u.length; re.lastIndex=last; }
+  return out+esc(t.slice(last));
+}
+const attNames=n=>(n.attendees||[]).map(id=>{ const m=S.members.find(x=>x.id===id); return m?m.name:null; }).filter(Boolean);
+function noticeCardHtml(n){
+  const t=NT[n.type], long=n.body.length>260||n.body.split('\n').length>6, open=ui.nOpen.has(n.id), id=esc(n.id), att=attNames(n), age=daysSince(n.date);
+  return '<article class="ncard c-'+t.color+(n.pinned?' pin':'')+'"><div class="nhead"><span class="chip '+t.color+'">'+t.icon+' '+t.label+'</span>'+
+    (n.pinned?'<span class="chip coin">📌 고정</span>':'')+(age>=0&&age<=3?'<span class="chip in">NEW</span>':'')+'</div>'+
+    '<h3>'+esc(n.title)+'</h3><div class="nmeta"><span>'+(n.type==='meeting'?'회의 일자 ':'작성일 ')+fmtDate(n.date)+'</span>'+(n.author?'<span>작성 '+esc(n.author)+'</span>':'')+'</div>'+
+    (n.body?'<div class="nbody'+(long&&!open?' clamp':'')+'">'+richText(n.body)+'</div>':'')+
+    (long?'<div class="nact" style="justify-content:flex-start;margin-top:4px"><button class="btn link" data-act="noticeToggle" data-id="'+id+'">'+(open?'접기 ▴':'전체 보기 ▾')+'</button></div>':'')+
+    (n.type==='meeting'&&att.length?'<div class="natt"><b>참석 '+att.length+'명</b> · '+esc(att.join(', '))+'</div>':'')+
+    '<div class="nact"><button class="btn sm ghost" data-act="noticeEdit" data-id="'+id+'">수정</button><button class="btn sm" data-act="noticeArchive" data-id="'+id+'" title="현재 공지에서 내리고 History에 보관합니다">History로 보내기</button><button class="btn sm ghost" data-act="noticeDel" data-id="'+id+'">삭제</button></div></article>';
+}
+function noticeSection(type,list){
+  const t=NT[type];
+  return '<section><div class="nsec-h c-'+t.color+'"><span>'+t.icon+' '+t.label+' <span class="chip '+t.color+'" style="margin-left:6px">'+list.length+'</span></span><button class="btn sm ghost" data-act="noticeAdd" data-type="'+type+'">＋ 작성</button></div>'+
+    (list.length?list.map(noticeCardHtml).join(''):'<div class="nempty">현재 게시 중인 '+t.label+'이(가) 없습니다.</div>')+'</section>';
+}
+function viewNotice(){
+  const act=activeNotices(), arc=archivedNotices();
+  const pinned=act.filter(n=>n.pinned), normal=act.filter(n=>!n.pinned);
+  const p=pools(), c=cashPools(), th=S.settings.distThreshold, ready=th>0&&p.bal>=th;
+  const last=S.notices.reduce((m,n)=>{ const u=(n.updatedAt||n.createdAt||'').slice(0,10); return u>m?u:m; },'');
+  const mcnt=S.notices.filter(n=>n.type==='meeting'&&(n.date||'').startsWith(today().slice(0,7))).length;
+  const hero='<div class="nhero"><div><div class="neye">GUILD NOTICE BOARD</div><h2>📢 길드 공지사항</h2><p class="muted">전달 사항과 길드 회의 내역을 한눈에 확인하세요.</p>'+
+    '<div class="chips"><span class="chip">현재 공지 '+act.length+'건</span><span class="chip coin">📌 고정 '+pinned.length+'건</span><span class="chip purple">이번 달 회의 '+mcnt+'건</span><span class="chip">History '+arc.length+'건</span>'+(last?'<span class="chip">최근 업데이트 '+last+'</span>':'')+'</div></div>'+
+    '<div><button class="btn primary lg" data-act="noticeAdd">＋ 공지 작성</button></div></div>';
+  const strip='<div class="nstrip">'+
+    '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>실버 길자금</span><span>→</span></div><div class="v">'+fmtM(p.bal)+'</div></div>'+
+    '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>현금 보유</span><span>→</span></div><div class="v">'+fmtWon(c.bal)+'</div></div>'+
+    '<div class="nstat" data-act="goDist" role="button" tabindex="0"><div class="k"><span>분배</span><span>→</span></div><div class="v '+(ready?'pos':'coin')+'">'+(ready?'분배 가능':'잔액 부족')+'</div></div>'+
+    '<div class="nstat" data-act="goStock" role="button" tabindex="0"><div class="k"><span>미판매 재고템</span><span>→</span></div><div class="v">'+S.stock.length+'개</div></div></div>';
+  const nav='<div class="seg nav"><button type="button" data-act="noticeView" data-v="now" class="'+(ui.nView==='now'?'on':'')+'">📌 현재 공지 ('+act.length+')</button><button type="button" data-act="noticeView" data-v="history" class="'+(ui.nView==='history'?'on':'')+'">📚 History ('+arc.length+')</button></div>';
+  if(ui.nView==='history') return hero+strip+nav+noticeHistoryCard(arc);
+  let b=hero+strip+nav;
+  if(pinned.length) b+='<div class="nsec-h c-coin" style="--c:var(--coin)"><span>📌 고정 공지 <span class="chip coin" style="margin-left:6px">'+pinned.length+'</span></span></div><div class="nsplit" style="margin-bottom:20px">'+pinned.map(noticeCardHtml).join('')+'</div>';
+  b+='<div class="nsplit">'+noticeSection('notice',normal.filter(n=>n.type==='notice'))+noticeSection('meeting',normal.filter(n=>n.type==='meeting'))+'</div>';
+  if(arc.length) b+=card('coin','📚 최근 History','<button class="btn sm" data-act="noticeView" data-v="history">전체 보기 →</button>',
+    '<div class="nrecent">'+arc.slice(0,5).map(n=>'<div class="nrow" data-act="noticeView" data-v="history" role="button" tabindex="0"><span class="nd">'+esc(n.date)+'</span><span class="chip '+NT[n.type].color+'">'+NT[n.type].label+'</span><b>'+esc(n.title)+'</b></div>').join('')+'</div>');
+  return b;
+}
+function noticeHistoryRow(n){
+  const t=NT[n.type], att=attNames(n), id=esc(n.id);
+  return '<details class="nh c-'+t.color+'" data-nid="'+id+'"'+(ui.nOpen.has('h'+n.id)?' open':'')+'><summary><span class="nd">'+esc(n.date)+'</span><span class="chip '+t.color+'">'+t.icon+' '+t.label+'</span><b class="nt">'+esc(n.title)+'</b>'+
+    (n.author?'<span class="small muted">'+esc(n.author)+'</span>':'')+'</summary><div class="ni">'+
+    '<div class="nmeta" style="margin-top:10px"><span>'+(n.type==='meeting'?'회의 일자 ':'작성일 ')+fmtDate(n.date)+'</span>'+(n.archivedAt?'<span>보관일 '+esc(n.archivedAt)+'</span>':'')+'</div>'+
+    (n.body?'<div class="nbody">'+richText(n.body)+'</div>':'<div class="nbody muted">(내용 없음)</div>')+
+    (n.type==='meeting'&&att.length?'<div class="natt"><b>참석 '+att.length+'명</b> · '+esc(att.join(', '))+'</div>':'')+
+    '<div class="nact"><button class="btn sm" data-act="noticeRestore" data-id="'+id+'">다시 게시</button><button class="btn sm ghost" data-act="noticeEdit" data-id="'+id+'">수정</button><button class="btn sm ghost" data-act="noticeDel" data-id="'+id+'">삭제</button></div></div></details>';
+}
+function noticeHistoryListHtml(){
+  const f=ui.nf, q=f.q.trim().toLowerCase();
+  const list=archivedNotices().filter(n=>(!f.type||n.type===f.type)&&(!f.month||n.date.startsWith(f.month))&&(!q||(n.title+' '+n.body+' '+(n.author||'')).toLowerCase().includes(q)));
+  if(!archivedNotices().length) return '<div class="nempty">아직 History에 보관된 공지가 없습니다.<br><span class="small">현재 공지에서 "History로 보내기"를 누르면 이곳에 날짜순으로 쌓입니다.</span></div>';
+  if(!list.length) return '<div class="nempty">조건에 맞는 공지가 없습니다.</div>';
+  let h='<p class="small muted" style="margin:0 0 4px">'+list.length+'건 · 전달 사항 '+list.filter(n=>n.type==='notice').length+' · 길드 회의 '+list.filter(n=>n.type==='meeting').length+'</p>', cur='';
+  list.forEach(n=>{ const m=n.date.slice(0,7); if(m!==cur){ cur=m; h+='<div class="nmonth">'+m.replace('-','년 ')+'월 <span class="small muted" style="font-weight:500">'+list.filter(x=>x.date.startsWith(m)).length+'건</span></div>'; } h+=noticeHistoryRow(n); });
+  return h;
+}
+function noticeHistoryCard(arc){
+  const months=Array.from(new Set(arc.map(n=>n.date.slice(0,7)))).sort().reverse();
+  return card('coin','📚 공지 History','<select data-chg="nfType" aria-label="구분"><option value="">전체 구분</option><option value="notice"'+(ui.nf.type==='notice'?' selected':'')+'>📢 전달 사항</option><option value="meeting"'+(ui.nf.type==='meeting'?' selected':'')+'>🗒 길드 회의 내역</option></select>'+
+    '<select data-chg="nfMonth" aria-label="기간"><option value="">전체 기간</option>'+months.map(m=>'<option value="'+m+'"'+(ui.nf.month===m?' selected':'')+'>'+m.replace('-','년 ')+'월</option>').join('')+'</select>'+
+    '<input type="search" placeholder="제목/내용 검색" data-inp="nfq" value="'+esc(ui.nf.q)+'" style="width:170px">',
+    '<p class="hint">현재 공지에서 내린 공지가 날짜순으로 저장됩니다. 제목을 누르면 내용이 펼쳐지고, <b>다시 게시</b>로 현재 공지에 되돌릴 수 있습니다.</p><div id="nhList">'+noticeHistoryListHtml()+'</div>');
+}
+function renderNoticeHist(){ const el=$('#nhList'); if(el){ el.innerHTML=noticeHistoryListHtml(); applyLock(); } }
+// 작성/수정 창
+function openNoticeModal(n,defType){
+  const isNew=!n; const lastAuthor=(S.notices.slice().sort((a,b)=>(b.createdAt||'')<(a.createdAt||'')?-1:1).find(x=>x.author)||{}).author||'';
+  n=n||{type:defType||'notice',title:'',body:'',date:today(),author:lastAuthor,pinned:false,attendees:[]};
+  const members=activeMembers();
+  const body='<div class="field"><label>구분</label><div class="seg nt-type"><button type="button" data-nt="notice" class="'+(n.type==='notice'?'on':'')+'">📢 전달 사항</button><button type="button" data-nt="meeting" class="'+(n.type==='meeting'?'on':'')+'">🗒 길드 회의 내역</button></div></div>'+
+    '<div class="form-grid"><div class="field" style="grid-column:span 2"><label>제목</label><input id="nTitle" maxlength="80" placeholder="예: 이번 주 레이드 일정 안내" value="'+esc(n.title)+'"></div>'+
+    '<div class="field"><label id="nDateLbl">'+(n.type==='meeting'?'회의 일자':'작성일')+'</label><input type="date" id="nDate" value="'+esc(n.date)+'"></div></div>'+
+    '<div class="form-grid" style="margin-top:12px"><div class="field"><label>작성자</label><input id="nAuthor" maxlength="30" placeholder="예: 길드마스터" value="'+esc(n.author||'')+'"></div>'+
+    '<div class="field"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="nPin"'+(n.pinned?' checked':'')+'> 📌 상단에 고정</label></div></div>'+
+    '<div class="field" style="margin-top:12px"><label>내용 <span id="nCnt" class="muted"></span></label><textarea id="nBody" rows="10" maxlength="6000" placeholder="전달할 내용을 입력하세요. 줄바꿈은 그대로 표시되고, http:// 주소는 자동으로 링크가 됩니다.">'+esc(n.body)+'</textarea></div>'+
+    '<div class="field" id="nAtt" style="'+(n.type==='meeting'?'':'display:none')+'"><label>참석자 <span id="nAttCnt" class="coin"></span></label><div class="bdtools"><button type="button" class="btn sm" data-q="all">전체 선택</button><button type="button" class="btn sm" data-q="none">전체 해제</button></div>'+
+    '<div class="biddergrid">'+members.map(m=>'<label class="bd"><input type="checkbox" data-att="'+esc(m.id)+'"'+((n.attendees||[]).includes(m.id)?' checked':'')+'><span>'+esc(m.name)+'</span>'+(m.cls?classChip(m.cls,true):'')+'</label>').join('')+'</div></div>';
+  return modal({title:isNew?'공지 작성':'공지 수정',wide:true,ok:isNew?'등록':'저장',body,
+    onOpen(root){
+      const scope=root.querySelector('.mbody'); let type=n.type;
+      const cnt=()=>{ root.querySelector('#nCnt').textContent='('+root.querySelector('#nBody').value.length+'/6000)'; root.querySelector('#nAttCnt').textContent='('+root.querySelectorAll('[data-att]:checked').length+'/'+members.length+'명)'; };
+      scope.addEventListener('click',e=>{
+        const b=e.target.closest('[data-nt]');
+        if(b){ type=b.dataset.nt; scope.querySelectorAll('[data-nt]').forEach(x=>x.classList.toggle('on',x===b));
+          root.querySelector('#nDateLbl').textContent=type==='meeting'?'회의 일자':'작성일'; root.querySelector('#nAtt').style.display=type==='meeting'?'':'none';
+          const ta=root.querySelector('#nBody'); if(type==='meeting'&&!ta.value.trim()) ta.value=MEETING_TPL; else if(type==='notice'&&ta.value===MEETING_TPL) ta.value=''; cnt(); return; }
+        const q=e.target.closest('[data-q]'); if(q){ root.querySelectorAll('[data-att]').forEach(cb=>{ cb.checked=q.dataset.q==='all'; }); cnt(); }
+      });
+      scope.addEventListener('input',cnt); scope.addEventListener('change',cnt);
+      if(isNew&&n.type==='meeting'&&!root.querySelector('#nBody').value.trim()) root.querySelector('#nBody').value=MEETING_TPL;
+      cnt();
+      root.querySelector('#nTitle').focus();
+    },
+    onOk(root){
+      const title=root.querySelector('#nTitle').value.trim(), date=root.querySelector('#nDate').value;
+      const type=root.querySelector('[data-nt].on').dataset.nt;
+      if(!title){ toast('제목을 입력하세요'); root.querySelector('#nTitle').focus(); return false; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('날짜를 선택하세요'); return false; }
+      return {type,title,date,author:root.querySelector('#nAuthor').value.trim(),pinned:root.querySelector('#nPin').checked,body:root.querySelector('#nBody').value.replace(/\s+$/,''),
+        attendees:type==='meeting'?Array.from(root.querySelectorAll('[data-att]:checked')).map(cb=>cb.dataset.att):[]};
+    }});
+}
+
+/* =====================================================================
+   9. 동작(클릭) 핸들러  data-act="이름"
+   ===================================================================== */
+const A={};
+A.adminAuth=async()=>{
+  if(ui.admin) return toast('이미 관리자 모드입니다');
+  const res=await modal({title:'🔒 관리자 인증',ok:'인증',body:'<p class="hint" style="margin-top:0">입력·수정·삭제·JSON 백업/복구·초기화를 하려면 관리자 비밀번호가 필요합니다. 인증은 30분간 활동이 없으면 자동으로 해제됩니다.</p><div class="field"><label>비밀번호</label><input type="password" id="admPw" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력"></div>',
+    onOpen(root){ root.querySelector('#admPw').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); root.querySelector('[data-m=ok]').click(); } }); },
+    onOk(root){
+      const now=Date.now();
+      if(now<ui.authBlock){ toast('시도 횟수를 초과했습니다. '+Math.ceil((ui.authBlock-now)/1000)+'초 후 다시 시도하세요'); return false; }
+      const pw=root.querySelector('#admPw').value;
+      if(sha256(ADMIN_SALT+pw)===ADMIN_HASH){ ui.authFail=0; return true; }
+      ui.authFail++; if(ui.authFail>=5){ ui.authBlock=now+30000; ui.authFail=0; toast('비밀번호가 5회 틀렸습니다. 30초 후 다시 시도하세요'); }
+      else toast('비밀번호가 올바르지 않습니다 ('+(5-ui.authFail)+'회 남음)');
+      root.querySelector('#admPw').value=''; return false;
+    }});
+  if(res!==true) return;
+  setAdmin(true); render(); toast('🔓 관리자 인증 완료');
+};
+A.adminLogout=()=>{ setAdmin(false); render(); toast('관리자 모드를 해제했습니다 (읽기 전용)'); };
+A.hammerSet=async()=>{
+  const res=await modal({title:'망치질 관리 링크 설정',ok:'저장',body:'<div class="field"><label>이전에 만든 "R2 온라인 캐쉬 아이템 잔여 시간" 페이지 주소</label><input id="hmUrl" value="'+esc(S.settings.hammerUrl)+'" placeholder="https://..."></div><p class="hint" style="margin-bottom:0">맨 위 "망치질 관리" 탭을 누르면 이 주소가 새 탭에서 열립니다.</p>',
+    onOk(root){ const v=root.querySelector('#hmUrl').value.trim(); if(!/^https?:\/\/\S+$/i.test(v)){ toast('http:// 또는 https:// 로 시작하는 주소를 입력하세요'); return false; } return v; }});
+  if(!res||res===true) return; S.settings.hammerUrl=res; commit(); toast('링크를 저장했습니다');
+};
+A.tab=el=>{ ui.tab=el.dataset.tab; render(); window.scrollTo(0,0); };
+A.goDist=()=>{ ui.tab='dist'; render(); window.scrollTo(0,0); };
+A.goDistHist=()=>{ ui.tab='dist'; ui.distView='history'; render(); window.scrollTo(0,document.body.scrollHeight); };
+A.distView=el=>{ ui.distView=ui.distView===el.dataset.v?'':el.dataset.v; render(); };
+A.goLedger=()=>{ ui.tab='ledger'; render(); window.scrollTo(0,0); };
+A.openRaidFrom=el=>{ if(S.raids.some(r=>r.id===el.dataset.id)){ ui.tab='raid'; ui.raidId=el.dataset.id; render(); window.scrollTo(0,0);} };
+
+/* --- 길자금 입출금 --- */
+A.lType=el=>{
+  const f=el.closest('.ledform'); if(!f) return;
+  f.querySelector('#lType').value=el.dataset.v;
+  f.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b===el));
+  f.querySelectorAll('.catchips').forEach(c=>{ c.hidden=c.dataset.for!==el.dataset.v; });
+};
+A.catPick=el=>{ const f=el.closest('.ledform'); if(f) f.querySelector('#lCat').value=el.dataset.v; };
+A.amtAdd=el=>{ const f=el.closest('.ledform'), i=f.querySelector('#lAmt'); i.value=fmtInputVal(Math.round(num(i.value))+Number(el.dataset.v)); moneyHint(i); };
+A.amtClear=el=>{ const f=el.closest('.ledform'), i=f.querySelector('#lAmt'); i.value=''; moneyHint(i); i.focus(); };
+A.ledAdd=()=>{
+  const v=readLedgerForm($('#ledForm')); if(!v) return;
+  S.ledger.push(Object.assign({id:uid()},v));
+  commit(); toast('내역을 추가했습니다');
+};
+A.ledEdit=async el=>{
+  const e=S.ledger.find(x=>x.id===el.dataset.id); if(!e) return;
+  const res=await modal({title:'내역 수정',wide:true,body:ledgerFormHtml(e),ok:'수정 저장',onOk(root){ const v=readLedgerForm(root); return v||false; }});
+  if(!res||res===true) return;
+  Object.assign(e,res); commit(); toast('수정했습니다');
+};
+A.ledDel=async el=>{
+  const e=S.ledger.find(x=>x.id===el.dataset.id); if(!e) return;
+  if(!await confirmBox(fmtDate(e.date)+' '+e.category+' '+fmtM(e.amount)+' 내역을 삭제할까요?',{ok:'삭제',danger:true})) return;
+  S.ledger=S.ledger.filter(x=>x!==e); commit(); toast('삭제했습니다');
+};
+A.monthPick=el=>{ ui.lf.month=ui.lf.month===el.dataset.m?'':el.dataset.m; render(); const t=$('#ledDetail'); if(t&&t.scrollIntoView) t.scrollIntoView({behavior:'smooth',block:'start'}); };
+
+/* --- 분배 Rule --- */
+A.compAdd=()=>{ const t=$('#newCompType').value; S.rule.components.push(Object.assign({id:uid(),enabled:true},NEW_COMP[t]())); commit(); };
+A.ratioAdd=()=>{ const t=$('#newRatioType').value, rest=Math.max(0,r2(100-ratioSum())); S.rule.components.push(Object.assign({id:uid(),enabled:true},NEW_COMP[t](),{pct:rest})); commit(); toast('비율 항목을 추가했습니다 (남은 '+rest+'% 적용)'); };
+A.compDel=async el=>{
+  const c=compById(el.dataset.comp); if(!c) return;
+  if(!await confirmBox('"'+c.name+'" 항목을 삭제할까요?',{ok:'삭제',danger:true})) return;
+  S.rule.components=S.rule.components.filter(x=>x!==c); commit();
+};
+
+/* --- 분배 진행 --- */
+A.joinAll=()=>{ const d=draftDist(); d.rows.forEach(r=>r.join=true); commit(); };
+A.joinNone=()=>{ const d=draftDist(); d.rows.forEach(r=>r.join=false); commit(); };
+A.countReset=()=>{ const d=draftDist(); d.rows.forEach(r=>r.count=0); commit(); };
+A.distReset=async()=>{
+  if(!await confirmBox('입력한 참여 여부, 모니터링 횟수, 포상 금액을 모두 처음 상태로 되돌립니다.',{ok:'초기화'})) return;
+  S.distributions=S.distributions.filter(d=>d.status!=='draft'); commit();
+};
+A.distDone=async()=>{
+  const d=draftDist(); if(!d) return;
+  const title=(d.title||'').trim();
+  if(!title){ toast('분배 제목을 입력하세요 (예: 이프 3마리 레이드 정산)'); const ti=$('#dTitleIn'); if(ti) ti.focus(); return; }
+  const pool=Math.round(num(S.settings.distThreshold)), p=pools(), res=calcDist(pool,S.rule,d.rows);
+  const errs=res.errors.slice();
+  if(pool<=0) errs.push('분배 RULE에서 분배 기준 금액을 입력하세요.');
+  else if(pool>p.bal) errs.push('길자금 잔액이 분배 기준 금액보다 적어 분배할 수 없습니다.');
+  else if(res.totalPayout>p.bal) errs.push('총 지급액이 길자금 잔액보다 많아 분배할 수 없습니다.');
+  if(errs.length) return toast(errs[0]);
+  let msg='"'+title+'"\n'+fmtDate(d.date)+' 분배를 완료합니다.\n\n· 참여 '+res.n+'명'+(res.bonusTotal?' · 포상 '+fmtM(res.bonusTotal):'')+(res.retained?'\n· 길드자금 적립 '+fmtM(res.retained)+' (지급하지 않고 길자금에 남음)':'')+'\n· 총 지급 '+fmtM(res.totalPayout)+' (길자금 지출로 기록)\n· 분배 후 길자금 잔액 '+fmtM(p.bal-res.totalPayout);
+  if(!await confirmBox(msg,{ok:'분배 완료',title:'분배를 완료할까요?'})) return;
+  const lid=uid(), nameOf=id=>(S.members.find(m=>m.id===id)||{}).name||'(삭제됨)';
+  d.title=title; d.status='completed'; d.completedAt=new Date().toISOString(); d.ledgerId=lid; d.unitSnap=S.rule.roundUnit; d.poolAmount=pool;
+  d.compsSnap=S.rule.components.filter(c=>c.enabled).map(c=>JSON.parse(JSON.stringify(c)));
+  d.compInfo={}; res.comps.forEach(c=>{ const inf=res.info[c.id]; if(!inf) return; if(inf.per!==undefined) d.compInfo[c.id]={per:inf.per,totalCount:inf.totalCount}; if(inf.retained!==undefined) d.compInfo[c.id]={retained:Math.round(inf.retained)}; });
+  d.summary={totalPayout:res.totalPayout,overage:res.overage,leftover:res.leftover,retained:res.retained,n:res.n};
+  d.results=res.persons.filter(o=>o.join||o.total>0).map(o=>({memberId:o.memberId,name:nameOf(o.memberId),count:o.count,parts:o.parts,total:o.total,paid:false}));
+  S.ledger.push({id:lid,date:d.date,type:'expense',category:title,amount:res.totalPayout,
+    memo:'길자금 분배 · '+d.results.length+'명'+(res.bonusTotal?' (포상 '+fmtM(res.bonusTotal)+' 포함)':'')+(res.retained?' · 길드자금 적립 '+fmtM(res.retained):''),ref:{kind:'distribution',id:d.id}});
+  ui.open.add(d.id);
+  commit(); toast('분배를 완료하고 '+fmtDate(d.date)+' 지출로 기록했습니다');
+};
+A.distCancel=async el=>{
+  const d=S.distributions.find(x=>x.id===el.dataset.id); if(!d) return;
+  const dr=draftDist();
+  if(dr&&!draftBlank(dr)) return toast('입력 중인 분배표가 있습니다. 먼저 완료하거나 "입력 초기화"를 누르세요');
+  if(!await confirmBox(fmtDate(d.date)+' 분배를 취소하고 입력 중 상태로 되돌립니다.\n길자금 지출 내역도 함께 삭제됩니다.',{ok:'분배 취소',danger:true})) return;
+  if(dr) S.distributions=S.distributions.filter(x=>x!==dr);
+  S.ledger=S.ledger.filter(e=>e.id!==d.ledgerId);
+  d.status='draft'; ['results','summary','ledgerId','compsSnap','compInfo','completedAt'].forEach(k=>{ delete d[k]; });
+  syncDraft(d); commit(); toast('입력 중 상태로 되돌렸습니다');
+};
+A.togglePaid=el=>{
+  const d=S.distributions.find(x=>x.id===el.dataset.d), r=d&&d.results.find(x=>x.memberId===el.dataset.m);
+  if(r){ r.paid=!r.paid; commit(); }
+};
+
+/* --- 레이드 정산 --- */
+const mkStock=(name,r)=>({id:uid(),name,from:r?r.id:'',fromTitle:r?(r.title||''):'',date:r?r.date:today(),at:today()});
+const newLot=(name,qty)=>({id:uid(),name,qty,state:'wait',price:0,buyers:[],bidders:[]});
+A.raidNew=async()=>{
+  const res=await modal({title:'새 레이드 정산',body:'<div class="field"><label>레이드 날짜</label><input type="date" id="nrDate" value="'+today()+'"></div><div class="field"><label>이름</label><input id="nrTitle" placeholder="예: 메테 3마리"></div>',ok:'만들기',
+    onOk(root){ const date=root.querySelector('#nrDate').value; if(!date){ toast('날짜를 선택하세요'); return false; } return {date,title:root.querySelector('#nrTitle').value.trim()}; }});
+  if(!res||res===true) return;
+  const r={id:uid(),date:res.date,title:res.title,status:'draft',lots:[],expenses:[]};
+  S.raids.push(r); ui.raidId=r.id; commit();
+};
+A.raidOpen=el=>{ ui.raidId=el.dataset.id; render(); window.scrollTo(0,0); };
+A.raidBack=()=>{ ui.raidId=null; render(); };
+A.raidDel=async el=>{
+  const r=S.raids.find(x=>x.id===el.dataset.id); if(!r) return;
+  const done=r.status==='completed';
+  if(!await confirmBox('"'+(r.title||'레이드')+'" 정산을 삭제할까요?'+(done?'\n길자금에 기록된 정산금 내역도 함께 삭제됩니다.':''),{ok:'삭제',danger:true})) return;
+  if(done) S.ledger=S.ledger.filter(e=>e.id!==r.ledgerId);
+  S.raids=S.raids.filter(x=>x!==r); commit();
+};
+A.lotAdd=el=>{
+  const r=curRaid(); if(!r||r.status==='completed') return;
+  const box=el.closest('.lotadd'), nm=box.querySelector('.ln'), name=nm.value.trim();
+  if(!name) return nm.focus();
+  const q=clamp(Math.round(num(box.querySelector('.lq').value))||1,1,50);
+  r.lots.push(newLot(name,q)); ui.focusFk='lotname'; commit(); toast(name+' ×'+q+' 등록했습니다');
+};
+A.lotAddPreset=el=>{ const r=curRaid(); if(!r) return; r.lots.push(newLot(el.dataset.name,1)); commit(); };
+async function saleFlow(r,lot){
+  const res=await openSaleModal(r,lot); if(!res||res===true) return;
+  lot.price=res.price; lot.buyers=res.buyers; lot.bidders=res.bidders; lot.drawId=res.drawId; lot.state='sold'; lot.soldDate=today();
+  const rem=lot.qty-res.buyers.length;
+  if(rem>0){ for(let i=0;i<rem;i++) S.stock.push(mkStock(lot.name,r)); lot.qty=res.buyers.length; }
+  commit(); toast(lot.name+' 판매 입력 완료 · '+fmtM(lotTotal(lot))+(rem>0?' · 남은 '+rem+'개는 미판매 재고로 이월':''));
+}
+A.lotSell=el=>{ const r=curRaid(), l=r&&r.lots.find(x=>x.id===el.dataset.id); if(l) saleFlow(r,l); };
+A.lotUnsold=el=>{
+  const r=curRaid(), l=r&&r.lots.find(x=>x.id===el.dataset.id); if(!l) return;
+  for(let i=0;i<l.qty;i++) S.stock.push(mkStock(l.name,r));
+  r.lots=r.lots.filter(x=>x!==l); commit(); toast(l.name+' '+l.qty+'개를 미판매 재고템 탭으로 이월했습니다');
+};
+A.lotUndo=async el=>{
+  const r=curRaid(), l=r&&r.lots.find(x=>x.id===el.dataset.id); if(!l) return;
+  if(!await confirmBox('"'+l.name+'" 판매를 취소하고 판매 대기로 되돌릴까요?',{ok:'판매 취소'})) return;
+  l.state='wait'; l.price=0; l.buyers=[]; commit();
+};
+A.lotDel=async el=>{
+  const r=curRaid(), l=r&&r.lots.find(x=>x.id===el.dataset.id); if(!l) return;
+  if(!await confirmBox('"'+l.name+'" 등록을 삭제할까요?\n(판매되지 않았다면 "미판매" 버튼으로 재고에 이월할 수 있습니다)',{ok:'삭제',danger:true})) return;
+  r.lots=r.lots.filter(x=>x!==l); commit();
+};
+A.expAdd=el=>{
+  const r=curRaid(), box=el.closest('.expadd'), en=box.querySelector('.en'), ea=box.querySelector('.ea');
+  const name=en.value.trim(), price=Math.round(num(ea.value)), date=box.querySelector('.ed').value;
+  if(!name) return en.focus();
+  if(!(price>0)){ toast('금액을 입력하세요 (만 실버 단위)'); return ea.focus(); }
+  r.expenses.push({id:uid(),name,price,note:box.querySelector('.eb').value.trim(),date:/^\d{4}-\d{2}-\d{2}$/.test(date)?date:today()});
+  commit(); toast('지출 '+fmtM(price)+'을 추가했습니다');
+};
+A.expDel=el=>{ const r=curRaid(); r.expenses=r.expenses.filter(x=>x.id!==el.dataset.id); commit(); };
+A.raidComplete=async()=>{
+  const r=curRaid(); if(!r||r.status==='completed') return;
+  const t=raidTotals(r), wait=r.lots.filter(l=>!lotSold(l));
+  if(!r.lots.some(lotSold)&&!r.expenses.length) return toast('판매 완료된 아이템이나 지출 내역이 없습니다');
+  if(t.net===0) return toast('정산금이 0입니다. 판매 수입과 지출을 확인하세요');
+  const waitQty=wait.reduce((a,l)=>a+l.qty,0);
+  const res=await modal({title:'판매 완료 → 길자금 수입',ok:'길자금에 반영',
+    body:'<div class="eq" style="margin:0 0 14px"><div class="eqb in"><span>판매 수입</span><b>'+fmtM(t.inc)+'</b></div><div class="op">−</div><div class="eqb out"><span>지출</span><b>'+fmtM(t.exp)+'</b></div></div>'+
+      '<p style="margin-top:0">정산금 <b>'+fmtM(t.net)+'</b> 실버를 길자금 '+(t.net>0?'수입':'지출')+' <b>1건</b>으로 기록합니다.</p>'+
+      (waitQty?'<div class="notice warn" style="margin:0 0 12px">판매 대기 중인 아이템 '+waitQty+'개는 <b>미판매 재고템으로 이월</b>됩니다.</div>':'')+
+      '<div class="field"><label>길자금 반영일</label><input type="date" id="cDate" value="'+today()+'"></div>',
+    onOk(root){ const date=root.querySelector('#cDate').value; if(!date){ toast('반영일을 선택하세요'); return false; } return {date}; }});
+  if(!res||res===true) return;
+  r.carried=[]; wait.forEach(l=>{ for(let i=0;i<l.qty;i++){ const x=mkStock(l.name,r); S.stock.push(x); r.carried.push(x.id); } });
+  r.lots=r.lots.filter(lotSold);
+  const lid=uid();
+  S.ledger.push({id:lid,date:res.date,type:t.net>0?'income':'expense',category:'레이드 정산',amount:Math.abs(t.net),
+    memo:(r.title||'레이드')+' · 판매 수입 '+fmtM(t.inc)+' − 지출 '+fmtM(t.exp),ref:{kind:'raid',id:r.id}});
+  r.status='completed'; r.ledgerId=lid; r.snap={date:res.date,net:t.net,inc:t.inc,exp:t.exp};
+  commit(); toast('길자금에 반영했습니다 · 정산금 '+fmtM(t.net)+(waitQty?' · 재고 '+waitQty+'개 이월':''));
+};
+A.raidUncomplete=async()=>{
+  const r=curRaid(); if(!r||r.status!=='completed') return;
+  const rest=S.ledger.filter(e=>e.id!==r.ledgerId);
+  let bal=0; rest.forEach(e=>{ bal+=e.type==='income'?num(e.amount):-num(e.amount); });
+  if(bal<0) return toast('이미 분배 등으로 사용된 금액이 있어 취소할 수 없습니다. 먼저 해당 분배를 취소하세요');
+  if(!await confirmBox('완료를 취소하면 길자금에 기록된 정산금 내역이 삭제되고 다시 수정할 수 있게 됩니다.\n이월했던 재고템은 판매 대기로 되돌아옵니다.',{ok:'완료 취소',danger:true})) return;
+  S.ledger=rest;
+  const back=new Map();
+  (r.carried||[]).forEach(id=>{ const i=S.stock.findIndex(x=>x.id===id); if(i>=0){ const x=S.stock.splice(i,1)[0]; back.set(x.name,(back.get(x.name)||0)+1); } });
+  back.forEach((q,name)=>r.lots.push(newLot(name,q)));
+  r.carried=[]; r.status='draft'; delete r.snap; delete r.ledgerId; commit();
+};
+A.raidPaste=async()=>{
+  const r=curRaid();
+  const res=await modal({title:'빠른 입력(붙여넣기)',wide:true,ok:'정리해서 추가',body:
+    '<p class="hint">한 줄에 한 건씩 <b>품목 금액 구매자</b> 순서로 붙여넣으세요. 금액은 <b>만 실버</b> 단위이며, <b>판매 완료된 아이템</b>으로 바로 등록됩니다. 구매자 이름이 길드원과 같으면 자동으로 연결됩니다.<br>지출은 줄 맨 앞에 "지출 " 또는 "-"를 붙이거나 금액을 마이너스로 쓰면 됩니다 (기본 지출 품목은 자동 인식).</p>'+
+    '<textarea id="pasteTx" rows="9" placeholder="롱쉴드 5000 와꾸&#10;거친 50000 마린&#10;봉줌 1층 10000"></textarea>',
+    onOk(root){ const v=root.querySelector('#pasteTx').value; if(!v.trim()){ toast('내용을 입력하세요'); return false; } return v; }});
+  if(!res||res===true) return;
+  const out=parsePaste(res,r); commit();
+  toast(out.added+'건을 추가했습니다'+(out.bad.length?' · 인식하지 못한 줄 '+out.bad.length+'개: "'+out.bad[0]+'"':''));
+};
+A.presetsEdit=async()=>{
+  const P=S.settings.itemPresets;
+  const res=await modal({title:'기본 품목 설정',wide:true,ok:'저장',body:'<p class="hint">줄바꿈으로 구분합니다. 판매 아이템 빠른 등록 칩과 지출 항목 자동완성에 쓰입니다.</p>'+
+    '<div class="field"><label>레이드 아이템 품목</label><textarea id="pIn" rows="7">'+esc(P.income.join('\n'))+'</textarea></div>'+
+    '<div class="field"><label>지출 품목</label><textarea id="pOut" rows="4">'+esc(P.expense.join('\n'))+'</textarea></div>',
+    onOk(root){ const f=id=>root.querySelector(id).value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); return {income:f('#pIn'),expense:f('#pOut')}; }});
+  if(!res||res===true) return; S.settings.itemPresets=res; commit(); toast('저장했습니다');
+};
+
+/* --- 클라우드 --- */
+A.cloudOpen=async()=>{
+  const on=Cloud.enabled, embedded=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId);
+  const stText={local:'미설정 (이 브라우저에만 저장)',loading:'연결 중…',online:'연결됨 · 실시간 동기화',saving:'저장 중…',offline:'오프라인 (연결되면 자동 동기화)',error:'오류 — '+Cloud.err,sdkfail:'연결 실패 (인터넷 확인)'}[Cloud.state];
+  let b='<div class="sumbox" style="margin:0 0 14px"><div><span class="k">상태</span><span class="v" style="font-size:14px">'+esc(stText)+'</span></div>'+
+    '<div><span class="k">프로젝트</span><span class="v" style="font-size:14px">'+esc(on?Cloud.cfg.projectId:'-')+'</span></div>'+
+    '<div><span class="k">저장 권한</span><span class="v" style="font-size:14px">'+(ui.admin?'관리자 모드':'읽기 전용 (화면 잠금)')+'</span></div></div>';
+  if(!on) b+='<p class="hint">아직 Firebase가 연결되지 않았습니다. 가이드대로 만든 <b>웹앱 설정값(firebaseConfig)</b>을 붙여넣으세요. (파일 상단 <code>FIREBASE_CONFIG</code>에 직접 붙여넣으면 모든 길드원에게 적용됩니다)</p>'+
+    (ui.admin?'<div class="field"><label>firebaseConfig 붙여넣기</label><textarea id="clCfg" rows="7" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  authDomain: &quot;...&quot;,&#10;  projectId: &quot;...&quot;,&#10;  appId: &quot;...&quot;&#10;};"></textarea></div><button type="button" class="btn primary" data-cl="save">저장하고 연결</button>':'<div class="notice warn">관리자 인증 후 이 브라우저에 설정값을 저장할 수 있습니다.</div>');
+  else{
+    b+='<div class="toolbar" style="margin:0 0 12px">'+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록 보기</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">이 브라우저의 연결 설정 삭제</button>':'')+'</div>';
+    if(Cloud.empty&&!ui.admin) b+='<div class="notice warn">클라우드가 비어 있습니다. 관리자 인증 후 올릴 수 있습니다.</div>';
+    b+='<div class="notice">ℹ 이 앱은 로그인 없이 동작합니다. 입력 잠금(관리자 인증)은 <b>화면에서만</b> 작동하므로, 주소를 아는 사람이 서버에 직접 쓰는 것까지 막지는 못합니다. 정기적으로 JSON 백업을 받아 두세요.</div><div id="clLogs"></div>';
+  }
+  await modal({title:'☁ 클라우드 연동',wide:true,hideCancel:true,ok:'닫기',body:b,onOpen(root){
+    root.querySelector('.mbody').addEventListener('click',async e=>{
+      const t=e.target.closest('[data-cl]'); if(!t) return; const k=t.dataset.cl;
+      if(k==='save'){
+        try{ const c=parseFbConfig(root.querySelector('#clCfg').value);
+          localStorage.setItem('r2_guild_fb_config',JSON.stringify(c)); toast('저장했습니다. 페이지를 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
+        catch(err){ toast('설정값 오류: '+err.message); }
+      } else if(k==='clear'){ localStorage.removeItem('r2_guild_fb_config'); toast('설정을 삭제했습니다. 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
+      else if(k==='upload'){
+        if(!ui.admin) return toast('관리자 인증이 필요합니다');
+        t.disabled=true; Cloud.localDirty=true; await cloudPush(); toast('클라우드에 올렸습니다'); root.querySelector('#clLogs').textContent='';
+      } else if(k==='logs'){
+        const box=root.querySelector('#clLogs'); box.textContent='불러오는 중…';
+        try{ const rows=await cloudLogs(); box.innerHTML=rows.length?'<div class="tablewrap"><table class="tbl fixed" style="min-width:0"><colgroup><col style="width:140px"><col></colgroup><thead><tr><th>일시</th><th>내용</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="nowrap">'+esc(fmtTs(r.at))+'</td><td class="wrap">'+esc(r.text||'')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">기록이 없습니다.</div>'; }
+        catch(err){ box.innerHTML='<div class="notice bad">기록을 불러오지 못했습니다: '+esc(cloudErr(err))+'</div>'; }
+      }
+    });
+  }});
+};
+
+/* --- 공지사항 --- */
+A.goNotice=()=>{ ui.tab='notice'; render(); window.scrollTo(0,0); };
+A.noticeView=el=>{ ui.nView=el.dataset.v; render(); };
+A.noticeToggle=el=>{ if(ui.nOpen.has(el.dataset.id)) ui.nOpen.delete(el.dataset.id); else ui.nOpen.add(el.dataset.id); render(); };
+A.noticeAdd=async el=>{
+  const res=await openNoticeModal(null,el&&el.dataset?el.dataset.type:''); if(!res||res===true) return;
+  S.notices.push(Object.assign({id:uid(),status:'active',createdAt:new Date().toISOString()},res));
+  ui.nView='now'; commit(); toast('공지를 등록했습니다');
+};
+A.noticeEdit=async el=>{
+  const n=S.notices.find(x=>x.id===el.dataset.id); if(!n) return;
+  const res=await openNoticeModal(n); if(!res||res===true) return;
+  Object.assign(n,res,{updatedAt:new Date().toISOString()}); commit(); toast('공지를 수정했습니다');
+};
+A.noticeArchive=async el=>{
+  const n=S.notices.find(x=>x.id===el.dataset.id); if(!n) return;
+  if(!await confirmBox('"'+n.title+'" 공지를 현재 공지에서 내리고 History에 보관할까요?',{ok:'History로 보내기'})) return;
+  n.status='archived'; n.archivedAt=today(); n.pinned=false; commit(); toast('History로 보냈습니다');
+};
+A.noticeRestore=async el=>{
+  const n=S.notices.find(x=>x.id===el.dataset.id); if(!n) return;
+  n.status='active'; delete n.archivedAt; commit(); toast('현재 공지로 다시 게시했습니다');
+};
+A.noticeDel=async el=>{
+  const n=S.notices.find(x=>x.id===el.dataset.id); if(!n) return;
+  if(!await confirmBox('"'+n.title+'" 공지를 완전히 삭제할까요?\n(삭제하면 History에서도 사라집니다)',{ok:'삭제',danger:true})) return;
+  S.notices=S.notices.filter(x=>x!==n); commit(); toast('삭제했습니다');
+};
+
+/* --- 미판매 재고템 --- */
+A.goStock=()=>{ ui.tab='stock'; render(); window.scrollTo(0,0); };
+A.stockAdd=el=>{
+  const box=el.closest('.stockadd'), nm=box.querySelector('.sn'), name=nm.value.trim();
+  if(!name) return nm.focus();
+  const q=clamp(Math.round(num(box.querySelector('.sq').value))||1,1,50);
+  const raid=S.raids.find(r=>r.id===box.querySelector('.ss').value)||null;
+  for(let i=0;i<q;i++) S.stock.push(mkStock(name,raid));
+  commit(); toast(name+' '+q+'개를 재고에 추가했습니다');
+};
+A.stockDel=async el=>{
+  const items=S.stock.filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
+  if(!await confirmBox('"'+items[0].name+'" '+items.length+'개를 미판매 재고템에서 삭제할까요?',{ok:'삭제',danger:true})) return;
+  S.stock=S.stock.filter(x=>stockKey(x)!==el.dataset.key); commit();
+};
+A.stockSell=async el=>{
+  const items=S.stock.filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
+  const first=items[0];
+  const pr={id:first.from||'',title:first.fromTitle||'직접 추가'};
+  const lot={id:uid(),name:first.name,qty:items.length,price:0,buyers:[],bidders:[],drawId:null};
+  const res=await openSaleModal(pr,lot); if(!res||res===true) return;
+  const n=res.buyers.length, soldItems=items.slice(0,n), ids=new Set(soldItems.map(x=>x.id));
+  S.stock=S.stock.filter(x=>!ids.has(x.id));
+  const sid=uid(), lid=uid(), date=today(), src=stockSrc(first);
+  S.ledger.push({id:lid,date,type:'income',category:'재고템 판매',amount:res.price*n,
+    memo:first.name+(n>1?' ×'+n:'')+' → '+res.buyers.map(b=>b.name).join(', ')+' · 출처: '+src+' 이월',ref:{kind:'stock',raidId:first.from||'',saleId:sid}});
+  S.stockSales.push({id:sid,date,name:first.name,qty:n,price:res.price,buyers:res.buyers,drawId:res.drawId,fromRaid:first.from||'',fromTitle:first.fromTitle||'',fromDate:first.date||'',ledgerId:lid,items:soldItems});
+  commit(); toast(first.name+' 판매 완료 · 길자금 수입 +'+fmtM(res.price*n)+' (출처: '+(first.fromTitle||'직접 추가')+')');
+};
+A.stockSaleUndo=async el=>{
+  const x=S.stockSales.find(v=>v.id===el.dataset.id); if(!x) return;
+  const rest=S.ledger.filter(e=>e.id!==x.ledgerId); let bal=0; rest.forEach(e=>{ bal+=e.type==='income'?num(e.amount):-num(e.amount); });
+  if(bal<0) return toast('이미 분배 등으로 사용된 금액이 있어 되돌릴 수 없습니다');
+  if(!await confirmBox('"'+x.name+'" 판매를 취소하고 재고로 되돌립니다.\n길자금 수입 내역도 함께 삭제됩니다.',{ok:'되돌리기',danger:true})) return;
+  S.ledger=rest; (x.items||[]).forEach(it=>S.stock.push(it)); S.stockSales=S.stockSales.filter(v=>v!==x); commit(); toast('재고로 되돌렸습니다');
+};
+
+/* --- 현금 (입금/출금만) --- */
+A.ledSub=el=>{ ui.ledSub=el.dataset.v; render(); };
+A.cType=el=>{
+  const f=el.closest('.cashform'); if(!f) return;
+  f.querySelector('#cType').value=el.dataset.v;
+  f.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',b===el));
+};
+A.cAmtAdd=el=>{ const f=el.closest('.cashform'), i=f.querySelector('#cAmt'); i.value=fmtInputVal(Math.round(num(i.value))+Number(el.dataset.v)); moneyHint(i); };
+A.cAmtClear=el=>{ const f=el.closest('.cashform'), i=f.querySelector('#cAmt'); i.value=''; moneyHint(i); i.focus(); };
+A.memoPick=el=>{ const f=el.closest('.cashform'); if(f) f.querySelector('#cMemo').value=el.dataset.v; };
+A.cashAdd=()=>{
+  const v=readCashForm($('#cashForm')); if(!v) return;
+  if(v.type==='out'&&v.amount>cashPools().bal) return toast('보유 현금('+fmtWon(cashPools().bal)+')보다 많이 출금할 수 없습니다');
+  S.cash.push(Object.assign({id:uid()},v)); commit(); toast((v.type==='in'?'입금 ':'출금 ')+fmtWon(v.amount)+'을 기록했습니다');
+};
+A.cashEdit=async el=>{
+  const e=S.cash.find(x=>x.id===el.dataset.id); if(!e) return;
+  const res=await modal({title:'현금 내역 수정',wide:true,body:cashFormHtml(e),ok:'수정 저장',onOk(root){
+    const v=readCashForm(root); if(!v) return false;
+    let bal=0; S.cash.filter(x=>x!==e).forEach(x=>{ bal+=x.type==='in'?num(x.amount):-num(x.amount); }); bal+=v.type==='in'?v.amount:-v.amount;
+    if(bal<0){ toast('수정하면 보유 현금이 마이너스가 됩니다'); return false; }
+    return v; }});
+  if(!res||res===true) return; Object.assign(e,res); commit(); toast('수정했습니다');
+};
+A.cashDel=async el=>{
+  const e=S.cash.find(x=>x.id===el.dataset.id); if(!e) return;
+  if(e.type==='in'&&cashPools().bal-num(e.amount)<0) return toast('이 입금을 삭제하면 보유 현금이 마이너스가 됩니다');
+  if(!await confirmBox(fmtDate(e.date)+' '+(e.type==='in'?'입금 ':'출금 ')+fmtWon(e.amount)+' 내역을 삭제할까요?',{ok:'삭제',danger:true})) return;
+  S.cash=S.cash.filter(x=>x!==e); commit(); toast('삭제했습니다');
+};
+
+/* --- 길드원 --- */
+function addMember(name,cls,memo){
+  name=name.trim(); if(!name) return false;
+  if(S.members.some(m=>m.name.toLowerCase()===name.toLowerCase())) return false;
+  S.members.push({id:uid(),name,cls:CLASSES.includes(cls)?cls:'',status:'active',memo:memo||''}); return true;
+}
+A.memAdd=()=>{
+  const n=$('#mName').value, cls=$('#mCls').value;
+  if(!n.trim()) return $('#mName').focus();
+  if(!cls){ toast('클래스를 선택하세요'); return $('#mCls').focus(); }
+  if(!addMember(n,cls,$('#mMemo').value)) return toast('이미 있는 닉네임입니다');
+  commit(); const el=$('#mName'); if(el) el.focus(); toast('길드원을 추가했습니다');
+};
+A.memBulk=async()=>{
+  const res=await modal({title:'길드원 여러 명 추가',ok:'추가',wide:true,body:
+    '<p class="hint">한 줄에 한 명씩 <b>닉네임 클래스</b> 형태로 붙여넣으세요. 클래스는 '+CLASSES.join(' / ')+' 중 하나이며, 생략하면 "미지정"으로 추가되고 목록에서 바꿀 수 있습니다. 이미 있는 닉네임은 건너뜁니다.</p><textarea id="bulkTx" rows="8" placeholder="와꾸 나이트&#10;빵양 엘프&#10;미륵"></textarea>',
+    onOk(root){ return root.querySelector('#bulkTx').value; }});
+  if(!res||res===true) return;
+  const list=[]; let last=null;
+  res.split(/\r?\n/).forEach(line=>line.split(/[\t,\s]+/).filter(Boolean).forEach(t=>{
+    if(CLASSES.includes(t)&&last) last.cls=t; else { last={name:t,cls:''}; list.push(last); }
+  }));
+  let n=0,skip=0; list.forEach(x=>{ if(addMember(x.name,x.cls,'')) n++; else skip++; });
+  commit(); toast(n+'명 추가'+(skip?' · '+skip+'명은 중복이라 건너뜀':''));
+};
+A.memDel=async el=>{
+  const m=S.members.find(x=>x.id===el.dataset.id); if(!m) return;
+  if(S.distributions.some(d=>d.status==='completed'&&d.results.some(r=>r.memberId===m.id)))
+    return toast('분배 내역이 있는 길드원은 삭제할 수 없습니다. 상태를 "탈퇴"로 바꿔 주세요');
+  if(!await confirmBox('"'+m.name+'" 길드원을 삭제할까요?',{ok:'삭제',danger:true})) return;
+  S.members=S.members.filter(x=>x!==m); commit();
+};
+
+/* --- 데이터(내보내기/불러오기/예시/초기화) --- */
+A.exportJson=()=>{
+  S.settings.lastExportAt=new Date().toISOString(); doSave();
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='r2_guild_fund_'+today().replace(/-/g,'')+'.json';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+  updateHeader(); toast('JSON 파일로 저장했습니다');
+};
+A.importJson=()=>{ $('#fileIn').value=''; $('#fileIn').click(); };
+A.resetAll=async()=>{
+  if(!await confirmBox('모든 데이터(길자금 내역, 레이드, 분배, 길드원)를 지우고 처음 상태로 되돌립니다.\n먼저 JSON 내보내기로 백업하세요.'+(Cloud.enabled?'\n\n⚠ 클라우드에 저장된 데이터도 모두 삭제됩니다.':''),{ok:'전부 초기화',danger:true})) return;
+  S=defaultData(); ui.raidId=null; ui.stockSel=null; commit(); toast('초기화했습니다');
+};
+A.sample=async()=>{
+  if(!await confirmBox('엑셀(메테정산표 Ver3)의 2025-05-11 메테 정산과 05-18 분배 입력값으로 예시 데이터를 만듭니다.\n현재 데이터는 모두 덮어씌워집니다.'+(Cloud.enabled?'\n⚠ 클라우드 데이터도 예시 데이터로 바뀝니다.':'')+' 계속할까요?',{ok:'예시 불러오기'})) return;
+  S=defaultData();
+  const byName=n=>S.members.find(m=>m.name===n);
+  const lot=(name,price,buyer)=>({id:uid(),name,qty:1,state:'sold',price,buyers:[{id:byName(buyer).id,name:buyer}],bidders:[],soldDate:'2025-05-11'});
+  const raid={id:uid(),date:'2025-05-11',title:'메테 3마리',status:'completed',lots:[
+    lot('롱쉴드',50000,'와꾸'),lot('거친',500000,'마린'),lot('다마',180000,'리즈'),lot('어쎄메일',100000,'스페'),lot('5어쎄글러브',100000,'허리'),lot('고줌',550000,'수박')],
+    expenses:[{id:uid(),name:'봉줌 1층',price:100000,note:'',date:'2025-05-11'},{id:uid(),name:'이계상인',price:100000,note:'',date:'2025-05-11'}]};
+  const t=raidTotals(raid), lid=uid();
+  raid.ledgerId=lid; raid.snap={date:'2025-05-11',net:t.net,inc:t.inc,exp:t.exp};
+  S.raids.push(raid);
+  S.ledger.push({id:lid,date:'2025-05-11',type:'income',category:'레이드 정산',amount:t.net,memo:'메테 3마리 · 판매 수입 '+fmtM(t.inc)+' − 지출 '+fmtM(t.exp),ref:{kind:'raid',id:raid.id}});
+  S.stock.push(mkStock('향태반',raid),mkStock('잡무기',raid));
+  const counts={'와꾸':1,'빵양':3,'미륵':1,'마린':15,'콜라':1,'리즈':11,'구슬':1,'스페':5,'봉대장':0,'허리':5,'젠키':5,'꿀꿀이':5,'짜잔':5,'애무':5,'수박':5};
+  S.settings.distThreshold=Math.round(t.net/2);   // 엑셀의 분배금 6,400(백만) = 64억
+  S.distributions.push({id:uid(),date:'2025-05-18',status:'draft',poolAmount:S.settings.distThreshold,rows:S.members.map(m=>({memberId:m.id,join:true,count:counts[m.name]||0,bonus:{}}))});
+  const nowIso=new Date().toISOString();
+  S.notices.push(
+    {id:uid(),type:'notice',status:'active',pinned:true,title:'(예시) 길드 레이드 일정 안내',date:today(),author:'길드마스터',createdAt:nowIso,attendees:[],body:'이번 주 일요일 21시 메테오스 레이드 진행합니다.\n\n- 참여 가능 인원은 일요일 18시까지 댓글로 남겨주세요.\n- 모니터링 횟수는 디코에서 확인 후 분배에 반영됩니다.\n\n자세한 내용: https://example.com/notice'},
+    {id:uid(),type:'meeting',status:'active',pinned:false,title:'(예시) 10월 길드 정기 회의',date:today(),author:'길드마스터',createdAt:nowIso,attendees:S.members.slice(0,8).map(m=>m.id),body:MEETING_TPL.replace('■ 안건\n- ','■ 안건\n- 길자금 분배 비율 조정\n- 레이드 일정').replace('■ 결정 사항\n- ','■ 결정 사항\n- 길드자금 20% / 분배 50% / 기본급 30% 유지')},
+    {id:uid(),type:'notice',status:'archived',archivedAt:today(),pinned:false,title:'(예시) 지난 주 정산 완료 안내',date:'2025-05-18',author:'길드마스터',createdAt:nowIso,attendees:[],body:'05-11 메테 3마리 레이드 정산이 완료되었습니다.\n분배금은 개인별로 확인해 주세요.'});
+  ui.tab='notice'; ui.nView='now'; ui.raidId=null; commit(); toast('예시 데이터를 불러왔습니다 (분배 탭에서 계산 결과를 확인하세요)');
+};
+$('#fileIn').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(!ui.admin){ denyWrite(); e.target.value=''; return; }
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    let data; try{ data=JSON.parse(rd.result); }catch(err){ return toast('JSON 형식이 올바르지 않습니다'); }
+    if(!data||typeof data!=='object'||!('ledger' in data||'members' in data||'raids' in data)) return toast('이 프로그램에서 내보낸 JSON 파일이 아닙니다');
+    if(!await confirmBox('"'+f.name+'" 파일로 현재 데이터를 덮어씁니다.'+(Cloud.enabled?'\n⚠ 클라우드 데이터도 이 파일 내용으로 바뀝니다.':'')+' 계속할까요?'+((data.schemaVersion||1)<SCHEMA?'\n(이전 버전 파일은 현재 버전에 맞게 자동 변환합니다)':''),{ok:'불러오기'})) return;
+    S=normalize(data); ui.raidId=null; ui.stockSel=null; commit(); toast('불러왔습니다');
+  };
+  rd.readAsText(f,'utf-8');
+});
+
+/* =====================================================================
+   10. 입력 변경 핸들러  data-chg(change) / data-inp(input)
+   ===================================================================== */
+const C={}, I={};
+C.threshold=el=>{
+  S.settings.distThreshold=Math.max(0,Math.round(num(el.value)));
+  $$('[data-chg=threshold]').forEach(x=>{ x.value=fmtInputVal(S.settings.distThreshold); moneyHint(x); });
+  quiet(); updateThresholdUI(); updateDistCalc();
+};
+C.lfm=el=>{ ui.lf.month=el.value; render(); };
+C.cfm=el=>{ ui.cf.month=el.value; render(); };
+C.nfType=el=>{ ui.nf.type=el.value; renderNoticeHist(); };
+C.nfMonth=el=>{ ui.nf.month=el.value; renderNoticeHist(); };
+I.nfq=el=>{ ui.nf.q=el.value; renderNoticeHist(); };
+C.sfilter=el=>{ ui.sf=el.value; render(); };
+I.lfq=el=>{ ui.lf.q=el.value; renderLedgerTable(); };
+C.roundUnit=el=>{ S.rule.roundUnit=Math.max(1,num(el.value)||1); quiet(); updateDistCalc(); };
+C.compType=el=>{ const c=compById(el.dataset.comp); if(!c) return; c.type=el.value; if(c.type==='rank'){ if(!Array.isArray(c.tiers)) c.tiers=[50,30,20]; if(!c.tie) c.tie='split'; } commit(); };
+C.compEnable=el=>{ const c=compById(el.dataset.comp); if(c){ c.enabled=el.checked; commit(); } };
+C.compName=el=>{ const c=compById(el.dataset.comp); if(c){ c.name=el.value.trim()||COMP_TYPES[c.type]; el.value=c.name; quiet(); renderSession(); } };
+I.compNum=el=>{ const c=compById(el.dataset.comp); if(c){ c[el.dataset.k]=Math.max(0,num(el.value)); quiet(); updateDistCalc(); } };
+C.compTiers=el=>{ const c=compById(el.dataset.comp); if(c){ c.tiers=el.value.split(/[,\s]+/).filter(Boolean).map(num).filter(x=>x>=0); el.value=c.tiers.join(','); quiet(); updateDistCalc(); } };
+C.compTie=el=>{ const c=compById(el.dataset.comp); if(c){ c.tie=el.value; quiet(); updateDistCalc(); } };
+C.dTitle=el=>{ const d=draftDist(); if(d){ d.title=el.value.trim(); quiet(); } };
+A.titlePick=el=>{ const d=draftDist(); if(!d) return; d.title=el.dataset.v; const i=$('#dTitleIn'); if(i) i.value=d.title; quiet(); };
+C.dDate=el=>{ const d=draftDist(); if(d&&el.value){ d.date=el.value; quiet(); } };
+C.dJoin=el=>{ const d=draftDist(), r=d&&d.rows.find(x=>x.memberId===el.dataset.m); if(r){ r.join=el.checked; quiet(); updateDistCalc(); } };
+I.dCount=el=>{ const d=draftDist(), r=d&&d.rows.find(x=>x.memberId===el.dataset.m); if(r){ r.count=Math.max(0,num(el.value)); quiet(); updateDistCalc(); } };
+I.dBonus=el=>{ const d=draftDist(), r=d&&d.rows.find(x=>x.memberId===el.dataset.m); if(r){ r.bonus=r.bonus||{}; r.bonus[el.dataset.comp]=Math.max(0,Math.round(num(el.value))); quiet(); updateDistCalc(); } };
+C.paid=el=>{
+  const d=S.distributions.find(x=>x.id===el.dataset.d), r=d&&d.results.find(x=>x.memberId===el.dataset.m);
+  if(r){ r.paid=el.checked; commit(); }
+};
+C.raidTitle=el=>{ const r=curRaid(); if(r){ r.title=el.value.trim(); quiet(); } };
+C.raidDate=el=>{ const r=curRaid(); if(r&&el.value){ r.date=el.value; quiet(); } };
+C.ms=el=>{ ui.ms=el.value; renderMemberTable(); };
+C.mcls=el=>{ ui.mc=el.value; renderMemberTable(); };
+I.mq=el=>{ ui.mq=el.value; renderMemberTable(); };
+C.memName=el=>{
+  const m=S.members.find(x=>x.id===el.dataset.m); if(!m) return; const n=el.value.trim();
+  if(!n){ el.value=m.name; return; }
+  if(S.members.some(x=>x!==m&&x.name.toLowerCase()===n.toLowerCase())){ toast('이미 있는 닉네임입니다'); el.value=m.name; return; }
+  m.name=n; quiet();
+};
+C.memCls=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.cls=el.value; quiet(); const c=$('#clsCount'); if(c) c.innerHTML=classCountHtml(); } };
+C.memStatus=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.status=el.value; quiet(); renderMemberTable(); const c=$('#clsCount'); if(c) c.innerHTML=classCountHtml(); } };
+C.memMemo=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.memo=el.value.trim(); quiet(); } };
+
+/* 이벤트 위임: 화면이 다시 그려져도 핸들러가 유지됩니다 */
+['click','keydown','input','change'].forEach(ev=>document.addEventListener(ev,touchAdmin,true));
+document.addEventListener('click',e=>{ const el=e.target.closest('[data-act]'); if(!el||!A[el.dataset.act]) return; if(!guard(el.dataset.act,READ_ACT)) return; A[el.dataset.act](el,e); });
+document.addEventListener('change',e=>{ const el=e.target.closest('[data-chg]'); if(!el||!C[el.dataset.chg]) return; if(!guard(el.dataset.chg,READ_CHG)){ render(); return; } C[el.dataset.chg](el,e); });
+document.addEventListener('input',e=>{
+  const el=e.target.closest('[data-inp]');
+  if(el&&I[el.dataset.inp]&&!ui.admin&&!READ_INP.has(el.dataset.inp)){ denyWrite(); render(); return; }
+  if(e.target.matches&&e.target.matches('[data-money]')){ formatMoneyInput(e.target); moneyHint(e.target); }
+  if(el&&I[el.dataset.inp]) I[el.dataset.inp](el,e);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||e.isComposing) return;
+  const rb=e.target.closest&&e.target.closest('[role=button][data-act]'); if(rb&&(e.key==='Enter')&&A[rb.dataset.act]&&e.target===rb){ e.preventDefault(); if(guard(rb.dataset.act,READ_ACT)) A[rb.dataset.act](rb,e); return; }
+  const el=e.target.closest('[data-enter]'); if(!el||!A[el.dataset.enter]) return;
+  e.preventDefault(); if(!guard(el.dataset.enter,READ_ACT)) return; A[el.dataset.enter](el,e);
+});
+document.addEventListener('toggle',e=>{
+  const t=e.target; if(t.matches&&t.matches('details.hist')){ const id=t.dataset.did; if(t.open) ui.open.add(id); else ui.open.delete(id); }
+  if(t.matches&&t.matches('details.nh')){ const id='h'+t.dataset.nid; if(t.open) ui.nOpen.add(id); else ui.nOpen.delete(id); }
+},true);
+
+/* =====================================================================
+   10-2. 클라우드(Firebase Firestore) 연동
+   - 읽기: 누구나 / 쓰기: 관리자(Firebase 로그인)만  → 서버 규칙은 firestore.rules 참고
+   - 저장 구조: r2guild/main/docs/{종류__ID} (건별 문서) + r2guild/main/logs (추가 전용 기록)
+   - 화면(S)은 그대로 쓰고, 바뀐 문서만 골라 올리고(diff), 다른 사람의 변경은 실시간으로 받아옵니다.
+   ===================================================================== */
+const CLOUD_ROOT=['r2guild','main'], FB_VER='10.12.2';
+const TYPE_OF={members:'member',ledger:'ledger',raids:'raid',distributions:'distribution',stock:'stock',stockSales:'stockSale',cash:'cash',draws:'draw',notices:'notice'};
+const stable=v=>{ if(Array.isArray(v)) return '['+v.map(stable).join(',')+']'; if(v&&typeof v==='object') return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}'; return JSON.stringify(v===undefined?null:v); };
+const clean=o=>JSON.parse(JSON.stringify(o));
+const safeId=id=>String(id==null?'':id).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,64)||'x';
+function parseFbConfig(text){      // firebaseConfig = { ... } 를 통째로 붙여넣어도 인식
+  const a=text.indexOf('{'), b=text.lastIndexOf('}'); if(a<0||b<a) throw new Error('{ } 로 둘러싸인 설정값을 붙여넣으세요');
+  let t=text.slice(a,b+1).replace(/\/\/.*$/gm,'').replace(/'/g,'"').replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g,'$1"$2":').replace(/,\s*}/g,'}');
+  const c=JSON.parse(t); if(!c.apiKey||!c.projectId||!c.appId) throw new Error('apiKey, projectId, appId 가 필요합니다'); return c;
+}
+function cloudCfg(){
+  if(FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId) return FIREBASE_CONFIG;
+  try{ const raw=localStorage.getItem('r2_guild_fb_config'); if(raw){ const c=JSON.parse(raw); if(c&&c.projectId&&c.apiKey) return c; } }catch(e){}
+  return null;
+}
+const Cloud={cfg:null,enabled:false,state:'local',err:'',m:null,db:null,
+  docs:new Map(),base:new Map(),ord:new Map(),nextOrd:0,first:false,serverSeen:false,hadDocs:false,empty:false,
+  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0};
+function cloudErr(e){ const c=(e&&(e.code||'')).replace('firestore/',''); return c==='permission-denied'?'권한 없음 (관리자만 저장할 수 있습니다)':c==='unavailable'?'네트워크 연결 없음':(e&&e.message)||String(e); }
+function updateCloudUI(){
+  const el=$('#cloudStatus'); if(!el) return;
+  const m={local:['☁ 로컬 저장',''],loading:['☁ 연결 중…',''],online:['☁ 클라우드 동기화됨','ok'],saving:['☁ 저장 중…',''],offline:['☁ 오프라인(캐시)','warn'],error:['☁ 오류','warn'],sdkfail:['☁ 연결 실패(로컬 표시)','warn']}[Cloud.state]||['☁','']; 
+  el.className='save '+m[1]; el.textContent=m[0]+(Cloud.state==='error'&&Cloud.err?' · '+Cloud.err:''); el.title=Cloud.cfg?('프로젝트: '+Cloud.cfg.projectId):'클라우드 미설정 — 이 브라우저에만 저장됩니다';
+}
+function cloudBar(){
+  if(!Cloud.enabled) return '';
+  if(Cloud.state==='sdkfail') return '<div class="lockbar"><span>☁ 클라우드에 연결하지 못했습니다(인터넷 연결을 확인하세요). 이 브라우저에 저장된 데이터를 표시 중입니다.</span></div>';
+  if(Cloud.empty) return '<div class="lockbar"><span>☁ 클라우드에 아직 데이터가 없습니다. '+(ui.admin?'현재 데이터를 올려 시작하세요.':'관리자 인증 후 현재 데이터를 올릴 수 있습니다.')+'</span><button class="btn sm gold" data-act="cloudOpen">☁ 클라우드 설정/업로드</button></div>';
+  return '';
+}
+// 화면 상태(S) → 클라우드 문서 묶음
+function collectDocs(state){
+  const m=new Map();
+  const st=clean(state.settings); delete st.lastExportAt;                // 기기별 값은 올리지 않음
+  m.set('settings__main',{type:'settings',payload:{settings:st,meta:{createdAt:(state.meta&&state.meta.createdAt)||null}}});
+  m.set('rule__main',{type:'rule',payload:clean(state.rule)});
+  Object.keys(TYPE_OF).forEach(col=>(state[col]||[]).forEach(rec=>{ m.set(TYPE_OF[col]+'__'+safeId(rec.id),{type:TYPE_OF[col],payload:clean(rec)}); }));
+  return m;
+}
+// 클라우드 문서 묶음 → 화면 상태(S)
+function cloudBuildState(){
+  const st={schemaVersion:SCHEMA}, lists={};
+  Object.keys(TYPE_OF).forEach(k=>{ lists[TYPE_OF[k]]=[]; });
+  Cloud.docs.forEach((d,id)=>{
+    if(d.type==='settings'){ st.settings=(d.payload&&d.payload.settings)||undefined; st.meta=(d.payload&&d.payload.meta)||{}; }
+    else if(d.type==='rule') st.rule=d.payload;
+    else if(lists[d.type]) lists[d.type].push({o:d.ord||0,id,p:d.payload});
+  });
+  Object.keys(TYPE_OF).forEach(k=>{ st[k]=lists[TYPE_OF[k]].sort((a,b)=>(a.o-b.o)||(a.id<b.id?-1:1)).map(x=>x.p); });
+  if(st.settings&&S&&S.settings) st.settings.lastExportAt=S.settings.lastExportAt||null;
+  return st;
+}
+function cloudBusy(){
+  const a=document.activeElement;
+  const editing=a&&a.closest&&a.closest('#view')&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!a.disabled&&a.type!=='search'&&!(a.dataset&&a.dataset.inp&&READ_INP.has(a.dataset.inp));
+  return !!(document.querySelector('#modalRoot > *')||document.querySelector('#drawRoot > *')||editing);
+}
+function cloudFlush(){      // 받아둔 변경을 화면에 반영 (입력/모달 중이면 끝날 때까지 대기)
+  if(!Cloud.needRebuild||!S) return;
+  if(Cloud.localDirty||Cloud.pushing||cloudBusy()) return;
+  Cloud.needRebuild=false;
+  S=normalize(cloudBuildState()); Repo.save(S); render();
+}
+function cloudOnSnap(snap){
+  const md=snap.metadata||{}, fromCache=!!md.fromCache, wasEmpty=Cloud.empty;
+  if(!fromCache) Cloud.serverSeen=true;
+  snap.docChanges().forEach(ch=>{
+    const id=ch.doc.id;
+    if(ch.type==='removed'){ Cloud.docs.delete(id); Cloud.base.delete(id); Cloud.ord.delete(id); return; }
+    const d=ch.doc.data()||{}; Cloud.docs.set(id,{type:d.type,payload:d.payload,ord:typeof d.ord==='number'?d.ord:0});
+    Cloud.base.set(id,stable(d.payload));
+    if(typeof d.ord==='number'){ Cloud.ord.set(id,d.ord); if(d.ord>=Cloud.nextOrd) Cloud.nextOrd=d.ord+1; }
+  });
+  Cloud.empty=Cloud.serverSeen&&Cloud.docs.size===0;
+  if(Cloud.docs.size>0) Cloud.hadDocs=true;
+  if(Cloud.docs.size>0||Cloud.serverSeen) Cloud.first=true;
+  Cloud.state=md.hasPendingWrites?'saving':(fromCache&&!Cloud.serverSeen?'offline':'online');
+  if(Cloud.docs.size>0||(Cloud.hadDocs&&Cloud.serverSeen)) Cloud.needRebuild=true;   // 클라우드가 비어 있으면(처음) 로컬 데이터를 유지
+  updateCloudUI(); cloudFlush();
+  if(wasEmpty!==Cloud.empty&&S&&!cloudBusy()) render();     // '클라우드가 비어 있음' 안내 표시/해제
+}
+function cloudOnSnapErr(e){ Cloud.state='error'; Cloud.err=cloudErr(e); updateCloudUI(); }
+function cloudMarkDirty(){ if(Cloud.enabled&&ui.admin) Cloud.localDirty=true; }
+function cloudSchedule(){ if(!Cloud.enabled||!Cloud.m||!ui.admin) return; clearTimeout(Cloud.timer); Cloud.timer=setTimeout(cloudPush,300); }
+const ordFor=id=>{ if(!Cloud.ord.has(id)) Cloud.ord.set(id,Cloud.nextOrd++); return Cloud.ord.get(id); };
+async function cloudPush(){
+  if(!Cloud.enabled||!Cloud.m||!Cloud.db||!ui.admin||!S) return;      // 관리자 모드(화면 잠금 해제)일 때만 저장
+  if(!Cloud.first){ Cloud.timer=setTimeout(cloudPush,700); return; }      // 첫 동기화 전에는 올리지 않음 (덮어쓰기 방지)
+  if(Cloud.pushing){ Cloud.pushAgain=true; return; }
+  Cloud.pushing=true; const m=Cloud.m, db=Cloud.db, by='admin'; let failed=null;
+  try{
+    do{
+      Cloud.pushAgain=false;
+      const cur=collectDocs(S), ops=[];
+      cur.forEach((rec,id)=>{ const str=stable(rec.payload); if(Cloud.base.get(id)!==str) ops.push({k:'set',id,rec,str,isNew:!Cloud.base.has(id)}); });
+      Cloud.base.forEach((_,id)=>{ if(!cur.has(id)) ops.push({k:'del',id}); });
+      if(!ops.length) break;
+      Cloud.state='saving'; updateCloudUI();
+      for(let i=0;i<ops.length;i+=400){
+        const ch=ops.slice(i,i+400), b=m.writeBatch(db);
+        ch.forEach(op=>{
+          const ref=m.doc(db,...CLOUD_ROOT,'docs',op.id);
+          if(op.k==='set') b.set(ref,{type:op.rec.type,payload:op.rec.payload,ord:ordFor(op.id),updatedAt:m.serverTimestamp(),updatedBy:by}); else b.delete(ref);
+        });
+        const add=ch.filter(o=>o.k==='set'&&o.isNew).length, mod=ch.filter(o=>o.k==='set'&&!o.isNew).length, del=ch.filter(o=>o.k==='del').length;
+        const kinds=Array.from(new Set(ch.map(o=>o.id.split('__')[0]))).join('·');
+        b.set(m.doc(m.collection(db,...CLOUD_ROOT,'logs')),{at:m.serverTimestamp(),by,text:('추가 '+add+' · 수정 '+mod+' · 삭제 '+del+' ('+kinds+')').slice(0,100)});
+        await b.commit();
+        ch.forEach(op=>{ if(op.k==='set') Cloud.base.set(op.id,op.str); else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); } });
+      }
+    }while(Cloud.pushAgain);
+    Cloud.state='online'; Cloud.err='';
+  }catch(e){
+    failed=e; Cloud.state='error'; Cloud.err=cloudErr(e); toast('☁ 클라우드 저장 실패: '+Cloud.err);
+  }finally{ Cloud.pushing=false; }
+  const code=failed&&(failed.code||'');
+  if(!failed||/permission-denied|invalid-argument|failed-precondition/.test(code)){ Cloud.localDirty=false; if(failed){ Cloud.needRebuild=true; } }   // 서버가 거부한 변경은 되돌려 클라우드 상태와 맞춤
+  updateCloudUI(); cloudFlush();
+}
+async function loadFbSdk(){
+  const base='https://www.gstatic.com/firebasejs/'+FB_VER+'/';
+  const [app,fs]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-firestore.js')]);
+  return Object.assign({},app,fs);
+}
+async function cloudStart(){
+  const cfg=cloudCfg();
+  if(!cfg){ Cloud.state='local'; updateCloudUI(); return; }
+  Cloud.cfg=cfg; Cloud.enabled=true; Cloud.state='loading'; updateCloudUI();
+  try{
+    const m=window.__R2_FB_SDK__||await loadFbSdk(); Cloud.m=m;
+    const fbCfg=Object.assign({},cfg); delete fbCfg.adminEmail;   // (이전 설정에 남아 있어도 무시)
+    const app=m.initializeApp(fbCfg);
+    try{ Cloud.db=m.initializeFirestore(app,{localCache:m.persistentLocalCache({tabManager:m.persistentMultipleTabManager()})}); }
+    catch(e){ Cloud.db=m.getFirestore(app); }
+    m.onSnapshot(m.collection(Cloud.db,...CLOUD_ROOT,'docs'),cloudOnSnap,cloudOnSnapErr);
+    setInterval(cloudFlush,700);
+  }catch(e){ Cloud.state='sdkfail'; Cloud.err=cloudErr(e); updateCloudUI(); if(S) render(); }
+}
+async function cloudLogs(){
+  const m=Cloud.m, q=m.query(m.collection(Cloud.db,...CLOUD_ROOT,'logs'),m.orderBy('at','desc'),m.limit(20));
+  const snap=await m.getDocs(q); return snap.docs.map(d=>d.data());
+}
+const fmtTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d)?'':d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }catch(e){ return ''; } };
+
+/* =====================================================================
+   11. 시작
+   ===================================================================== */
+window.R2={ Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+Repo.load().then(d=>{
+  initAdmin();
+  S = d ? normalize(d) : defaultData();   // 먼저 이 브라우저의 저장본(캐시)으로 바로 표시, 클라우드가 연결되면 클라우드 데이터로 교체
+  Repo.save(S);          // 이전 버전 데이터는 변환된 상태로 다시 저장
+  render();
+  cloudStart();          // Firebase 설정이 있으면 연결 (없으면 로컬 모드)
+});
+})();
+</script>
+</body>
+</html>
