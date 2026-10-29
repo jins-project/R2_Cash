@@ -351,6 +351,12 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
 .chk{display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 0}
 .nt-type button{min-width:150px}
 
+.clDrop{display:block;border:2px dashed var(--line2);border-radius:10px;padding:16px;text-align:center;cursor:pointer;color:var(--muted);margin:0 0 10px}
+.clDrop:hover,.clDrop.over{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+.diag{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.diag .it{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);overflow-wrap:anywhere}
+.diag .it.ok{border-color:var(--green)} .diag .it.bad{border-color:var(--red);background:var(--red-soft)} .diag .it.warn{border-color:var(--coin)}
+
 /* ---------- 모달/토스트 ---------- */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
 .modal{background:var(--panel);border:1px solid var(--line2);border-radius:12px;width:min(500px,100%);max-height:90vh;overflow:auto;padding:20px}
@@ -1977,28 +1983,56 @@ A.cloudOpen=async()=>{
   let b='<div class="sumbox" style="margin:0 0 14px"><div><span class="k">상태</span><span class="v" style="font-size:14px">'+esc(stText)+'</span></div>'+
     '<div><span class="k">프로젝트</span><span class="v" style="font-size:14px">'+esc(on?Cloud.cfg.projectId:'-')+'</span></div>'+
     '<div><span class="k">저장 권한</span><span class="v" style="font-size:14px">'+(ui.admin?'관리자 모드':'읽기 전용 (화면 잠금)')+'</span></div></div>';
-  if(!on) b+='<p class="hint">아직 Firebase가 연결되지 않았습니다. 가이드대로 만든 <b>웹앱 설정값(firebaseConfig)</b>을 붙여넣으세요. (파일 상단 <code>FIREBASE_CONFIG</code>에 직접 붙여넣으면 모든 길드원에게 적용됩니다)</p>'+
-    (ui.admin?'<div class="field"><label>firebaseConfig 붙여넣기</label><textarea id="clCfg" rows="7" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  authDomain: &quot;...&quot;,&#10;  projectId: &quot;...&quot;,&#10;  appId: &quot;...&quot;&#10;};"></textarea></div><button type="button" class="btn primary" data-cl="save">저장하고 연결</button>':'<div class="notice warn">관리자 인증 후 이 브라우저에 설정값을 저장할 수 있습니다.</div>');
-  else{
-    b+='<div class="toolbar" style="margin:0 0 12px">'+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록 보기</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">이 브라우저의 연결 설정 삭제</button>':'')+'</div>';
+  if(!on){
+    b+='<h3 style="margin-bottom:8px">① 연결 설정</h3><p class="hint">Firebase 콘솔의 <b>웹앱 설정값(firebaseConfig)</b>을 <b>파일로 올리거나 붙여넣으면 자동으로 인식</b>합니다. 콘솔에서 복사한 코드(import 줄이 섞여 있어도), JSON 파일 모두 가능합니다.<br>※ <b>규칙 파일에는 연결 정보(apiKey·projectId)가 없어</b> 규칙만으로는 자동 연결할 수 없습니다. 규칙은 아래 ② 규칙 점검에서 검사하세요.</p>'+
+      (ui.admin?'<label class="clDrop" id="clDropCfg">📂 설정 파일(.js .json .txt)을 여기로 끌어놓거나 클릭해서 선택<input type="file" id="clFile" accept=".js,.json,.txt,.html,.mjs" hidden></label>'+
+        '<textarea id="clCfg" rows="6" placeholder="또는 여기에 firebaseConfig 코드를 붙여넣기&#10;const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  projectId: &quot;...&quot;,&#10;  appId: &quot;...&quot;&#10;};"></textarea><div id="clParse" class="small muted" style="margin:6px 0">붙여넣거나 파일을 올리면 자동으로 인식합니다.</div><button type="button" class="btn primary" data-cl="save" disabled>저장하고 연결</button>':
+        '<div class="notice warn">관리자 인증 후 연결할 수 있습니다.</div>');
+  } else {
+    b+='<div class="toolbar" style="margin:0 0 6px"><button type="button" class="btn primary" data-cl="diag">🔍 연결 진단</button>'+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">연결 설정 삭제</button>':'')+'</div>';
     if(Cloud.empty&&!ui.admin) b+='<div class="notice warn">클라우드가 비어 있습니다. 관리자 인증 후 올릴 수 있습니다.</div>';
-    b+='<div class="notice">ℹ 이 앱은 로그인 없이 동작합니다. 입력 잠금(관리자 인증)은 <b>화면에서만</b> 작동하므로, 주소를 아는 사람이 서버에 직접 쓰는 것까지 막지는 못합니다. 정기적으로 JSON 백업을 받아 두세요.</div><div id="clLogs"></div>';
+    b+='<div class="notice">ℹ 이 앱은 로그인 없이 동작합니다. 입력 잠금(관리자 인증)은 <b>화면에서만</b> 작동하므로 서버에 직접 쓰는 것까지 막지는 못합니다. 정기적으로 JSON 백업을 받아 두세요.</div><div id="clOut"></div>';
   }
+  b+='<h3 style="margin:20px 0 8px">② 규칙 점검</h3><p class="hint">Firebase에 게시한(또는 게시할) <b>규칙을 파일로 올리거나 붙여넣으면</b> 길자금 규칙이 올바른 위치에 있는지 검사합니다. (다른 규칙 안쪽에 잘못 중첩되는 실수를 찾아줍니다)</p>'+
+    '<label class="clDrop" id="clDropRule">📜 규칙 파일(firestore.rules)을 끌어놓거나 클릭해서 선택<input type="file" id="clRuleFile" accept=".rules,.txt,.js" hidden></label>'+
+    '<textarea id="clRules" rows="5" placeholder="또는 콘솔 규칙 탭의 내용을 여기에 붙여넣기"></textarea><div class="toolbar" style="margin:8px 0 0"><button type="button" class="btn" data-cl="lint">규칙 점검</button></div><div id="clLint"></div>';
   await modal({title:'☁ 클라우드 연동',wide:true,hideCancel:true,ok:'닫기',body:b,onOpen(root){
-    root.querySelector('.mbody').addEventListener('click',async e=>{
+    const sc=root.querySelector('.mbody'), $q=sel=>sc.querySelector(sel);
+    const readFile=f=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result||'')); r.onerror=()=>rej(new Error('파일을 읽지 못했습니다')); r.readAsText(f,'utf-8'); });
+    const isRules=t=>/service\s+cloud\.firestore/.test(t);
+    const doLint=txt=>{ $q('#clLint').innerHTML=lintHtml(lintRules(txt)); };
+    const tryParse=()=>{
+      const ta=$q('#clCfg'); if(!ta) return false; const out=$q('#clParse'), btn=$q('[data-cl=save]'), t=ta.value;
+      btn.disabled=true; if(!t.trim()){ out.className='small muted'; out.textContent='붙여넣거나 파일을 올리면 자동으로 인식합니다.'; return false; }
+      if(isRules(t)){ out.className='small neg'; out.textContent='이 내용은 보안 규칙입니다. 규칙에는 연결 정보가 없어 자동 연결할 수 없습니다. 아래 ② 규칙 점검에 붙여넣어 검사하거나, 콘솔 웹앱의 firebaseConfig 를 올려 주세요.'; return false; }
+      try{ const c=parseFbConfig(t); out.className='small pos'; out.textContent='✓ 인식됨 — 프로젝트: '+c.projectId+' · 앱 ID: '+c.appId.slice(0,18)+'…'; btn.disabled=false; return c; }
+      catch(e){ out.className='small neg'; out.textContent='아직 인식되지 않았습니다: '+e.message; return false; }
+    };
+    const connect=()=>{ const c=tryParse(); if(!c) return; localStorage.setItem('r2_guild_fb_config',JSON.stringify(c)); toast('설정을 저장했습니다. 페이지를 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); };
+    const cfgFile=async f=>{ try{ const t=await readFile(f); const ta=$q('#clCfg'); if(!ta) return; ta.value=t; if(tryParse()) connect(); }catch(e){ toast(e.message); } };
+    const ruleFile=async f=>{ try{ const t=await readFile(f); $q('#clRules').value=t; doLint(t); }catch(e){ toast(e.message); } };
+    const wireDrop=(id,fn)=>{ const z=$q(id); if(!z) return; ['dragenter','dragover'].forEach(ev=>z.addEventListener(ev,e=>{ e.preventDefault(); z.classList.add('over'); })); ['dragleave','drop'].forEach(ev=>z.addEventListener(ev,e=>{ e.preventDefault(); z.classList.remove('over'); }));
+      z.addEventListener('drop',e=>{ const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) fn(f); }); };
+    wireDrop('#clDropCfg',cfgFile); wireDrop('#clDropRule',ruleFile);
+    const fc=$q('#clFile'); if(fc) fc.addEventListener('change',()=>{ if(fc.files[0]) cfgFile(fc.files[0]); });
+    const fr=$q('#clRuleFile'); if(fr) fr.addEventListener('change',()=>{ if(fr.files[0]) ruleFile(fr.files[0]); });
+    const ta=$q('#clCfg'); if(ta) ta.addEventListener('input',tryParse);
+    const rt=$q('#clRules'); if(rt) rt.addEventListener('input',()=>{ if(rt.value.trim()) doLint(rt.value); else $q('#clLint').innerHTML=''; });
+    sc.addEventListener('click',async e=>{
       const t=e.target.closest('[data-cl]'); if(!t) return; const k=t.dataset.cl;
-      if(k==='save'){
-        try{ const c=parseFbConfig(root.querySelector('#clCfg').value);
-          localStorage.setItem('r2_guild_fb_config',JSON.stringify(c)); toast('저장했습니다. 페이지를 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
-        catch(err){ toast('설정값 오류: '+err.message); }
-      } else if(k==='clear'){ localStorage.removeItem('r2_guild_fb_config'); toast('설정을 삭제했습니다. 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
+      if(k==='save') connect();
+      else if(k==='lint'){ const v=rt.value; if(!v.trim()) return toast('규칙을 붙여넣거나 파일을 올려 주세요'); doLint(v); }
+      else if(k==='clear'){ localStorage.removeItem('r2_guild_fb_config'); toast('설정을 삭제했습니다. 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
       else if(k==='upload'){
         if(!ui.admin) return toast('관리자 인증이 필요합니다');
-        t.disabled=true; Cloud.localDirty=true; await cloudPush(); toast('클라우드에 올렸습니다'); root.querySelector('#clLogs').textContent='';
+        t.disabled=true; Cloud.localDirty=true; await cloudPush(); toast('클라우드에 올렸습니다'); $q('#clOut').textContent='';
+      } else if(k==='diag'){
+        const box=$q('#clOut'); box.innerHTML='<div class="small muted">진단 중…</div>';
+        try{ box.innerHTML=lintHtml(await cloudDiagnose()); }catch(err){ box.innerHTML='<div class="notice bad">진단 실패: '+esc(err.message)+'</div>'; }
       } else if(k==='logs'){
-        const box=root.querySelector('#clLogs'); box.textContent='불러오는 중…';
+        const box=$q('#clOut'); box.textContent='불러오는 중…';
         try{ const rows=await cloudLogs(); box.innerHTML=rows.length?'<div class="tablewrap"><table class="tbl fixed" style="min-width:0"><colgroup><col style="width:140px"><col></colgroup><thead><tr><th>일시</th><th>내용</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="nowrap">'+esc(fmtTs(r.at))+'</td><td class="wrap">'+esc(r.text||'')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">기록이 없습니다.</div>'; }
-        catch(err){ box.innerHTML='<div class="notice bad">기록을 불러오지 못했습니다: '+esc(cloudErr(err))+'</div>'; }
+        catch(err){ box.innerHTML='<div class="notice bad">기록을 불러오지 못했습니다: '+esc(diagHint(err,'read'))+'</div>'; }
       }
     });
   }});
@@ -2263,10 +2297,60 @@ const TYPE_OF={members:'member',ledger:'ledger',raids:'raid',distributions:'dist
 const stable=v=>{ if(Array.isArray(v)) return '['+v.map(stable).join(',')+']'; if(v&&typeof v==='object') return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}'; return JSON.stringify(v===undefined?null:v); };
 const clean=o=>JSON.parse(JSON.stringify(o));
 const safeId=id=>String(id==null?'':id).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,64)||'x';
-function parseFbConfig(text){      // firebaseConfig = { ... } 를 통째로 붙여넣어도 인식
-  const a=text.indexOf('{'), b=text.lastIndexOf('}'); if(a<0||b<a) throw new Error('{ } 로 둘러싸인 설정값을 붙여넣으세요');
-  let t=text.slice(a,b+1).replace(/\/\/.*$/gm,'').replace(/'/g,'"').replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g,'$1"$2":').replace(/,\s*}/g,'}');
-  const c=JSON.parse(t); if(!c.apiKey||!c.projectId||!c.appId) throw new Error('apiKey, projectId, appId 가 필요합니다'); return c;
+function parseFbConfig(text){      // 콘솔에서 복사한 코드(import 줄 포함), JS 객체, JSON 파일을 모두 인식
+  const keys=['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId','measurementId','databaseURL'];
+  const re=/["']?([A-Za-z]\w*)["']?\s*:\s*(["'`])([^"'`]*)\2/g, out={}; let m;
+  while((m=re.exec(text))){ if(keys.includes(m[1])&&!(m[1] in out)) out[m[1]]=m[3].trim(); }
+  const miss=['apiKey','projectId','appId'].filter(k=>!out[k]);
+  if(miss.length) throw new Error('설정값에서 '+miss.join(', ')+' 를 찾지 못했습니다');
+  return out;
+}
+// 규칙 점검: 길자금 규칙(r2guild)이 올바른 위치에 있는지, 중괄호/함수가 맞는지 검사
+function lintRules(src){
+  const F=[], add=(lv,msg)=>F.push({lv,msg});
+  const t=src.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/.*$/gm,'');
+  if(!/service\s+cloud\.firestore/.test(t)) add('error','"service cloud.firestore { … }" 가 없습니다. Firestore 규칙 전체를 붙여넣으세요.');
+  const paths=[], st=[], re=/match\s+(\/\S+)\s*\{|\{|\}/g; let m, extra=0;
+  while((m=re.exec(t))){
+    if(m[0]==='}'){ if(st.length) st.pop(); else extra++; }
+    else if(m[1]){ paths.push((st.filter(Boolean).join('')+m[1]).replace(/\/+/g,'/')); st.push(m[1]); }
+    else st.push(null);
+  }
+  if(extra) add('error','닫는 중괄호 } 가 '+extra+'개 더 많습니다.');
+  if(st.length) add('error','여는 중괄호 { 가 '+st.length+'개 닫히지 않았습니다.');
+  const goodDocs=/^\/databases\/\{[^}]+\}\/documents\/r2guild\/main\/docs\/\{[^}]+\}$/, goodLogs=/^\/databases\/\{[^}]+\}\/documents\/r2guild\/main\/logs\/\{[^}]+\}$/;
+  const guild=paths.filter(p=>p.includes('r2guild'));
+  guild.filter(p=>!goodDocs.test(p)&&!goodLogs.test(p)).forEach(p=>add('error','길자금 규칙이 다른 match 블록 안쪽(중첩)에 들어가 있습니다. 실제 적용 경로: '+p.replace('/databases/{database}/documents','…')+'  →  "match /r2guild/main/…" 블록을 "match /databases/{database}/documents {" 바로 아래(다른 match 바깥)로 옮기세요.'));
+  const hasDocs=guild.some(p=>goodDocs.test(p)), hasLogs=guild.some(p=>goodLogs.test(p));
+  if(!hasDocs) add('error','올바른 위치의 "match /r2guild/main/docs/{id}" 규칙이 없습니다.');
+  if(!hasLogs) add('error','올바른 위치의 "match /r2guild/main/logs/{lid}" 규칙이 없습니다.');
+  const defs={}; (t.match(/function\s+\w+\s*\(/g)||[]).forEach(x=>{ const n=x.replace(/function\s+|\s*\($/g,''); defs[n]=(defs[n]||0)+1; });
+  Object.keys(defs).forEach(n=>{ if(defs[n]>1) add('error','함수 "'+n+'" 가 '+defs[n]+'번 정의되어 있습니다(중복).'); });
+  ['docOk','logOk','typeOk'].forEach(n=>{ if(new RegExp('\\b'+n+'\\s*\\(').test(t)&&!defs[n]) add('error','함수 "'+n+'" 를 사용하지만 정의가 없습니다.'); });
+  if(hasDocs&&/request\.auth|isAdmin\s*\(/.test(t)) add('warn','로그인(request.auth / isAdmin)을 요구하는 조건이 보입니다. 이 앱은 로그인 없이 저장하므로, 해당 조건이 길자금 규칙에 걸려 있다면 저장이 거부됩니다. (기존 캐쉬템 규칙에서만 쓰는 것이라면 무시)');
+  if(!F.some(x=>x.lv==='error')) add('ok','✓ r2guild/main/docs, r2guild/main/logs 규칙이 올바른 위치에 있고 구조가 맞습니다. (게시 후 ☁ 연결 진단으로 실제 동작을 확인하세요)');
+  return F;
+}
+const lintHtml=F=>'<div class="diag">'+F.map(x=>'<div class="it '+(x.lv==='ok'?'ok':x.lv==='warn'?'warn':'bad')+'">'+(x.lv==='error'?'✗ ':x.lv==='warn'?'⚠ ':'')+esc(x.msg)+'</div>').join('')+'</div>';
+function diagHint(e,kind){
+  const c=((e&&e.code)||'').replace('firestore/','');
+  if(c==='permission-denied') return kind==='read'?'권한 없음 — 콘솔에 게시된 규칙에 r2guild 읽기 규칙이 없거나, 위치(중첩)가 잘못됐습니다. "규칙 점검"으로 확인하세요.':'권한 없음 — logs 쓰기 규칙(logOk)이 없거나 위치가 잘못됐습니다. "규칙 점검"으로 확인하세요.';
+  if(c==='unavailable') return '서버에 연결할 수 없습니다 (인터넷/방화벽 확인).';
+  if(c==='not-found'||/database.*(not|does)/i.test((e&&e.message)||'')) return 'Firestore 데이터베이스가 아직 만들어지지 않았습니다 (콘솔 → Firestore Database → 데이터베이스 만들기).';
+  return (e&&e.message)||c||'알 수 없는 오류';
+}
+async function cloudDiagnose(){
+  const out=[], m=Cloud.m;
+  out.push({lv:Cloud.cfg?'ok':'error',msg:Cloud.cfg?'설정값 인식: 프로젝트 "'+Cloud.cfg.projectId+'"':'설정값이 없습니다'});
+  out.push({lv:m&&Cloud.state!=='sdkfail'?'ok':'error',msg:m&&Cloud.state!=='sdkfail'?'Firebase 라이브러리 불러오기 성공':'Firebase 라이브러리를 불러오지 못했습니다 (인터넷/방화벽, 또는 FB_VER 값 확인)'});
+  if(!m||!Cloud.db) return out;
+  try{ await m.getDocs(m.query(m.collection(Cloud.db,...CLOUD_ROOT,'docs'),m.limit(1))); out.push({lv:'ok',msg:'읽기 테스트 통과 (r2guild/main/docs)'}); }
+  catch(e){ out.push({lv:'error',msg:'읽기 실패: '+diagHint(e,'read')}); }
+  if(ui.admin){
+    try{ const b=m.writeBatch(Cloud.db); b.set(m.doc(m.collection(Cloud.db,...CLOUD_ROOT,'logs')),{at:m.serverTimestamp(),by:'admin',text:'연결 테스트'}); await b.commit(); out.push({lv:'ok',msg:'쓰기 테스트 통과 (logs 에 "연결 테스트" 1건 기록)'}); }
+    catch(e){ out.push({lv:'error',msg:'쓰기 실패: '+diagHint(e,'write')}); }
+  } else out.push({lv:'warn',msg:'쓰기 테스트는 관리자 인증 후 할 수 있습니다.'});
+  return out;
 }
 function cloudCfg(){
   if(FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId) return FIREBASE_CONFIG;
@@ -2285,6 +2369,7 @@ function updateCloudUI(){
 function cloudBar(){
   if(!Cloud.enabled) return '';
   if(Cloud.state==='sdkfail') return '<div class="lockbar"><span>☁ 클라우드에 연결하지 못했습니다(인터넷 연결을 확인하세요). 이 브라우저에 저장된 데이터를 표시 중입니다.</span></div>';
+  if(Cloud.state==='error') return '<div class="lockbar"><span>☁ 클라우드 오류: '+esc(Cloud.err)+'</span><button class="btn sm gold" data-act="cloudOpen">연결 진단/규칙 점검</button></div>';
   if(Cloud.empty) return '<div class="lockbar"><span>☁ 클라우드에 아직 데이터가 없습니다. '+(ui.admin?'현재 데이터를 올려 시작하세요.':'관리자 인증 후 현재 데이터를 올릴 수 있습니다.')+'</span><button class="btn sm gold" data-act="cloudOpen">☁ 클라우드 설정/업로드</button></div>';
   return '';
 }
@@ -2339,7 +2424,7 @@ function cloudOnSnap(snap){
   updateCloudUI(); cloudFlush();
   if(wasEmpty!==Cloud.empty&&S&&!cloudBusy()) render();     // '클라우드가 비어 있음' 안내 표시/해제
 }
-function cloudOnSnapErr(e){ Cloud.state='error'; Cloud.err=cloudErr(e); updateCloudUI(); }
+function cloudOnSnapErr(e){ Cloud.state='error'; Cloud.err=((e&&e.code)||'').replace('firestore/','')==='permission-denied'?'읽기 권한 없음 — 규칙 확인 필요':cloudErr(e); updateCloudUI(); if(S&&!cloudBusy()) render(); }
 function cloudMarkDirty(){ if(Cloud.enabled&&ui.admin) Cloud.localDirty=true; }
 function cloudSchedule(){ if(!Cloud.enabled||!Cloud.m||!ui.admin) return; clearTimeout(Cloud.timer); Cloud.timer=setTimeout(cloudPush,300); }
 const ordFor=id=>{ if(!Cloud.ord.has(id)) Cloud.ord.set(id,Cloud.nextOrd++); return Cloud.ord.get(id); };
@@ -2405,7 +2490,7 @@ const fmtTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   S = d ? normalize(d) : defaultData();   // 먼저 이 브라우저의 저장본(캐시)으로 바로 표시, 클라우드가 연결되면 클라우드 데이터로 교체
