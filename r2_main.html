@@ -379,7 +379,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
 <body>
 <div class="top"><div class="top-in">
   <div class="brand">
-    <h1>R2 길드 자금 관리<small>자금 · 분배 · 레이드 정산</small></h1>
+    <h1>R2 길드 자금 관리<small>자금 · 분배 · 레이드 정산</small><small id="appVer" style="opacity:.7"></small></h1>
     <div class="tools">
       <span id="adminStatus" class="save">🔒 읽기 전용</span>
       <button class="btn sm" id="adminBtn" data-act="adminAuth">관리자 인증</button>
@@ -420,6 +420,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
+const APP_VER = '2026.10.29-c';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -799,7 +800,12 @@ function denyWrite(){
   toast('🔒 읽기 전용입니다. 관리자 인증 후 이용할 수 있습니다');
   if(!$('#modalRoot').children.length && window.R2 && window.R2.A) window.R2.A.adminAuth();
 }
-function guard(name,set){ if(ui.admin||set.has(name)) return true; denyWrite(); return false; }
+function guard(name,set){
+  if(set.has(name)) return true;
+  if(!ui.admin){ denyWrite(); return false; }
+  if(Cloud.enabled&&!Cloud.synced&&!Cloud.empty){ toast(Cloud.state==='loading'||Cloud.state==='offline'?'☁ 클라우드 데이터를 불러오는 중입니다. 잠시 후 다시 시도하세요':'☁ 클라우드에 연결되지 않아 저장할 수 없습니다 (☁ 클라우드 → 연결 진단)'); return false; }
+  return true;
+}
 const lockBar=()=>ui.admin?'':'<div class="lockbar"><span>🔒 <b>읽기 전용 모드</b> — 입력·수정·삭제·JSON 백업/복구·초기화는 관리자 인증 후에 가능합니다.</span><button class="btn sm gold" data-act="adminAuth">관리자 인증</button></div>';
 function applyLock(){
   if(ui.admin) return;
@@ -832,6 +838,7 @@ function updateStatus(){
 }
 function updateHeader(){
   updateStatus(); updateCloudUI();
+  const vEl=document.getElementById('appVer'); if(vEl) vEl.textContent='v'+APP_VER;
   const as=$('#adminStatus'), ab=$('#adminBtn');
   if(as){ as.className='save '+(ui.admin?'ok':''); as.textContent=ui.admin?'🔓 관리자 모드':'🔒 읽기 전용'; }
   if(ab){ ab.textContent=ui.admin?'관리자 로그아웃':'관리자 인증'; ab.dataset.act=ui.admin?'adminLogout':'adminAuth'; }
@@ -2075,7 +2082,7 @@ A.cloudOpen=async(opt)=>{
       else if(k==='clear'){ localStorage.removeItem('r2_guild_fb_config'); toast('설정을 삭제했습니다. 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
       else if(k==='upload'){
         if(!ui.admin) return toast('관리자 인증이 필요합니다');
-        t.disabled=true; Cloud.localDirty=true; await cloudPush(); toast('클라우드에 올렸습니다'); $q('#clOut').textContent='';
+        t.disabled=true; Cloud.uploading=true; Cloud.allowMass=true; Cloud.localDirty=true; await cloudPush(); Cloud.uploading=false; if(Cloud.state!=='error'){ Cloud.synced=true; toast('클라우드에 올렸습니다'); } $q('#clOut').textContent='';
       } else if(k==='diag') runDiag();
       else if(k==='syncNow'){ if(!ui.admin) return toast('관리자 인증이 필요합니다'); Cloud.localDirty=true; await cloudPush(); toast(Cloud.state==='error'?'동기화 실패: '+Cloud.err:'☁ 동기화 완료 — 클라우드 문서 '+Cloud.docs.size+'개'); }
       else if(k==='embedDl'){
@@ -2242,11 +2249,11 @@ A.exportJson=()=>{
 A.importJson=()=>{ $('#fileIn').value=''; $('#fileIn').click(); };
 A.resetAll=async()=>{
   if(!await confirmBox('모든 데이터(길자금 내역, 레이드, 분배, 길드원)를 지우고 처음 상태로 되돌립니다.\n먼저 JSON 내보내기로 백업하세요.'+(Cloud.enabled?'\n\n⚠ 클라우드에 저장된 데이터도 모두 삭제됩니다.':''),{ok:'전부 초기화',danger:true})) return;
-  S=defaultData(); ui.raidId=null; ui.stockSel=null; commit(); toast('초기화했습니다');
+  Cloud.allowMass=true; S=defaultData(); ui.raidId=null; ui.stockSel=null; commit(); toast('초기화했습니다');
 };
 A.sample=async()=>{
   if(!await confirmBox('엑셀(메테정산표 Ver3)의 2025-05-11 메테 정산과 05-18 분배 입력값으로 예시 데이터를 만듭니다.\n현재 데이터는 모두 덮어씌워집니다.'+(Cloud.enabled?'\n⚠ 클라우드 데이터도 예시 데이터로 바뀝니다.':'')+' 계속할까요?',{ok:'예시 불러오기'})) return;
-  S=defaultData();
+  Cloud.allowMass=true; S=defaultData();
   const byName=n=>S.members.find(m=>m.name===n);
   const lot=(name,price,buyer)=>({id:uid(),name,qty:1,state:'sold',price,buyers:[{id:byName(buyer).id,name:buyer}],bidders:[],soldDate:'2025-05-11'});
   const raid={id:uid(),date:'2025-05-11',title:'메테 3마리',status:'completed',lots:[
@@ -2275,7 +2282,7 @@ $('#fileIn').addEventListener('change',e=>{
     let data; try{ data=JSON.parse(rd.result); }catch(err){ return toast('JSON 형식이 올바르지 않습니다'); }
     if(!data||typeof data!=='object'||!('ledger' in data||'members' in data||'raids' in data)) return toast('이 프로그램에서 내보낸 JSON 파일이 아닙니다');
     if(!await confirmBox('"'+f.name+'" 파일로 현재 데이터를 덮어씁니다.'+(Cloud.enabled?'\n⚠ 클라우드 데이터도 이 파일 내용으로 바뀝니다.':'')+' 계속할까요?'+((data.schemaVersion||1)<SCHEMA?'\n(이전 버전 파일은 현재 버전에 맞게 자동 변환합니다)':''),{ok:'불러오기'})) return;
-    S=normalize(data); ui.raidId=null; ui.stockSel=null; commit(); toast('불러왔습니다');
+    Cloud.allowMass=true; S=normalize(data); ui.raidId=null; ui.stockSel=null; commit(); toast('불러왔습니다');
   };
   rd.readAsText(f,'utf-8');
 });
@@ -2456,7 +2463,7 @@ function cloudCfg(){
 }
 const Cloud={cfg:null,enabled:false,state:'local',err:'',m:null,db:null,
   docs:new Map(),base:new Map(),ord:new Map(),nextOrd:0,first:false,serverSeen:false,hadDocs:false,empty:false,
-  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null};
+  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null,synced:false,uploading:false,allowMass:false};
 function ctrace(msg){ const d=new Date(); Cloud.trace.push(pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+' '+msg); if(Cloud.trace.length>40) Cloud.trace.shift(); }
 const waitMs=ms=>new Promise(r=>setTimeout(r,ms));
 function cloudErr(e){ const c=(e&&(e.code||'')).replace('firestore/',''); return c==='permission-denied'?'권한 없음 (관리자만 저장할 수 있습니다)':c==='unavailable'?'네트워크 연결 없음':(e&&e.message)||String(e); }
@@ -2468,6 +2475,7 @@ function updateCloudUI(){
 function cloudBar(){
   if(!Cloud.enabled) return '';
   if(Cloud.state==='sdkfail') return '<div class="lockbar"><span>☁ 클라우드에 연결하지 못했습니다: '+esc(Cloud.err||'원인 불명')+' — 이 브라우저에 저장된 데이터를 표시 중입니다.</span><button class="btn sm gold" data-act="cloudOpen">연결 진단</button></div>';
+  if(!Cloud.synced&&!Cloud.empty&&(Cloud.state==='loading'||Cloud.state==='offline')) return '<div class="lockbar"><span>☁ 클라우드 데이터를 불러오는 중… (불러오기 전에는 입력할 수 없습니다)</span></div>';
   if(Cloud.state==='error') return '<div class="lockbar"><span>☁ 클라우드 오류: '+esc(Cloud.err)+'</span><button class="btn sm gold" data-act="cloudOpen">연결 진단/규칙 점검</button></div>';
   if(Cloud.empty) return '<div class="lockbar"><span>☁ 클라우드에 아직 데이터가 없습니다. '+(ui.admin?'현재 데이터를 올려 시작하세요.':'관리자 인증 후 현재 데이터를 올릴 수 있습니다.')+'</span><button class="btn sm gold" data-act="cloudOpen">☁ 클라우드 설정/업로드</button></div>';
   return '';
@@ -2501,14 +2509,19 @@ function cloudBusy(){
 }
 function cloudFlush(){      // 받아둔 변경을 화면에 반영 (입력/모달 중이면 끝날 때까지 대기)
   if(!Cloud.needRebuild||!S) return;
-  if(Cloud.localDirty||Cloud.pushing||cloudBusy()) return;
-  Cloud.needRebuild=false;
-  S=normalize(cloudBuildState()); Repo.save(S); render();
+  const first=!Cloud.synced;
+  if(first){ if(document.querySelector('#drawRoot > *')) return; }          // 첫 동기화: 이 기기의 예전 데이터보다 클라우드가 항상 우선
+  else if(Cloud.localDirty||Cloud.pushing||cloudBusy()) return;
+  Cloud.needRebuild=false; if(first) Cloud.localDirty=false;
+  S=normalize(cloudBuildState()); Repo.save(S);
+  if(first){ Cloud.synced=true; ctrace('클라우드 데이터를 화면에 반영 (문서 '+Cloud.docs.size+'개) — 이제 저장 가능'); }
+  render();
 }
 function cloudOnSnap(snap){
-  const md=snap.metadata||{}, fromCache=!!md.fromCache, wasEmpty=Cloud.empty;
+  const md=snap.metadata||{}, fromCache=!!md.fromCache, wasEmpty=Cloud.empty, prev=Cloud.state;
+  const changes=snap.docChanges();
   if(!fromCache){ Cloud.serverSeen=true; Cloud.lastSync=new Date(); }
-  snap.docChanges().forEach(ch=>{
+  changes.forEach(ch=>{
     const id=ch.doc.id;
     if(ch.type==='removed'){ Cloud.docs.delete(id); Cloud.base.delete(id); Cloud.ord.delete(id); return; }
     const d=ch.doc.data()||{}; Cloud.docs.set(id,{type:d.type,payload:d.payload,ord:typeof d.ord==='number'?d.ord:0});
@@ -2520,8 +2533,10 @@ function cloudOnSnap(snap){
   Cloud.empty=Cloud.serverSeen&&Cloud.docs.size===0;
   if(Cloud.docs.size>0) Cloud.hadDocs=true;
   if(Cloud.docs.size>0||Cloud.serverSeen) Cloud.first=true;
-  Cloud.state=md.hasPendingWrites?'saving':(fromCache&&!Cloud.serverSeen?'offline':'online');
-  if(Cloud.docs.size>0||(Cloud.hadDocs&&Cloud.serverSeen)) Cloud.needRebuild=true;   // 클라우드가 비어 있으면(처음) 로컬 데이터를 유지
+  Cloud.state=fromCache?(Cloud.serverSeen?'offline':'loading'):(md.hasPendingWrites?'saving':'online');
+  if(prev!==Cloud.state&&(Cloud.state==='offline'||prev==='offline')) ctrace(Cloud.state==='offline'?'서버 연결 끊김 → 캐시로 표시 (연결되면 자동 재동기화)':'서버 다시 연결됨');
+  if(changes.length&&(Cloud.docs.size>0||Cloud.hadDocs)) Cloud.needRebuild=true;          // 내용이 바뀐 경우에만 화면 갱신
+  if(!Cloud.synced&&Cloud.docs.size>0) Cloud.needRebuild=true;                           // 아직 첫 동기화 전이면 반영
   updateCloudUI(); cloudFlush();
   if(wasEmpty!==Cloud.empty&&S&&!cloudBusy()) render();     // '클라우드가 비어 있음' 안내 표시/해제
 }
@@ -2531,7 +2546,7 @@ function cloudSchedule(){ if(!Cloud.enabled||!Cloud.m||!ui.admin) return; clearT
 const ordFor=id=>{ if(!Cloud.ord.has(id)) Cloud.ord.set(id,Cloud.nextOrd++); return Cloud.ord.get(id); };
 async function cloudPush(){
   if(!Cloud.enabled||!Cloud.m||!Cloud.db||!ui.admin||!S) return;      // 관리자 모드(화면 잠금 해제)일 때만 저장
-  if(!Cloud.first){ Cloud.timer=setTimeout(cloudPush,700); return; }      // 첫 동기화 전에는 올리지 않음 (덮어쓰기 방지)
+  if(!Cloud.synced&&!Cloud.uploading){ if(!Cloud.empty) Cloud.timer=setTimeout(cloudPush,700); return; }   // 클라우드 데이터를 화면에 반영하기 전에는 절대 올리지 않음 (예전 데이터로 덮어쓰기 방지)
   if(Cloud.pushing){ Cloud.pushAgain=true; return; }
   Cloud.pushing=true; const m=Cloud.m, db=Cloud.db, by='admin'; let failed=null;
   try{
@@ -2541,6 +2556,10 @@ async function cloudPush(){
       cur.forEach((rec,id)=>{ const str=stable(rec.payload); if(Cloud.base.get(id)!==str) ops.push({k:'set',id,rec,str,isNew:!Cloud.base.has(id)}); });
       Cloud.base.forEach((_,id)=>{ if(!cur.has(id)) ops.push({k:'del',id}); });
       if(!ops.length) break;
+      const dels=ops.filter(o=>o.k==='del').length;
+      if(dels>=5&&dels>Cloud.base.size*0.3&&!Cloud.allowMass){      // 안전장치: 한 번에 많이 지우는 저장은 막음 (초기화·예시·JSON 불러오기만 허용)
+        const e=new Error('한 번에 '+dels+'건 삭제는 막았습니다 — 화면을 클라우드 데이터로 되돌립니다'); e.code='mass-delete'; ctrace('대량 삭제 차단: '+dels+'건'); throw e;
+      }
       Cloud.state='saving'; updateCloudUI();
       for(let i=0;i<ops.length;i+=400){
         const ch=ops.slice(i,i+400), b=m.writeBatch(db);
@@ -2555,12 +2574,12 @@ async function cloudPush(){
         ch.forEach(op=>{ if(op.k==='set') Cloud.base.set(op.id,op.str); else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); } });
       }
     }while(Cloud.pushAgain);
-    Cloud.state='online'; Cloud.err=''; Cloud.lastSync=new Date();
+    Cloud.state='online'; Cloud.err=''; Cloud.lastSync=new Date(); Cloud.allowMass=false;
   }catch(e){
     failed=e; Cloud.state='error'; Cloud.err=cloudErr(e); toast('☁ 클라우드 저장 실패: '+Cloud.err);
   }finally{ Cloud.pushing=false; }
   const code=failed&&(failed.code||'');
-  if(!failed||/permission-denied|invalid-argument|failed-precondition/.test(code)){ Cloud.localDirty=false; if(failed){ Cloud.needRebuild=true; } }   // 서버가 거부한 변경은 되돌려 클라우드 상태와 맞춤
+  if(!failed||/permission-denied|invalid-argument|failed-precondition|mass-delete/.test(code)){ Cloud.localDirty=false; if(failed){ Cloud.needRebuild=true; } }   // 서버가 거부한 변경은 되돌려 클라우드 상태와 맞춤
   updateCloudUI(); cloudFlush();
 }
 async function loadFbSdk(){
@@ -2581,7 +2600,7 @@ async function cloudStart(){
     const app=m.initializeApp(fbCfg);
     try{ Cloud.db=m.initializeFirestore(app,{localCache:m.persistentLocalCache({tabManager:m.persistentMultipleTabManager()})}); ctrace('Firestore 초기화 (오프라인 캐시 사용)'); }
     catch(e){ Cloud.db=m.getFirestore(app); ctrace('Firestore 초기화 (오프라인 캐시 없이): '+((e&&e.message)||e)); }
-    m.onSnapshot(m.collection(Cloud.db,...CLOUD_ROOT,'docs'),cloudOnSnap,cloudOnSnapErr);
+    m.onSnapshot(m.collection(Cloud.db,...CLOUD_ROOT,'docs'),{includeMetadataChanges:true},cloudOnSnap,cloudOnSnapErr);   // 캐시→서버 확인 같은 연결 상태 변화도 받음
     ctrace('실시간 구독 시작 (r2guild/main/docs)');
     if(!Cloud.flushTimer) Cloud.flushTimer=setInterval(cloudFlush,700);
   }catch(e){ Cloud.m=null; Cloud.state='sdkfail'; Cloud.err=(e&&e.message)||String(e); ctrace('실패: '+Cloud.err); updateCloudUI(); if(S) render(); }
@@ -2595,7 +2614,7 @@ const fmtTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   const viaLink=cloudCfgFromHash();
@@ -2603,6 +2622,7 @@ Repo.load().then(d=>{
   Repo.save(S);          // 이전 버전 데이터는 변환된 상태로 다시 저장
   render();
   cloudStart();          // Firebase 설정이 있으면 연결 (없으면 로컬 모드)
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible') return; if(ui.admin&&Date.now()>ui.adminUntil){ setAdmin(false); render(); toast('🔒 30분간 사용이 없어 관리자 인증이 해제되었습니다'); } updateCloudUI(); cloudFlush(); });
   if(viaLink) setTimeout(()=>toast('☁ 연결 링크로 클라우드 설정을 저장했습니다. 이제 이 브라우저에서는 자동으로 연결됩니다'),300);
 });
 })();
