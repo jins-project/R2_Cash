@@ -2000,9 +2000,23 @@ A.cloudOpen=async(opt)=>{
         '<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--blue)">설정값은 어디서 찾나요?</summary><ol class="small muted" style="line-height:1.9"><li>Firebase 콘솔(console.firebase.google.com) → 사용하는 프로젝트 선택</li><li>왼쪽 위 톱니바퀴 → <b>프로젝트 설정</b> → <b>일반</b> 탭 아래쪽 <b>내 앱</b></li><li>웹 앱(<code>&lt;/&gt;</code>)이 없으면 <b>앱 추가</b>로 등록, 있으면 선택</li><li><b>SDK 설정 및 구성 → 구성(Config)</b>에 나오는 <code>const firebaseConfig = {…}</code> 를 통째로 복사해 위에 붙여넣기</li></ol></details>':
         '<div class="notice warn">관리자 인증 후 연결할 수 있습니다.</div>');
   } else {
-    b+='<div class="toolbar" style="margin:0 0 6px"><button type="button" class="btn primary" data-cl="diag">🔍 연결 진단</button>'+(Cloud.state==='sdkfail'?'<button type="button" class="btn gold" data-cl="retry">다시 연결 시도</button>':'')+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">연결 설정 삭제</button>':'')+'</div>';
-    if(Cloud.empty&&!ui.admin) b+='<div class="notice warn">클라우드가 비어 있습니다. 관리자 인증 후 올릴 수 있습니다.</div>';
-    b+='<div class="notice">ℹ 이 앱은 로그인 없이 동작합니다. 입력 잠금(관리자 인증)은 <b>화면에서만</b> 작동하므로 서버에 직접 쓰는 것까지 막지는 못합니다. 정기적으로 JSON 백업을 받아 두세요.</div><div id="clOut"></div>';
+    // 현재 연결 상태를 한눈에 (자동 점검)
+    const st=[];
+    st.push(embedded?{lv:'ok',msg:'설정 위치: 파일에 내장 — 누가 어디서 열든 자동으로 연결됩니다'}:{lv:'warn',msg:'설정 위치: 이 브라우저에만 저장 — 다른 기기·다른 브라우저·시크릿 창에서는 다시 설정해야 합니다 (아래 ③에서 해결)'});
+    st.push(Cloud.state==='online'||Cloud.state==='saving'?{lv:'ok',msg:'서버 연결: 정상 (실시간 동기화 중)'}:Cloud.state==='offline'?{lv:'warn',msg:'서버 연결: 오프라인 — 마지막으로 받은 데이터를 표시 중'}:Cloud.state==='loading'?{lv:'warn',msg:'서버 연결: 연결 중…'}:{lv:'error',msg:'서버 연결: 실패 — '+(Cloud.err||'원인 불명')+' (연결 진단을 눌러 확인)'});
+    if(Cloud.serverSeen) st.push(Cloud.empty?{lv:'warn',msg:'클라우드 데이터: 비어 있음 — '+(ui.admin?'아래 "현재 데이터를 클라우드에 올리기"를 누르세요':'관리자 인증 후 현재 데이터를 올려야 합니다')}:{lv:'ok',msg:'클라우드 데이터: 문서 '+Cloud.docs.size+'개를 받아 화면에 표시 중'});
+    st.push(ui.admin?{lv:'ok',msg:'저장: 관리자 모드 — 입력·수정하면 즉시 클라우드에 자동 저장됩니다'}:{lv:'warn',msg:'저장: 읽기 전용 — 보기만 합니다. 입력·저장하려면 관리자 인증을 하세요 (인증하면 자동 저장)'});
+    if(Cloud.lastSync) st.push({lv:'ok',msg:'마지막 동기화: '+fmtTs(Cloud.lastSync)+':'+pad(Cloud.lastSync.getSeconds())});
+    b+=lintHtml(st);
+    b+='<div class="toolbar" style="margin:12px 0 6px"><button type="button" class="btn primary" data-cl="diag">🔍 연결 진단</button>'+(Cloud.state==='sdkfail'?'<button type="button" class="btn gold" data-cl="retry">다시 연결 시도</button>':'')+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+(ui.admin&&!Cloud.empty&&Cloud.m?'<button type="button" class="btn" data-cl="syncNow">⟳ 지금 동기화</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">연결 설정 삭제</button>':'')+'</div>';
+    b+='<div id="clOut"></div>';
+    b+='<h3 style="margin:20px 0 8px">③ 모든 기기에서 자동 연결 유지</h3>';
+    if(embedded) b+='<div class="notice ok">✓ 이 파일에는 연결 설정이 내장되어 있어, 누가 어디서 열든 매번 설정 없이 자동으로 연결됩니다.</div>';
+    else b+='<p class="hint">지금 연결 설정은 <b>이 브라우저에만</b> 저장되어 있습니다. 아래 ①을 하면 <b>모든 길드원·모든 기기에서 설정 없이 자동 연결</b>되고 계속 유지됩니다.</p>'+
+      (ui.admin?'<div class="toolbar" style="margin:0 0 8px"><button type="button" class="btn gold" data-cl="embedDl">① ⬇ 설정이 들어간 HTML 파일 받기</button><button type="button" class="btn" data-cl="copyLink">② 🔗 연결 링크 복사</button></div>'+
+        '<ol class="small muted" style="line-height:1.9;margin:0 0 6px"><li><b>①(권장)</b> 받은 파일을 GitHub 저장소에 같은 이름(예: <code>r2_main.html</code>)으로 덮어써서 올리면 끝입니다. 이후 모든 기기에서 자동 연결됩니다.</li><li><b>②</b> 파일을 다시 올리기 어려울 때: 링크를 길드원에게 보내면, 그 링크로 한 번 연 브라우저는 계속 자동 연결됩니다.</li></ol><div id="clEmbed"></div>':
+        '<div class="notice warn">관리자 인증 후 설정이 들어간 파일을 받을 수 있습니다.</div>');
+    b+='<div class="notice" style="margin-top:12px">ℹ 이 앱은 로그인 없이 동작합니다. 입력 잠금(관리자 인증)은 <b>화면에서만</b> 작동하므로 서버에 직접 쓰는 것까지 막지는 못합니다. 정기적으로 JSON 백업을 받아 두세요.</div>';
   }
   if(Cloud.trace.length) b+='<details style="margin-top:12px"'+(Cloud.state==='error'||Cloud.state==='sdkfail'?' open':'')+'><summary style="cursor:pointer;color:var(--blue)">연결 과정 보기</summary><pre class="small muted" style="white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;line-height:1.7">'+esc(Cloud.trace.join('\n'))+'</pre></details>';
   b+='<h3 style="margin:20px 0 8px">② 규칙 점검</h3><p class="hint">Firebase에 게시한(또는 게시할) <b>규칙을 파일로 올리거나 붙여넣으면</b> 길자금 규칙이 올바른 위치에 있는지 검사합니다. (점검은 <b>글자 구조만</b> 확인하며, 실제로 게시됐는지는 ① 연결 후 연결 진단으로 확인됩니다)</p>'+
@@ -2056,6 +2070,20 @@ A.cloudOpen=async(opt)=>{
         if(!ui.admin) return toast('관리자 인증이 필요합니다');
         t.disabled=true; Cloud.localDirty=true; await cloudPush(); toast('클라우드에 올렸습니다'); $q('#clOut').textContent='';
       } else if(k==='diag') runDiag();
+      else if(k==='syncNow'){ if(!ui.admin) return toast('관리자 인증이 필요합니다'); Cloud.localDirty=true; await cloudPush(); toast(Cloud.state==='error'?'동기화 실패: '+Cloud.err:'☁ 동기화 완료 — 클라우드 문서 '+Cloud.docs.size+'개'); }
+      else if(k==='embedDl'){
+        const box=$q('#clEmbed'); box.innerHTML='<div class="small muted">파일을 만드는 중…</div>';
+        const html=await buildEmbeddedHtml(Cloud.cfg);
+        if(!html){ box.innerHTML='<div class="notice bad">파일을 만들지 못했습니다. 파일 위쪽의 <code>const FIREBASE_CONFIG = null;</code> 을 직접 아래 값으로 바꿔 주세요.</div><pre class="small" style="white-space:pre-wrap">const FIREBASE_CONFIG = '+esc(JSON.stringify(cfgMin(Cloud.cfg),null,2))+';</pre>'; return; }
+        const last=location.pathname.split('/').pop()||'', name=last.endsWith('.html')?last:'r2_main.html';
+        const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(x){} a.remove(); },800);
+        box.innerHTML='<div class="notice ok">✓ <b>'+esc(name)+'</b> 파일을 받았습니다. GitHub 저장소에 같은 이름으로 올려(덮어쓰기) 주세요. 반영되면 모든 기기에서 자동으로 연결됩니다.</div>';
+      }
+      else if(k==='copyLink'){
+        const link=cfgLink(Cloud.cfg), box=$q('#clEmbed');
+        try{ await navigator.clipboard.writeText(link); toast('연결 링크를 복사했습니다'); }catch(x){}
+        box.innerHTML='<div class="field"><label>연결 링크 (이 링크로 한 번 열면 그 브라우저는 계속 자동 연결)</label><input readonly value="'+esc(link)+'"></div>';
+      }
       else if(k==='logs'){
         const box=$q('#clOut'); box.textContent='불러오는 중…';
         try{ const rows=await cloudLogs(); box.innerHTML=rows.length?'<div class="tablewrap"><table class="tbl fixed" style="min-width:0"><colgroup><col style="width:140px"><col></colgroup><thead><tr><th>일시</th><th>내용</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="nowrap">'+esc(fmtTs(r.at))+'</td><td class="wrap">'+esc(r.text||'')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">기록이 없습니다.</div>'; }
@@ -2380,6 +2408,40 @@ async function cloudDiagnose(){
   } else out.push({lv:'warn',msg:'쓰기 테스트는 관리자 인증 후 할 수 있습니다.'});
   return out;
 }
+const cfgEmbedded=()=>!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId);
+const cfgMin=c=>{ const o={}; ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{ if(c&&c[k]) o[k]=c[k]; }); return o; };
+// 주소 끝의 #cfg=... (연결 링크)로 열면 이 브라우저에 설정을 저장하고 주소에서 지움
+function cloudCfgFromHash(){
+  try{
+    const h=location.hash||''; if(!h.startsWith('#cfg=')) return false;
+    const c=JSON.parse(decodeURIComponent(escape(atob(h.slice(5)))));
+    if(!c||!c.apiKey||!c.projectId||!c.appId) return false;
+    localStorage.setItem('r2_guild_fb_config',JSON.stringify(cfgMin(c)));
+    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; }
+    return true;
+  }catch(e){ return false; }
+}
+function cfgLink(c){ return location.origin+location.pathname+'#cfg='+btoa(unescape(encodeURIComponent(JSON.stringify(cfgMin(c))))); }
+// 현재 페이지 원본에 설정값을 넣은 HTML 만들기 (GitHub에 올리면 모든 기기에서 자동 연결)
+function embedCfg(src,c){
+  const re=/^const FIREBASE_CONFIG = (?:null|\{[^;]*\});/m;     // 줄 맨 앞의 실제 선언만 (위쪽 주석의 예시는 건드리지 않음)
+  if(!re.test(src)) return null;
+  return src.replace(re,'const FIREBASE_CONFIG = '+JSON.stringify(cfgMin(c),null,2)+';');
+}
+function pageSourceFromDom(){
+  const root=document.documentElement.cloneNode(true);
+  ['#view','#modalRoot','#drawRoot'].forEach(sel=>{ const el=root.querySelector(sel); if(el) el.innerHTML=''; });
+  const t=root.querySelector('#toast'); if(t){ t.textContent=''; t.className=''; }
+  root.querySelectorAll('.lockd').forEach(e=>e.classList.remove('lockd'));
+  root.querySelectorAll('.tab.on').forEach(e=>e.classList.remove('on'));
+  return '<!DOCTYPE html>\n'+root.outerHTML;
+}
+async function buildEmbeddedHtml(c){
+  let out=null;
+  try{ const res=await fetch(location.href.split('#')[0],{cache:'no-store'}); if(res.ok) out=embedCfg(await res.text(),c); }catch(e){}
+  if(!out) out=embedCfg(pageSourceFromDom(),c);
+  return out;
+}
 function cloudCfg(){
   if(FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId) return FIREBASE_CONFIG;
   try{ const raw=localStorage.getItem('r2_guild_fb_config'); if(raw){ const c=JSON.parse(raw); if(c&&c.projectId&&c.apiKey) return c; } }catch(e){}
@@ -2387,7 +2449,7 @@ function cloudCfg(){
 }
 const Cloud={cfg:null,enabled:false,state:'local',err:'',m:null,db:null,
   docs:new Map(),base:new Map(),ord:new Map(),nextOrd:0,first:false,serverSeen:false,hadDocs:false,empty:false,
-  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false};
+  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null};
 function ctrace(msg){ const d=new Date(); Cloud.trace.push(pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+' '+msg); if(Cloud.trace.length>40) Cloud.trace.shift(); }
 const waitMs=ms=>new Promise(r=>setTimeout(r,ms));
 function cloudErr(e){ const c=(e&&(e.code||'')).replace('firestore/',''); return c==='permission-denied'?'권한 없음 (관리자만 저장할 수 있습니다)':c==='unavailable'?'네트워크 연결 없음':(e&&e.message)||String(e); }
@@ -2438,7 +2500,7 @@ function cloudFlush(){      // 받아둔 변경을 화면에 반영 (입력/모�
 }
 function cloudOnSnap(snap){
   const md=snap.metadata||{}, fromCache=!!md.fromCache, wasEmpty=Cloud.empty;
-  if(!fromCache) Cloud.serverSeen=true;
+  if(!fromCache){ Cloud.serverSeen=true; Cloud.lastSync=new Date(); }
   snap.docChanges().forEach(ch=>{
     const id=ch.doc.id;
     if(ch.type==='removed'){ Cloud.docs.delete(id); Cloud.base.delete(id); Cloud.ord.delete(id); return; }
@@ -2486,7 +2548,7 @@ async function cloudPush(){
         ch.forEach(op=>{ if(op.k==='set') Cloud.base.set(op.id,op.str); else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); } });
       }
     }while(Cloud.pushAgain);
-    Cloud.state='online'; Cloud.err='';
+    Cloud.state='online'; Cloud.err=''; Cloud.lastSync=new Date();
   }catch(e){
     failed=e; Cloud.state='error'; Cloud.err=cloudErr(e); toast('☁ 클라우드 저장 실패: '+Cloud.err);
   }finally{ Cloud.pushing=false; }
@@ -2526,13 +2588,15 @@ const fmtTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
+  const viaLink=cloudCfgFromHash();
   S = d ? normalize(d) : defaultData();   // 먼저 이 브라우저의 저장본(캐시)으로 바로 표시, 클라우드가 연결되면 클라우드 데이터로 교체
   Repo.save(S);          // 이전 버전 데이터는 변환된 상태로 다시 저장
   render();
   cloudStart();          // Firebase 설정이 있으면 연결 (없으면 로컬 모드)
+  if(viaLink) setTimeout(()=>toast('☁ 연결 링크로 클라우드 설정을 저장했습니다. 이제 이 브라우저에서는 자동으로 연결됩니다'),300);
 });
 })();
 </script>
