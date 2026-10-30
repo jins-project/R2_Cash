@@ -240,10 +240,14 @@ details.hist .inner{padding:14px}
 .qreg .qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
 .qreg .seg{margin:0 0 10px}
 .qitems{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto;padding:2px}
-.qitems .chip{cursor:pointer;font-size:13px;padding:5px 10px}
-.qitems .chip.picked{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
-.qitems .chip b{margin-left:4px}
-.qitems .chip small{margin-left:5px;color:var(--muted);font-weight:500}
+.qitems .chip{cursor:pointer;font-size:13px;padding:5px 12px;font-weight:700;border-width:1.5px;transition:filter .12s,transform .12s}
+.qitems .chip:hover{filter:brightness(1.25);transform:translateY(-1px)}
+.qitems .chip.picked{box-shadow:0 0 0 2px var(--bg),0 0 0 4px currentColor}
+.qitems .chip b{margin-left:6px;padding:0 6px;border-radius:999px;background:currentColor}
+.qitems .chip b span{color:var(--bg)}
+.qitems .chip small{margin-left:6px;color:inherit;opacity:.85;font-weight:700;font-size:12px}
+.qitems .chip.lockd{opacity:.8}
+.seg .cdot2{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
 .est{color:var(--muted);font-style:italic}
 .qcart{margin-top:12px;border-top:1px dashed var(--line2);padding-top:10px}
 .qcart .qrow{display:grid;grid-template-columns:minmax(120px,1fr) auto auto;gap:8px;align-items:center;padding:4px 0}
@@ -251,6 +255,10 @@ details.hist .inner{padding:14px}
 .qcart .qty input{width:58px;text-align:center}
 .qcart .qfoot{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
 .catchip{font-size:12px}
+.cswatch{display:inline-flex;gap:4px;flex-wrap:wrap}
+.cdot{width:18px;height:18px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer}
+.cdot.on{border-color:var(--text);box-shadow:0 0 0 2px var(--bg) inset}
+
 .biddergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;max-height:250px;overflow:auto;padding:8px;border:1px solid var(--line2);border-radius:8px;background:var(--field)}
 .bd{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;min-width:0}
 .bd:hover{border-color:var(--teal)}
@@ -447,7 +455,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.10.30-g';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.10.30-i';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -528,10 +536,23 @@ function formatMoneyInput(el){
    ===================================================================== */
 const PRESET_INCOME = ['롱쉴드','거친','다마','어쎄메일','5어쎄글러브','고줌','향태반','잡무기','잡방어구','잡주문서','불강 셋트(2)'];
 // 판매 아이템 분류
-const ITEM_CATS=[['weapon','무기','out'],['armor','방어구','blue'],['acc','악세사리','purple'],['scroll','주문서','coin'],['misc','잡템','']];
-const catOk=c=>ITEM_CATS.some(x=>x[0]===c)?c:'misc';
-const catName=c=>(ITEM_CATS.find(x=>x[0]===c)||ITEM_CATS[4])[1];
-const catChip=c=>{ const x=ITEM_CATS.find(y=>y[0]===c)||ITEM_CATS[4]; return '<span class="chip catchip '+x[2]+'">'+x[1]+'</span>'; };
+// 판매 아이템 분류 (판매 아이템 등록 탭에서 추가·이름 변경·삭제·순서·색상 변경 가능, 'misc'(잡템)은 삭제 불가)
+const CAT_COLORS=['#ff6b6b','#ff9f7a','#f4c76b','#5ad19a','#4fd1c5','#5aa9ff','#c9a0ff','#ff6b8a','#b8c1ce'];
+const DEFAULT_CATS=[{id:'weapon',name:'무기',color:'#ff6b6b'},{id:'armor',name:'방어구',color:'#5aa9ff'},{id:'acc',name:'악세사리',color:'#c9a0ff'},{id:'scroll',name:'주문서',color:'#f4c76b'},{id:'misc',name:'잡템',color:'#b8c1ce'}];
+const itemCats=()=>(typeof S!=='undefined'&&S&&S.settings&&Array.isArray(S.settings.itemCats)&&S.settings.itemCats.length)?S.settings.itemCats:DEFAULT_CATS;
+const catOk=(c,list)=>(list||itemCats()).some(x=>x.id===c)?c:'misc';
+const catOf=c=>itemCats().find(x=>x.id===c)||itemCats().find(x=>x.id==='misc')||DEFAULT_CATS[4];
+const catName=c=>catOf(c).name;
+const catStyle=col=>'color:'+col+';border-color:'+col+';background:'+col+'22';
+const catChip=c=>{ const x=catOf(c); return '<span class="chip catchip" style="'+catStyle(x.color)+'">'+esc(x.name)+'</span>'; };
+const catOpts=sel=>itemCats().map(c=>'<option value="'+esc(c.id)+'"'+(c.id===sel?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+function normCats(arr){
+  const out=[], seenId=new Set(), seenName=new Set();
+  (Array.isArray(arr)?arr:DEFAULT_CATS).forEach(c=>{ if(!c) return; const id=String(c.id||'').trim()||uid(), name=normName(c.name); if(!name||seenId.has(id)||seenName.has(name.toLowerCase())) return;
+    seenId.add(id); seenName.add(name.toLowerCase()); out.push({id,name,color:/^#[0-9a-f]{6}$/i.test(c.color||'')?c.color:CAT_COLORS[out.length%CAT_COLORS.length]}); });
+  if(!seenId.has('misc')) out.push({id:'misc',name:seenName.has('잡템')?'기타':'잡템',color:'#b8c1ce'});
+  return out;
+}
 const normName=n=>String(n==null?'':n).trim().replace(/\s+/g,' ');
 // 처음 목록을 만들 때만 이름으로 분류를 추정 (이후 새 아이템은 '잡템'으로 자동 등록)
 function guessCat(n){
@@ -594,7 +615,8 @@ function defaultData(){
     meta:{createdAt:new Date().toISOString(),updatedAt:null},
     settings:{unit:'만 실버',distThreshold:500000,lastExportAt:null,hammerUrl:HAMMER_URL,
       itemPresets:{income:PRESET_INCOME.slice(),expense:PRESET_EXPENSE.slice()},
-      itemCatalog:seedCatalog({settings:{itemPresets:{income:PRESET_INCOME}}})},
+      itemCatalog:seedCatalog({settings:{itemPresets:{income:PRESET_INCOME}}}),
+      itemCats:DEFAULT_CATS.map(c=>Object.assign({},c))},
     rule:{roundUnit:1,bonusInit:true,ratioInit:true,components:makeComps([{type:'bonus',name:'포상(수고비)'}].concat(DEFAULT_RATIOS()))},
     members:MEMBERS0.map(n=>({id:uid(),name:n,cls:'',status:'active',memo:''})),
     ledger:[], raids:[], distributions:[], stock:[], stockSales:[], cash:[], draws:[], notices:[]
@@ -702,14 +724,16 @@ function normalize(d){
     r.lots.forEach(l=>{ l.buyers=Array.isArray(l.buyers)?l.buyers:[]; l.bidders=Array.isArray(l.bidders)?l.bidders:[]; l.qty=Math.max(1,Math.round(num(l.qty))||1); }); });
   o.distributions.forEach(x=>{ x.rows=Array.isArray(x.rows)?x.rows:[]; });
   // 판매 아이템 목록 (없으면 기본 품목 + 지금까지 등록된 아이템으로 처음 한 번 만듦)
+  o.settings.itemCats=normCats(d.settings&&d.settings.itemCats);
   const cat0=d.settings&&d.settings.itemCatalog;
   if(Array.isArray(cat0)){ const seen=new Set(); o.settings.itemCatalog=cat0.filter(x=>{ const n=normName(x&&x.name).toLowerCase(); if(!n||seen.has(n)) return false; seen.add(n); return true; })
-      .map(x=>({id:x.id||uid(),name:normName(x.name),cat:catOk(x.cat),uses:Math.max(0,Math.round(num(x.uses))),last:x.last||'',
+      .map(x=>({id:x.id||uid(),name:normName(x.name),cat:catOk(x.cat,o.settings.itemCats),uses:Math.max(0,Math.round(num(x.uses))),last:x.last||'',
         price:Math.max(0,Math.round(num(x.price))),soldPrice:Math.max(0,Math.round(num(x.soldPrice))),soldAt:x.soldAt||'',prevPrice:Math.max(0,Math.round(num(x.prevPrice))),auto:!!x.auto,_np:x.price===undefined}));
     // 기본 가격이 아직 없던 목록(이전 버전)은 판매 기록의 최근 판매가로 채움
     if(o.settings.itemCatalog.some(x=>x._np)){ const hist=saleHistory(o); o.settings.itemCatalog.forEach(x=>{ if(x._np){ const sh=hist.get(x.name.toLowerCase()); if(sh){ x.price=sh.price; x.soldPrice=sh.price; x.soldAt=sh.date; } } }); }
     o.settings.itemCatalog.forEach(x=>{ delete x._np; }); }
   else o.settings.itemCatalog=seedCatalog(o);
+  o.settings.itemCatalog.forEach(x=>{ x.cat=catOk(x.cat,o.settings.itemCats); });   // 없는 분류의 아이템은 잡템으로
   o.settings.itemHidden=Array.isArray(o.settings.itemHidden)?o.settings.itemHidden.map(n=>normName(n).toLowerCase()).filter(Boolean):[];
   // 레이드·재고에 있는데 목록에 빠진 아이템 보충 (사용자가 직접 삭제한 이름은 제외) → '잡템 · 정리 필요'로 추가
   { const have=new Set(o.settings.itemCatalog.map(x=>x.name.toLowerCase())), hid=new Set(o.settings.itemHidden), hist=saleHistory(o);
@@ -872,7 +896,7 @@ function sha256(str){
   }
   return H.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
 }
-const READ_ACT=new Set(['tab','cloudOpen','itemCat','itemShowAll','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
+const READ_ACT=new Set(['tab','cloudOpen','itemCat','itemShowAll','catToggle','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
 const READ_CHG=new Set(['lfm','cfm','sfilter','ms','mcls','nfType','nfMonth']);
 const READ_INP=new Set(['lfq','mq','nfq','iq']);
 function setAdmin(on){
@@ -1407,8 +1431,8 @@ function quickRegHtml(r){
   const cart=qCart(r), cat=ui.qcat||'all', items=catalogSorted(cat), inCart=new Map(cart.list.map(x=>[x.name,x.qty]));
   const cnt=c=>(S.settings.itemCatalog||[]).filter(x=>c==='all'||x.cat===c).length;
   let h='<div class="qreg"><div class="qhead"><b>⚡ 빠른 등록</b><span class="small muted">아이템을 누를 때마다 1개씩 담깁니다 · 수량을 고친 뒤 [한 번에 등록]</span><span style="flex:1"></span><button class="btn ghost sm" data-act="tab" data-tab="items">아이템 관리 →</button></div>'+
-    '<div class="seg"><button type="button" data-act="qCat" data-v="all" class="'+(cat==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="qCat" data-v="'+c[0]+'" class="'+(cat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+'</div>'+
-    '<div class="qitems">'+(items.length?items.map(x=>{ const q=inCart.get(x.name); return '<button type="button" class="chip'+(q?' picked':'')+'" data-act="qPick" data-name="'+esc(x.name)+'" title="'+esc(catName(x.cat))+(x.uses?' · '+x.uses+'회 등록':'')+'">+ '+esc(x.name)+(x.price?'<small>'+fmtM(x.price)+'</small>':'')+(q?'<b>×'+q+'</b>':'')+'</button>'; }).join(''):'<span class="small muted">이 분류에 등록된 아이템이 없습니다. "아이템 관리"에서 추가하세요.</span>')+'</div>';
+    '<div class="seg"><button type="button" data-act="qCat" data-v="all" class="'+(cat==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+itemCats().map(c=>'<button type="button" data-act="qCat" data-v="'+esc(c.id)+'" class="'+(cat===c.id?'on':'')+'"><i class="cdot2" style="background:'+c.color+'"></i>'+esc(c.name)+' '+cnt(c.id)+'</button>').join('')+'</div>'+
+    '<div class="qitems">'+(items.length?items.map(x=>{ const q=inCart.get(x.name); return '<button type="button" class="chip'+(q?' picked':'')+'" style="'+catStyle(catOf(x.cat).color)+'" data-act="qPick" data-name="'+esc(x.name)+'" title="'+esc(catName(x.cat))+(x.uses?' · '+x.uses+'회 등록':'')+'">+ '+esc(x.name)+(x.price?'<small>'+fmtM(x.price)+'</small>':'')+(q?'<b><span>×'+q+'</span></b>':'')+'</button>'; }).join(''):'<span class="small muted">이 분류에 등록된 아이템이 없습니다. "아이템 관리"에서 추가하세요.</span>')+'</div>';
   if(cart.list.length){
     const tq=cart.list.reduce((a,x)=>a+x.qty,0);
     h+='<div class="qcart"><div class="small muted" style="margin-bottom:4px">담은 아이템</div>'+cart.list.map((x,i)=>
@@ -1735,19 +1759,37 @@ function viewItems(){
   if(ui.icat==='auto'&&!nAuto) ui.icat='all';
   return card('green','판매 아이템 추가','<span class="small muted">전체 '+C.length+'개</span>',
       '<div class="form-grid"><div class="field"><label>아이템 이름</label><input id="iName" data-enter="itemAdd" placeholder="이름 입력 후 Enter"></div>'+
-      '<div class="field"><label>분류</label><select id="iCat">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(c[0]==='misc'?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>분류</label><select id="iCat">'+catOpts(ui.iAddCat||'misc')+'</select></div>'+
       '<div class="field"><label>기본 가격 (1개당, 만 실버)</label>'+moneyIn('id="iPrice" data-enter="itemAdd" placeholder="0"','')+'</div>'+
       '<div class="field"><label>&nbsp;</label><div class="inl"><button class="btn primary" data-act="itemAdd">추가</button><button class="btn" data-act="itemBulk">여러 개 한 번에</button></div></div></div>'+
       '<p class="hint" style="margin:10px 0 0">여기 등록한 아이템은 레이드 정산의 <b>⚡ 빠른 등록</b>에 분류별 버튼으로 나옵니다. 레이드에서 처음 등록한 아이템은 자동으로 <b>잡템</b>에 추가되니, 아래 목록에서 분류를 바꿔 정리하세요.<br><b>기본 가격</b>은 판매 입력 창에 미리 채워지고, 판매 대기 아이템의 예상 가격으로 쓰입니다. 실제로 다른 가격에 팔리면 <b>최근 판매가로 자동 갱신</b>됩니다.</p>')+
+    catManageCard()+
     card('teal','아이템 목록','<input type="search" placeholder="아이템 검색" data-inp="iq" value="'+esc(ui.iq||'')+'" style="width:170px">',
       (nAuto?'<div class="notice warn" style="margin:0 0 12px">🆕 레이드·재고에서 자동으로 추가된 아이템 <b>'+nAuto+'개</b>가 있습니다. 분류를 정해 주세요 (분류를 바꾸거나 "확인"을 누르면 정리 완료). <button class="btn sm gold" data-act="itemCat" data-v="auto">정리 필요만 보기</button></div>':'')+
-      '<div class="seg" style="margin:0 0 12px"><button type="button" data-act="itemCat" data-v="all" class="'+((ui.icat||'all')==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="itemCat" data-v="'+c[0]+'" class="'+(ui.icat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+(nAuto?'<button type="button" data-act="itemCat" data-v="auto" class="'+(ui.icat==='auto'?'on':'')+'">🆕 정리 필요 '+nAuto+'</button>':'')+'</div>'+
+      '<div class="seg" style="margin:0 0 12px"><button type="button" data-act="itemCat" data-v="all" class="'+((ui.icat||'all')==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+itemCats().map(c=>'<button type="button" data-act="itemCat" data-v="'+esc(c.id)+'" class="'+(ui.icat===c.id?'on':'')+'">'+esc(c.name)+' '+cnt(c.id)+'</button>').join('')+(nAuto?'<button type="button" data-act="itemCat" data-v="auto" class="'+(ui.icat==='auto'?'on':'')+'">🆕 정리 필요 '+nAuto+'</button>':'')+'</div>'+
       ((ui.icat&&ui.icat!=='all')||(ui.iq||'').trim()?'<div class="small muted" style="margin:-4px 0 10px">필터·검색이 적용되어 일부만 보입니다. <a class="link" data-act="itemShowAll">전체 보기</a></div>':'')+'<div id="itemTable"></div>');
+}
+// 분류 관리: 추가 · 이름 변경 · 색상 · 순서(↑↓) · 삭제 (잡템은 삭제 불가)
+function catManageCard(){
+  const L=itemCats(), C=S.settings.itemCatalog||[], open=!!ui.catOpen;
+  const sw=(id,cur)=>'<span class="cswatch">'+CAT_COLORS.map(col=>'<button type="button" class="cdot'+(col===cur?' on':'')+'" style="background:'+col+'" data-act="catColor" data-id="'+esc(id)+'" data-c="'+col+'" title="색상"></button>').join('')+'</span>';
+  let b='<div class="tablewrap"><table class="tbl fixed" style="min-width:720px"><colgroup><col style="width:46px"><col style="width:120px"><col><col style="width:240px"><col style="width:80px"><col style="width:96px"><col style="width:70px"></colgroup>'+
+    '<thead><tr><th>순서</th><th>미리보기</th><th>분류 이름</th><th>색상</th><th class="num">아이템</th><th>순서 이동</th><th></th></tr></thead><tbody>';
+  L.forEach((c,i)=>{ const id=esc(c.id), n=C.filter(x=>x.cat===c.id).length;
+    b+='<tr><td class="muted">'+(i+1)+'</td><td>'+catChip(c.id)+'</td><td><input class="w100" value="'+esc(c.name)+'" data-chg="catName" data-id="'+id+'" maxlength="12"></td>'+
+      '<td>'+sw(c.id,c.color)+'</td><td class="num">'+n+'개</td>'+
+      '<td><button class="btn ghost sm" data-act="catUp" data-id="'+id+'"'+(i===0?' disabled':'')+'>↑</button><button class="btn ghost sm" data-act="catDown" data-id="'+id+'"'+(i===L.length-1?' disabled':'')+'>↓</button></td>'+
+      '<td class="act">'+(c.id==='misc'?'<span class="small muted" title="자동 등록 아이템이 들어가는 기본 분류">기본</span>':'<button class="btn ghost sm" data-act="catDel" data-id="'+id+'">삭제</button>')+'</td></tr>'; });
+  b+='</tbody></table></div><div class="inl" style="margin-top:10px;flex-wrap:wrap;gap:8px"><input id="catNew" data-enter="catAdd" placeholder="새 분류 이름 (예: 변신카드)" maxlength="12" style="width:200px">'+
+    sw('__new',ui.catNewColor||CAT_COLORS[L.length%CAT_COLORS.length])+'<button class="btn primary" data-act="catAdd">분류 추가</button></div>'+
+    '<p class="hint" style="margin:8px 0 0">분류를 삭제하면 그 안의 아이템은 <b>잡템</b>으로 옮겨집니다 (아이템·판매 기록은 그대로). 순서는 빠른 등록·목록의 분류 탭 순서입니다.</p>';
+  const summary='<div class="chips">'+L.map(c=>catChip(c.id)+'<span class="small muted" style="align-self:center;margin-right:6px">'+C.filter(x=>x.cat===c.id).length+'</span>').join('')+'</div>';
+  return card('purple','분류 관리','<button class="btn sm" data-act="catToggle">'+(open?'접기':'✎ 분류 편집')+'</button>',open?b:summary);
 }
 function renderItemTable(){
   const el=$('#itemTable'); if(!el) return;
   const cat=ui.icat||'all', q=(ui.iq||'').trim().toLowerCase();
-  const order=new Map(ITEM_CATS.map((c,i)=>[c[0],i]));
+  const order=new Map(itemCats().map((c,i)=>[c.id,i]));
   const list=catalogSorted(cat).filter(x=>!q||x.name.toLowerCase().includes(q)).sort((a,b)=>order.get(a.cat)-order.get(b.cat)||(b.uses||0)-(a.uses||0)||a.name.localeCompare(b.name,'ko'));
   if(!list.length){ el.innerHTML='<div class="empty">표시할 아이템이 없습니다.</div>'; return; }
   let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:880px"><colgroup><col style="width:46px"><col><col style="width:120px"><col style="width:170px"><col style="width:190px"><col style="width:90px"><col style="width:130px"><col style="width:70px"></colgroup>'+
@@ -1756,7 +1798,7 @@ function renderItemTable(){
  if(cat==='all'&&x.cat!==prev){ h+='<tr class="grp"><td colspan="8" style="background:var(--panel2)">'+catChip(x.cat)+' <span class="small muted">'+list.filter(y=>y.cat===x.cat).length+'개</span></td></tr>'; prev=x.cat; }
     const id=esc(x.id);
     h+='<tr'+(x.auto?' style="background:var(--coin-soft,rgba(244,199,107,.08))"':'')+'><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(x.name)+'" data-chg="itemName" data-id="'+id+'">'+(x.auto?'<div class="small coin" style="margin-top:3px">🆕 자동 추가 · 분류 정리 필요 <a class="link" data-act="itemOk" data-id="'+id+'">확인</a></div>':'')+'</td>'+
-      '<td><select class="w100" data-chg="itemCatSet" data-id="'+id+'">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(x.cat===c[0]?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></td>'+
+      '<td><select class="w100" data-chg="itemCatSet" data-id="'+id+'">'+catOpts(x.cat)+'</select></td>'+
       '<td>'+moneyIn('data-chg="itemPrice" data-id="'+id+'" placeholder="0"',x.price||'')+'</td>'+
       '<td class="small">'+(x.soldAt?fmtM(x.soldPrice)+' <span class="muted">· '+esc(x.soldAt.slice(5))+'</span>'+(x.prevPrice&&x.prevPrice!==x.soldPrice?'<div class="muted">이전 '+fmtM(x.prevPrice)+'</div>':''):'<span class="muted">-</span>')+'</td>'+
       '<td class="num">'+(x.uses?x.uses+'회':'-')+'</td><td class="nowrap">'+(x.last?fmtDate(x.last):'-')+'</td>'+
@@ -2529,7 +2571,7 @@ I.mq=el=>{ ui.mq=el.value; renderMemberTable(); };
 I.iq=el=>{ ui.iq=el.value; renderItemTable(); };
 A.itemCat=el=>{ ui.icat=el.dataset.v; render(); };
 const findItem=n=>(S.settings.itemCatalog||[]).find(x=>x.name.toLowerCase()===normName(n).toLowerCase());
-A.itemAdd=()=>{
+A.itemAdd=()=>{ ui.iAddCat=($('#iCat')||{}).value||'misc';
   const nm=$('#iName'), n=normName(nm.value), cat=catOk($('#iCat').value), price=Math.max(0,Math.round(num(($('#iPrice')||{}).value)));
   if(!n) return nm.focus();
   if(findItem(n)) return toast('이미 있는 아이템입니다: '+n);
@@ -2538,12 +2580,12 @@ A.itemAdd=()=>{
 };
 A.itemBulk=async()=>{
   const res=await modal({title:'판매 아이템 여러 개 추가',ok:'추가',wide:true,body:
-    '<p class="hint">한 줄에 하나씩 <b>이름 [분류] [가격]</b> 형태로 붙여넣으세요. 분류(무기/방어구/악세사리/주문서/잡템)를 안 쓰면 아래에서 고른 분류로, 가격(1개당, 만 실버)을 안 쓰면 0으로 추가됩니다. 이미 있는 아이템은 가격을 쓴 경우 가격만 바꿉니다.</p>'+
-    '<div class="field"><label>기본 분류</label><select id="bkCat">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(c[0]==='misc'?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></div>'+
+    '<p class="hint">한 줄에 하나씩 <b>이름 [분류] [가격]</b> 형태로 붙여넣으세요. 분류('+itemCats().map(c=>esc(c.name)).join('/')+')를 안 쓰면 아래에서 고른 분류로, 가격(1개당, 만 실버)을 안 쓰면 0으로 추가됩니다. 이미 있는 아이템은 가격을 쓴 경우 가격만 바꿉니다.</p>'+
+    '<div class="field"><label>기본 분류</label><select id="bkCat">'+catOpts('misc')+'</select></div>'+
     '<textarea id="bkTx" rows="8" placeholder="롱소드 무기 30,000&#10;어쎄메일 방어구 100000&#10;고줌 주문서 550000&#10;향태반"></textarea>',
     onOk(root){ return {cat:root.querySelector('#bkCat').value,tx:root.querySelector('#bkTx').value}; }});
   if(!res||res===true) return;
-  let added=0, skip=0, upd=0; const CM={'무기':'weapon','방어구':'armor','악세사리':'acc','악세':'acc','주문서':'scroll','잡템':'misc'};
+  let added=0, skip=0, upd=0; const CM={}; itemCats().forEach(c=>{ CM[c.name]=c.id; }); if(itemCats().some(c=>c.id==='acc')&&!CM['악세']) CM['악세']='acc';
   res.tx.split(/\r?\n/).forEach(line=>{
     const tk=normName(line).split(' ').filter(Boolean); if(!tk.length) return; let cat=null, price=null;
     for(let k=0;k<2&&tk.length>1;k++){ const t=tk[tk.length-1];
@@ -2564,6 +2606,30 @@ A.itemDel=async el=>{
   commit(); toast('삭제했습니다');
 };
 C.itemPrice=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.price=Math.max(0,Math.round(num(el.value))); quiet(); toast('"'+x.name+'" 기본 가격 '+fmtM(x.price)); } };
+const catFind=id=>(S.settings.itemCats||[]).find(c=>c.id===id);
+A.catAdd=()=>{
+  const el=$('#catNew'), n=normName(el&&el.value).slice(0,12); if(!n) return el&&el.focus();
+  if(S.settings.itemCats.some(c=>c.name.toLowerCase()===n.toLowerCase())) return toast('이미 있는 분류입니다: '+n);
+  const col=ui.catNewColor||CAT_COLORS[S.settings.itemCats.length%CAT_COLORS.length];
+  const mi=S.settings.itemCats.findIndex(c=>c.id==='misc'), c={id:'c'+uid(),name:n,color:col};
+  if(mi>=0) S.settings.itemCats.splice(mi,0,c); else S.settings.itemCats.push(c);   // 잡템 바로 앞에 추가
+  ui.catNewColor=null; commit(); const e2=$('#catNew'); if(e2) e2.focus(); toast('분류 "'+n+'"을(를) 추가했습니다');
+};
+C.catName=el=>{ const c=catFind(el.dataset.id); if(!c) return; const n=normName(el.value).slice(0,12);
+  if(!n){ el.value=c.name; return; } if(S.settings.itemCats.some(x=>x!==c&&x.name.toLowerCase()===n.toLowerCase())){ toast('이미 있는 분류 이름입니다'); el.value=c.name; return; }
+  c.name=n; commit(); toast('분류 이름을 "'+n+'"(으)로 바꿨습니다'); };
+A.catColor=el=>{ if(el.dataset.id==='__new'){ ui.catNewColor=el.dataset.c; return render(); } const c=catFind(el.dataset.id); if(c){ c.color=el.dataset.c; commit(); } };
+const catMove=(id,d)=>{ const L=S.settings.itemCats, i=L.findIndex(c=>c.id===id), j=i+d; if(i<0||j<0||j>=L.length) return; [L[i],L[j]]=[L[j],L[i]]; commit(); };
+A.catUp=el=>catMove(el.dataset.id,-1); A.catDown=el=>catMove(el.dataset.id,1);
+A.catDel=async el=>{
+  const c=catFind(el.dataset.id); if(!c||c.id==='misc') return;
+  const items=(S.settings.itemCatalog||[]).filter(x=>x.cat===c.id);
+  if(!await confirmBox('분류 "'+c.name+'"을(를) 삭제할까요?'+(items.length?'\n이 분류의 아이템 '+items.length+'개는 "'+catName('misc')+'"(으)로 옮겨집니다.':'')+'\n아이템과 판매 기록은 지워지지 않습니다.',{ok:'삭제',danger:true})) return;
+  items.forEach(x=>{ x.cat='misc'; }); S.settings.itemCats=S.settings.itemCats.filter(x=>x!==c);
+  if(ui.icat===c.id) ui.icat='all'; if(ui.qcat===c.id) ui.qcat='all'; if(ui.iAddCat===c.id) ui.iAddCat='misc';
+  commit(); toast('분류를 삭제했습니다'+(items.length?' · 아이템 '+items.length+'개 → '+catName('misc'):''));
+};
+A.catToggle=()=>{ ui.catOpen=!ui.catOpen; render(); };
 A.itemShowAll=()=>{ ui.icat='all'; ui.iq=''; render(); };
 A.itemOk=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.auto=false; commit(); toast('"'+x.name+'" 정리 완료 ('+catName(x.cat)+')'); } };
 C.itemCatSet=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.cat=catOk(el.value); x.auto=false; quiet(); if(ui.icat==='auto') return render(); renderItemTable(); toast('"'+x.name+'" → '+catName(x.cat)); } };
