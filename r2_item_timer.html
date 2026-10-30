@@ -68,26 +68,46 @@ header .spacer{flex:1}
 
 main{padding:16px 18px}
 
-/* ---------- 24시간 이내 모음 ---------- */
-#queue{
-  border:1px solid #6b3428;border-radius:10px;
-  background:linear-gradient(180deg,#2a1d1f,#21192000);
-  padding:12px 14px;margin-bottom:16px;
-}
-#queue h2{margin:0 0 2px;font-size:15px;color:var(--ember)}
-#queue p.sub{margin:0 0 10px;color:var(--muted);font-size:12px}
+/* ---------- 24시간 / 48시간 이내 모음 (캐릭터별로 묶어서 표시) ---------- */
+.qbox{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:12px 14px;margin-bottom:12px}
+.qbox h2{margin:0 0 2px;font-size:15px}
+.qbox p.sub{margin:0 0 10px;color:var(--muted);font-size:12px}
+.qbox.calm p.sub{margin:0}
+#queue{border-color:#6b3428;background:linear-gradient(180deg,#2a1d1f,#21192000)}
+#queue h2{color:var(--ember)}
 #queue.calm{border-color:var(--line);background:var(--panel)}
 #queue.calm h2{color:var(--ok)}
-.qlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:6px}
-.qrow{
-  display:grid;grid-template-columns:minmax(0,1fr) auto auto;
-  gap:8px;align-items:center;background:#00000033;border-radius:6px;padding:6px 8px 6px 10px;
-  border-left:3px solid var(--c);
+#queueSoon{border-color:#5e4f26;background:linear-gradient(180deg,#26231a,#1d223300)}
+#queueSoon h2{color:var(--gold)}
+#queueSoon.calm{border-color:var(--line);background:var(--panel)}
+#queueSoon.calm h2{color:var(--muted)}
+.qlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;align-items:start}
+.qgroup{background:#00000033;border-radius:8px;padding:7px 9px}
+.qgroup .who{display:flex;align-items:center;gap:6px;font-weight:700;margin-bottom:2px}
+.qgroup .who small{font-weight:400;color:var(--muted);font-size:12px}
+.qgroup .who .badge{margin-left:auto}
+.qitem{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;
+  border-left:3px solid var(--c);padding:4px 0 4px 7px;margin-top:4px;
 }
-.qrow .who{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qrow .who small{font-weight:400;color:var(--c);margin-left:4px}
-.qrow .rem{color:var(--ember);font-weight:700;text-align:right}
-.qrow .exp{display:block;font-size:11px;color:var(--muted);text-align:right}
+.qitem .nm{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qitem .nm small{color:var(--c);margin-left:4px;font-size:11px}
+.qitem .rem{font-weight:700;text-align:right;white-space:nowrap}
+.qitem .exp{display:block;font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+#queue .qitem .rem{color:var(--ember)}
+#queueSoon .qitem .rem{color:var(--gold)}
+#queueSoon .badge{background:var(--gold);color:#221a05}
+
+/* 아이템 아이콘 (직접 그린 SVG — 외부 이미지 없이 파일 하나로 동작) */
+.ico{
+  width:28px;height:28px;border-radius:7px;display:grid;place-items:center;flex:none;color:var(--c);
+  background:color-mix(in srgb, var(--c) 15%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent);
+}
+.ico svg{width:20px;height:20px}
+.ico.sm{width:24px;height:24px;border-radius:6px}
+.ico.sm svg{width:17px;height:17px}
+.none .ico,.expired .ico{filter:grayscale(1);opacity:.45}
 
 /* ---------- 도구 모음 ---------- */
 .toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px}
@@ -106,14 +126,16 @@ main{padding:16px 18px}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .card.has-urgent{border-color:#7a3a2c}
+.card.has-soon{border-color:#5e4f26}
 .card-head{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line)}
 .card-head .name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-head .memo{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-head .spacer{flex:1}
 .badge{font-size:11px;padding:0 6px;border-radius:9px;background:var(--ember);color:#200;font-weight:700}
+.badge.soon{background:var(--gold);color:#221a05}
 
 .item{
-  display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:0 8px;align-items:center;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:0 8px;align-items:center;
   padding:5px 9px 5px 8px;border-left:3px solid var(--c);border-bottom:1px solid #ffffff0a;
 }
 .item:last-child{border-bottom:0}
@@ -128,6 +150,7 @@ main{padding:16px 18px}
 
 .item.urgent{background:#ff6b4a14}
 .item.urgent .rem{color:var(--ember)}
+.item.soon .rem{color:var(--gold)}
 .item.expired .rem{color:var(--dead)}
 .item.expired .iname{color:var(--muted);text-decoration:line-through}
 .item.none .rem{color:var(--dead);font-weight:400}
@@ -168,7 +191,7 @@ details.log li b{color:var(--text);font-weight:500}
 .timein{display:grid;grid-template-columns:minmax(0,1fr) 50px 50px 50px 58px 52px;gap:5px;align-items:center;padding:4px 0 4px 9px;border-left:3px solid var(--c);margin-top:5px}
 .timein input{padding:5px !important;text-align:right}
 .timein input.acc-name{text-align:left}
-.timein .lbl{font-size:13px}
+.timein .lbl{font-size:13px;display:flex;align-items:center;gap:7px}
 .timein .lbl small{color:var(--c);display:block;font-size:11px}
 .timein .unit-head{font-size:11px;color:var(--muted);text-align:center}
 .acc-head{display:flex;align-items:center;gap:8px;margin:12px 0 2px;font-size:12.5px;color:var(--chaos)}
@@ -190,7 +213,7 @@ details.log li b{color:var(--text);font-weight:500}
 @media (max-width:600px){
   main{padding:10px}
   .stats{margin-left:0;width:100%}
-  .qlist{grid-template-columns:1fr}
+  .qlist{grid-template-columns:1fr !important}
 }
 @media (prefers-reduced-motion:no-preference){
   .item.urgent .rem{animation:pulse 2s ease-in-out infinite}
@@ -214,13 +237,16 @@ details.log li b{color:var(--text);font-weight:500}
 
 <main>
   <!-- 24시간 이내 아이템 모음 -->
-  <section id="queue"></section>
+  <section id="queue" class="qbox"></section>
+  <!-- 48시간 이내 (2일 전 미리 알림) -->
+  <section id="queueSoon" class="qbox"></section>
 
   <div class="toolbar">
     <input type="search" id="search" placeholder="캐릭터명·메모 검색">
     <select id="filter">
       <option value="all">전체 캐릭터</option>
       <option value="urgent">24시간 이내 있는 캐릭터</option>
+      <option value="soon">48시간 이내 있는 캐릭터</option>
       <option value="expired">만료된 아이템 있는 캐릭터</option>
     </select>
     <select id="sort">
@@ -405,6 +431,24 @@ const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 const EXTEND_MS = 7 * DAY;         // 한 번 연장 시 7일
+
+/* 연장 후 새 만료 시각
+   - 망치 아이템(목걸이·드라코·악세사리): 남은 시간에 7일을 더함
+   - 메테리얼(reset:true): 변환룬으로 교환한 "그 순간부터" 7일 */
+function extendedExpire(def, cur){
+  return def.reset ? now() + EXTEND_MS : cur.expireAt + EXTEND_MS;
+}
+// 버튼·문구에 쓰는 말
+// 한글 조사 고르기: josa("황금 망치","을","를") → "황금 망치를"
+function josa(word, withB, noB){
+  const ch = String(word).charCodeAt(String(word).length - 1);
+  if (ch < 0xAC00 || ch > 0xD7A3) return word + noB;
+  const jong = (ch - 0xAC00) % 28;
+  if (withB === "으로") return word + (jong === 0 || jong === 8 ? "로" : "으로"); // ㄹ 받침은 "로"
+  return word + (jong ? withB : noB);
+}
+function actLabel(def){ return def.reset ? "교환" : "+7일"; }
+function actDesc(def){ return def.reset ? `${def.tool} 교환 → 지금부터 7일` : `${def.tool} 사용 → 7일 연장`; }
 const MAX_LOGS = 100;
 const MAX_ACC = 4;                 // 악세사리 최대 개수
 
@@ -418,15 +462,41 @@ const MAX_ACC = 4;                 // 악세사리 최대 개수
      items.acc_xxxx = { name, expireAt, count }    ← 악세사리 (최대 4개)
 ===================================================================== */
 const FIXED = {
-  necklace: { name:"변신 목걸이",   tool:"황금 망치", rule:"24h", cls:"t-gold", max:10 },
-  draco:    { name:"드라코반지",    tool:"황금 망치", rule:"24h", cls:"t-gold", max:10 },
-  hunter:   { name:"헌터 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune" },
-  sage:     { name:"현자 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune" },
-  hero:     { name:"영웅 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune" },
+  necklace: { name:"변신 목걸이",   tool:"황금 망치", rule:"24h", cls:"t-gold", max:10, icon:"necklace" },
+  draco:    { name:"드라코반지",    tool:"황금 망치", rule:"24h", cls:"t-gold", max:10, icon:"ring" },
+  hunter:   { name:"헌터 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune", icon:"hunter", reset:true },
+  sage:     { name:"현자 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune", icon:"sage", reset:true },
+  hero:     { name:"영웅 메테리얼", tool:"변환룬",    rule:"any", cls:"t-rune", icon:"hero", reset:true },
 };
 const TOP_KEYS = ["necklace", "draco"];          // 카드 위쪽 (그 아래 악세사리)
 const BOTTOM_KEYS = ["hunter", "sage", "hero"];  // 카드 아래쪽
-const ACC_DEF = { tool:"카오스 망치", rule:"24h", cls:"t-chaos" };
+const ACC_DEF = { tool:"카오스 망치", rule:"24h", cls:"t-chaos", icon:"acc" };
+
+/* 아이템 아이콘 — 게임 그림이 아니라 직접 그린 단순한 SVG 입니다.
+   선 색은 currentColor 라서 아이템 종류 색(금색·보라·청록)이 자동으로 입혀집니다. */
+const HEX = '<path d="M12 2.6l8.2 4.7v9.4L12 21.4l-8.2-4.7V7.3z" fill="currentColor" fill-opacity=".12"/>';
+const ICONS = {
+  // 변신 목걸이: 줄 + 물방울 펜던트
+  necklace: '<path d="M4.5 3.5c.4 5.6 3.4 8.7 7.5 8.7s7.1-3.1 7.5-8.7" stroke-dasharray="1.6 1.7"/>'
+          + '<path d="M12 12.4c-2.2 2.4-3.3 4.2-3.3 5.6a3.3 3.3 0 0 0 6.6 0c0-1.4-1.1-3.2-3.3-5.6z" fill="currentColor" fill-opacity=".35"/>'
+          + '<circle cx="12" cy="18.1" r="1" fill="currentColor"/>',
+  // 드라코반지: 반지 + 위쪽 보석
+  ring:     '<ellipse cx="12" cy="15.2" rx="6.3" ry="5.4"/><ellipse cx="12" cy="15.2" rx="3.8" ry="3.1" stroke-opacity=".55"/>'
+          + '<path d="M9.2 8.6L12 4.2l2.8 4.4L12 10.4z" fill="currentColor" fill-opacity=".45"/>',
+  // 악세사리: 커팅된 보석
+  acc:      '<path d="M5.5 9.2L8.6 5h6.8l3.1 4.2L12 20z" fill="currentColor" fill-opacity=".22"/>'
+          + '<path d="M5.5 9.2h13M8.6 5l1.6 4.2L12 20M15.4 5l-1.6 4.2L12 20M10.2 9.2L12 5l1.8 4.2" stroke-opacity=".75"/>',
+  // 헌터 메테리얼: 육각 결정 + 활
+  hunter:   HEX + '<path d="M9.4 6.8c3.4 1.6 3.4 8.8 0 10.4" /><path d="M9.4 6.8v10.4" stroke-opacity=".55"/><path d="M8 12h8.2M14.3 10.2l1.9 1.8-1.9 1.8"/>',
+  // 현자 메테리얼: 육각 결정 + 마법 별빛
+  sage:     HEX + '<path d="M12 6.8l1.4 3.8 3.8 1.4-3.8 1.4L12 17.2l-1.4-3.8L6.8 12l3.8-1.4z" fill="currentColor" fill-opacity=".3"/>',
+  // 영웅 메테리얼: 육각 결정 + 검
+  hero:     HEX + '<path d="M12 6.2v8.6M9.3 14.8h5.4M12 14.8v2.8"/><path d="M12 6.2l1.2 1.6v6.2h-2.4V7.8z" fill="currentColor" fill-opacity=".3"/>',
+};
+function iconHTML(def, small){
+  const body = ICONS[def.icon] || ICONS.acc;
+  return `<span class="ico${small ? " sm" : ""}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${body}</svg></span>`;
+}
 
 // 악세사리 키인지 확인 ("accessory"는 예전 버전 파일 호환용)
 function isAccKey(k){ return k === "accessory" || k.startsWith("acc_"); }
@@ -486,12 +556,13 @@ function fmtLogTime(ts){
 }
 function newId(prefix){ return (prefix || "c") + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
-// 아이템 상태: none(미보유) / expired(만료) / urgent(24시간 이내) / normal
+// 아이템 상태: none(미보유) / expired(만료) / urgent(24시간 이내) / soon(48시간 이내) / normal
 function itemState(item){
   if (!item || !item.expireAt) return "none";
   const rem = item.expireAt - now();
   if (rem <= 0) return "expired";
   if (rem <= DAY) return "urgent";
+  if (rem <= 2 * DAY) return "soon";
   return "normal";
 }
 // 연장할 수 없는 이유 (연장 가능하면 빈 문자열) — 연장 규칙은 이 함수 하나에 모았습니다
@@ -600,9 +671,10 @@ function createLocalStore(){
       const it = c?.items?.[key];
       const def = defFor(key, it);
       if (!canExtend(def, it)) return Promise.resolve(null);
-      it.expireAt += EXTEND_MS;
+      it.expireAt = extendedExpire(def, it);
       it.count = (it.count || 0) + 1;
-      log(`${c.name}의 ${def.name}을(를) ${def.tool}로 7일 연장 (${it.count}회째)`);
+      log(def.reset ? `${c.name}의 ${josa(def.name,"을","를")} ${josa(def.tool,"으로","로")} 교환 (지금부터 7일, ${it.count}회째)`
+                    : `${c.name}의 ${josa(def.name,"을","를")} ${josa(def.tool,"으로","로")} 7일 연장 (${it.count}회째)`);
       persist();
       return Promise.resolve(it);
     },
@@ -718,13 +790,14 @@ function createFirebaseStore(cfg, room){
         if (!snap.exists) return null;
         const cur = (snap.data().items || {})[key];
         if (!cur || !canExtend(defFor(key, cur), cur)) return null;
-        const next = Object.assign({}, cur, { expireAt: cur.expireAt + EXTEND_MS, count: (cur.count || 0) + 1 });
+        const next = Object.assign({}, cur, { expireAt: extendedExpire(defFor(key, cur), cur), count: (cur.count || 0) + 1 });
         tx.update(ref, { [`items.${key}.expireAt`]: next.expireAt, [`items.${key}.count`]: next.count });
         return next;
       }).then(it => {
         if (it){
           const def = defFor(key, it);
-          log(`${chars[id]?.name}의 ${def.name}을(를) ${def.tool}로 7일 연장 (${it.count}회째)`);
+          log(def.reset ? `${chars[id]?.name}의 ${josa(def.name,"을","를")} ${josa(def.tool,"으로","로")} 교환 (지금부터 7일, ${it.count}회째)`
+                        : `${chars[id]?.name}의 ${josa(def.name,"을","를")} ${josa(def.tool,"으로","로")} 7일 연장 (${it.count}회째)`);
         }
         return it;
       }).catch(e => { throw new Error(permHint(e)); });
@@ -785,7 +858,7 @@ function countHTML(def, item){
   if (!item || !item.expireAt) return "";
   const n = item.count || 0;
   if (def.max) return ` · <span class="cnt ${n >= def.max ? "full" : ""}">연장 ${n}/${def.max}</span>`;
-  return n ? ` · <span class="cnt">연장 ${n}회</span>` : "";
+  return n ? ` · <span class="cnt">${def.reset ? "교환" : "연장"} ${n}회</span>` : "";
 }
 
 function itemHTML(id, slot){
@@ -797,47 +870,73 @@ function itemHTML(id, slot){
   else { remTxt = fmtRemain(rem); expTxt = (st === "expired" ? "만료 " : "") + fmtDate(item.expireAt); }
 
   const reason = blockReason(def, item);
-  const tip = reason || `${def.tool} 사용 → 7일 연장`;
+  const tip = reason || actDesc(def);
 
   return `<div class="item ${def.cls} ${st}" data-id="${id}" data-key="${key}">
+    ${iconHTML(def)}
     <div style="min-width:0">
       <div class="iname" title="${esc(def.name)}">${esc(def.name)}</div>
       <div class="sub">${def.tool}${countHTML(def, item)}</div>
     </div>
     <div class="txt"><div class="rem num">${remTxt}</div><div class="exp num">${expTxt}</div></div>
-    <button class="btn" data-extend="${id}|${key}" ${reason ? "disabled" : ""} title="${tip}">+7일</button>
+    <button class="btn" data-extend="${id}|${key}" ${reason ? "disabled" : ""} title="${tip}">${actLabel(def)}</button>
   </div>`;
 }
 
 function renderAll(){ renderQueue(); renderGrid(); }
 
+// 위쪽 알림 상자: 24시간 이내(지금 연장) + 48시간 이내(미리 알림)
 function renderQueue(){
-  const rows = [];
+  renderQueueBox($("queue"), "urgent", {
+    title: n => `24시간 이내 — 지금 연장할 캐릭터 ${n}명`,
+    sub: "접속해서 연장한 뒤 +7일(메테리얼은 교환) 버튼을 눌러주세요.",
+    emptyTitle: "24시간 이내로 남은 아이템이 없습니다",
+    emptySub: "남은 시간이 24시간 이내가 되면 여기에 캐릭터별로 모아서 보여줍니다.",
+  });
+  renderQueueBox($("queueSoon"), "soon", {
+    title: n => `48시간 이내 — 곧 만료될 캐릭터 ${n}명`,
+    sub: "아직 망치는 못 쓰지만 내일 연장 대상입니다. 메테리얼은 지금도 교환할 수 있어요.",
+    emptyTitle: "48시간 이내로 남은 아이템이 없습니다",
+    emptySub: "만료 2일 전이 되면 여기에 미리 알려드립니다.",
+  });
+}
+
+// 상태(state)가 같은 아이템을 캐릭터별로 묶어서 그립니다
+function renderQueueBox(box, state, txt){
+  const groups = [];
   for (const [id, c] of Object.entries(chars)){
-    for (const s of slotsOf(c)){
-      if (itemState(s.item) === "urgent") rows.push({ id, c, ...s, rem: s.item.expireAt - now() });
-    }
+    const list = slotsOf(c).filter(s => itemState(s.item) === state)
+      .map(s => ({ ...s, rem: s.item.expireAt - now() }))
+      .sort((a, b) => a.rem - b.rem);
+    if (list.length) groups.push({ id, c, list, first: list[0].rem });
   }
-  rows.sort((a, b) => a.rem - b.rem);
-  const q = $("queue");
-  if (!rows.length){
-    q.className = "calm";
-    q.innerHTML = `<h2>24시간 이내로 남은 아이템이 없습니다</h2>
-      <p class="sub" style="margin:0">남은 시간이 24시간 이내가 되면 여기에 모아서 보여줍니다.</p>`;
+  groups.sort((a, b) => a.first - b.first);   // 가장 급한 아이템이 있는 캐릭터부터
+
+  if (!groups.length){
+    box.classList.add("calm");
+    box.innerHTML = `<h2>${txt.emptyTitle}</h2><p class="sub">${txt.emptySub}</p>`;
     return;
   }
-  q.className = "";
-  q.innerHTML = `<h2>24시간 이내 아이템 ${rows.length}개</h2>
-    <p class="sub">접속해서 연장한 뒤 +7일 버튼을 눌러주세요.</p>
-    <div class="qlist">${rows.map(r => {
-      const reason = blockReason(r.def, r.item);
-      return `<div class="qrow ${r.def.cls}">
-        <span class="who">${esc(r.c.name)} <small>${esc(r.def.name)}${r.def.max ? ` ${r.item.count || 0}/${r.def.max}` : ""}</small></span>
-        <span><span class="rem num" data-exp="${r.item.expireAt}">${fmtRemain(r.rem)}</span>
-          <span class="exp num">${fmtDate(r.item.expireAt)}</span></span>
-        <button class="btn sm" data-extend="${r.id}|${r.key}" ${reason ? "disabled" : ""} title="${reason || "7일 연장"}">${reason ? "최대" : "+7일"}</button>
-      </div>`;
-    }).join("")}</div>`;
+  box.classList.remove("calm");
+  const total = groups.reduce((n, g) => n + g.list.length, 0);
+  box.innerHTML = `<h2>${txt.title(groups.length)} <small style="font-weight:400;color:var(--muted);font-size:12px">(아이템 ${total}개)</small></h2>
+    <p class="sub">${txt.sub}</p>
+    <div class="qlist">${groups.map(g => `
+      <div class="qgroup">
+        <div class="who">${esc(g.c.name)}${g.c.memo ? ` <small>${esc(g.c.memo)}</small>` : ""}
+          ${g.list.length > 1 ? `<span class="badge ${state === "soon" ? "soon" : ""}">${g.list.length}개</span>` : ""}</div>
+        ${g.list.map(r => {
+          const reason = blockReason(r.def, r.item);
+          const label = !reason ? actLabel(r.def) : (r.def.max && (r.item.count || 0) >= r.def.max ? "최대" : "대기");
+          return `<div class="qitem ${r.def.cls}">
+            ${iconHTML(r.def, true)}
+            <span class="nm">${esc(r.def.name)}<small>${r.def.max ? `${r.item.count || 0}/${r.def.max}` : r.def.tool}</small></span>
+            <span><span class="rem num" data-exp="${r.item.expireAt}">${fmtRemain(r.rem)}</span>
+              <span class="exp num">${fmtDate(r.item.expireAt)}</span></span>
+            <button class="btn sm" data-extend="${g.id}|${r.key}" ${reason ? "disabled" : ""} title="${reason || actDesc(r.def)}">${label}</button>
+          </div>`;
+        }).join("")}
+      </div>`).join("")}</div>`;
 }
 
 function renderGrid(){
@@ -850,12 +949,12 @@ function renderGrid(){
   if ($("sort").value === "name") list.sort((a, b) => a[1].name.localeCompare(b[1].name, "ko"));
   else list.sort((a, b) => charUrgency(a[1]) - charUrgency(b[1]));
 
-  let nU = 0, nE = 0;
+  let nU = 0, nS = 0, nE = 0;
   for (const c of Object.values(chars)) for (const s of slotsOf(c)){
     const st = itemState(s.item);
-    if (st === "urgent") nU++; if (st === "expired") nE++;
+    if (st === "urgent") nU++; if (st === "soon") nS++; if (st === "expired") nE++;
   }
-  $("stats").innerHTML = `캐릭터 <b>${Object.keys(chars).length}</b> · 24시간 이내 <b style="color:var(--ember)">${nU}</b> · 만료 <b>${nE}</b>`;
+  $("stats").innerHTML = `캐릭터 <b>${Object.keys(chars).length}</b> · 24시간 이내 <b style="color:var(--ember)">${nU}</b> · 48시간 이내 <b style="color:var(--gold)">${nS}</b> · 만료 <b>${nE}</b>`;
 
   const g = $("grid");
   if (!Object.keys(chars).length){
@@ -872,11 +971,13 @@ function renderGrid(){
   g.innerHTML = list.map(([id, c]) => {
     const slots = slotsOf(c);
     const urgentCnt = slots.filter(s => itemState(s.item) === "urgent").length;
-    return `<article class="card ${urgentCnt ? "has-urgent" : ""}">
+    const soonCnt = slots.filter(s => itemState(s.item) === "soon").length;
+    return `<article class="card ${urgentCnt ? "has-urgent" : soonCnt ? "has-soon" : ""}">
       <div class="card-head">
         <span class="name" title="${esc(c.name)}">${esc(c.name)}</span>
         ${c.memo ? `<span class="memo" title="${esc(c.memo)}">${esc(c.memo)}</span>` : ""}
-        ${urgentCnt ? `<span class="badge">${urgentCnt}</span>` : ""}
+        ${urgentCnt ? `<span class="badge" title="24시간 이내">${urgentCnt}</span>` : ""}
+        ${soonCnt ? `<span class="badge soon" title="48시간 이내">${soonCnt}</span>` : ""}
         <span class="spacer"></span>
         <button class="btn sm" data-edit="${id}">수정</button>
         <button class="btn sm danger" data-del="${id}">삭제</button>
@@ -898,12 +999,12 @@ function tick(){
     const it = chars[el.dataset.id]?.items?.[el.dataset.key];
     if (it && it.expireAt) el.querySelector(".rem").textContent = fmtRemain(it.expireAt - now());
   });
-  document.querySelectorAll("#queue .rem[data-exp]").forEach(el => {
+  document.querySelectorAll(".qbox .rem[data-exp]").forEach(el => {
     el.textContent = fmtRemain(Number(el.dataset.exp) - now());
   });
 }
 
-/* ===================== 5. 연장 (+7일) ===================== */
+/* ===================== 5. 연장 (+7일 / 메테리얼 교환) ===================== */
 function extendItem(id, key){
   const c = chars[id]; const it = c?.items?.[key];
   if (!c) return;
@@ -912,10 +1013,15 @@ function extendItem(id, key){
   if (reason){ toast(reason); return; }
   const nextCnt = (it.count || 0) + 1;
   const cntTxt = def.max ? ` (${nextCnt}/${def.max}회째)` : ` (${nextCnt}회째)`;
-  if (!confirm(`[${c.name}] ${def.name}\n${def.tool}을(를) 사용해서 7일 연장했나요?${cntTxt}\n확인을 누르면 만료 시간이 7일 늘어납니다.`)) return;
+  const after = extendedExpire(def, it);
+  const msg = def.reset
+    ? `[${c.name}] ${def.name}\n${josa(def.tool,"으로","로")} 교환했나요?${cntTxt}\n\n만료: ${fmtDate(it.expireAt)} → ${fmtDate(after)} (지금부터 7일)`
+      + (after < it.expireAt ? `\n※ 지금 남은 시간보다 짧아집니다.` : "")
+    : `[${c.name}] ${def.name}\n${josa(def.tool,"을","를")} 사용해서 7일 연장했나요?${cntTxt}\n\n만료: ${fmtDate(it.expireAt)} → ${fmtDate(after)} (+7일)`;
+  if (!confirm(msg)) return;
 
   Store.extend(id, key).then(res => {
-    if (res) toast(`${c.name} ${def.name} 7일 연장 완료 → ${fmtDate(res.expireAt)}${def.max ? ` (${res.count}/${def.max})` : ""}`);
+    if (res) toast(`${c.name} ${def.name} ${def.reset ? "교환 완료" : "7일 연장 완료"} → ${fmtDate(res.expireAt)}${def.max ? ` (${res.count}/${def.max})` : ""}`);
     else toast("이미 다른 사람이 연장했거나 연장할 수 없는 상태입니다.");
   }).catch(e => toast("저장 실패: " + e.message));
 }
@@ -933,7 +1039,7 @@ function timeRowHTML(key, def, item, isAcc){
   const t = splitRemain(item);
   const label = isAcc
     ? `<input type="text" class="acc-name" maxlength="12" placeholder="예: 귀걸이" value="${esc(item && item.name || "")}">`
-    : `<span class="lbl">${def.name}<small>${def.tool}</small></span>`;
+    : `<span class="lbl">${iconHTML(def, true)}<span>${def.name}<small>${def.tool}</small></span></span>`;
   const cnt = def.max
     ? `<input type="number" min="0" max="${def.max}" data-k="${key}" data-u="c" value="${item && item.expireAt ? (item.count || 0) : ""}" title="최대 ${def.max}회">`
     : `<span></span>`;
