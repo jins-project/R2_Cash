@@ -420,7 +420,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.10.29-c';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.10.30-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -476,6 +476,7 @@ const fmtDate = s=>{
 const fmtInputVal = v=>{ const d=String(v==null?'':v).replace(/[^\d]/g,''); return d===''?'':Number(d).toLocaleString('ko-KR'); };
 // 금액 입력칸: 천 단위 쉼표 자동 + 아래에 "= 5억 0만" 표시
 const moneyIn = (attrs,val,cls)=>'<span class="mi"><input type="text" inputmode="numeric" autocomplete="off" data-money '+(cls?'class="'+cls+'" ':'')+attrs+' value="'+(val===''||val==null?'':esc(fmtInputVal(Math.max(0,Math.round(num(val))))))+'"><small class="mfmt"></small></span>';
+const negc = n=>Math.round(+n||0)<0?' neg':'';   // 잔액이 마이너스면 빨간색
 const fmtWon = n=>{   // 1억 2,345만 6,789원
   n=Math.round(+n||0); const neg=n<0; n=Math.abs(n);
   const eok=Math.floor(n/1e8), man=Math.floor((n%1e8)/1e4), won=n%1e4, L=x=>x.toLocaleString('ko-KR'); let s='';
@@ -860,7 +861,7 @@ function updateThresholdUI(){
   const pct=th>0?clamp(p.bal/th*100,0,100):0;
   $$('.th-fill').forEach(e=>{ e.style.width=pct+'%'; e.style.background=ready?'var(--green)':'var(--coin)'; });
   $$('.th-text').forEach(e=>{ e.textContent=th>0?('길자금 잔액 '+fmtM(p.bal)+' / 분배 기준 '+fmtM(th)):'분배 기준 금액이 설정되지 않았습니다'; });
-  $$('.th-chip').forEach(e=>{ e.textContent=ready?'분배 가능':'잔액 부족'; e.className='chip th-chip '+(ready?'in':'out'); });
+  $$('.th-chip').forEach(e=>{ e.textContent=ready?'잔액 충분':(th>0?'잔액 부족 · 분배 시 마이너스':'-'); e.className='chip th-chip '+(ready?'in':'coin'); });
 }
 
 /* =====================================================================
@@ -869,10 +870,10 @@ function updateThresholdUI(){
 function viewLedger(){
   const p=pools(), c=cashPools(), ms=monthlyData();
   const top=card('teal','길드 자금 현황','','<div class="bal2">'+
-    '<div class="bal"><div class="lbl">실버 길자금 잔액</div><div class="val">'+fmtM(p.bal)+'<small>실버</small></div>'+
+    '<div class="bal"><div class="lbl">실버 길자금 잔액'+(p.bal<0?' <span class="chip out">마이너스</span>':'')+'</div><div class="val'+negc(p.bal)+'">'+fmtM(p.bal)+'<small>실버</small></div>'+
       '<div class="sub2">'+(Math.abs(p.bal)>=10000?p.bal.toLocaleString('ko-KR')+'만 실버':'')+'</div>'+
       '<div class="legend"><div><span class="k">누적 수입</span><span class="v pos">'+fmtM(p.inc)+'</span></div><div><span class="k">누적 지출</span><span class="v neg">'+fmtM(p.exp)+'</span></div></div></div>'+
-    '<div class="bal cash"><div class="lbl">현금 보유</div><div class="val">'+fmtWon(c.bal)+'</div>'+
+    '<div class="bal cash"><div class="lbl">현금 보유'+(c.bal<0?' <span class="chip out">마이너스</span>':'')+'</div><div class="val'+negc(c.bal)+'">'+fmtWon(c.bal)+'</div>'+
       '<div class="sub2">'+c.bal.toLocaleString('ko-KR')+'원</div>'+
       '<div class="legend"><div><span class="k">누적 입금</span><span class="v pos">'+fmtWon(c.in)+'</span></div><div><span class="k">누적 출금</span><span class="v neg">'+fmtWon(c.out)+'</span></div></div></div></div>');
   const nav='<div class="seg nav"><button type="button" data-act="ledSub" data-v="silver" class="'+(ui.ledSub==='silver'?'on':'')+'">실버 길자금</button><button type="button" data-act="ledSub" data-v="cash" class="'+(ui.ledSub==='cash'?'on':'')+'">현금</button></div>';
@@ -882,7 +883,7 @@ function viewLedger(){
       '<p class="hint">금액은 <b>만 실버</b> 단위입니다. (1억 = 10,000) 레이드는 레이드 정산 탭에서 <b>판매 완료 → 길자금 수입</b>을 누르면 정산금이 1건으로 기록되고, 분배는 분배 탭에서 완료하면 자동으로 지출 처리됩니다.</p>'+
       ledgerFormHtml(null)+'<div class="toolbar"><button class="btn primary lg" data-act="ledAdd">내역 추가</button></div>')+
     flowCard(ms)+
-    card('teal','입출금 내역 <span class="chip coin" style="margin-left:10px">잔액 '+fmtM(p.bal)+'</span>',
+    card('teal','입출금 내역 <span class="chip '+(p.bal<0?'out':'coin')+'" style="margin-left:10px">잔액 '+fmtM(p.bal)+'</span>',
       '<select data-chg="lfm" aria-label="기간 선택"><option value="">전체 기간</option>'+ms.slice().reverse().map(o=>'<option value="'+o.m+'"'+(ui.lf.month===o.m?' selected':'')+'>'+o.m.replace('-','년 ')+'월</option>').join('')+'</select>'+
       '<input type="search" placeholder="항목/메모 검색" data-inp="lfq" value="'+esc(ui.lf.q)+'" style="width:170px">','<div id="ledgerTable"></div>',' id="ledDetail"');
 }
@@ -922,15 +923,15 @@ function cashViewHtml(){
     rows.forEach(({e,bal})=>{
       const isIn=e.type==='in';
       t+='<tr><td class="nowrap">'+fmtDate(e.date)+'</td><td><span class="chip '+(isIn?'in':'out')+'">'+(isIn?'입금':'출금')+'</span></td><td class="wrap">'+esc(e.memo||'')+'</td>'+
-        '<td class="num '+(isIn?'pos':'neg')+'"><b>'+(isIn?'+':'-')+fmtWon(e.amount)+'</b></td><td class="num">'+fmtWon(bal)+'</td>'+
+        '<td class="num '+(isIn?'pos':'neg')+'"><b>'+(isIn?'+':'-')+fmtWon(e.amount)+'</b></td><td class="num'+negc(bal)+'">'+fmtWon(bal)+'</td>'+
         '<td class="act"><button class="btn ghost sm" data-act="cashEdit" data-id="'+esc(e.id)+'">수정</button><button class="btn ghost sm" data-act="cashDel" data-id="'+esc(e.id)+'">삭제</button></td></tr>';
     });
     t+='</tbody></table></div>';
   }
   return card('purple','현금 입출금 입력','',
-      '<p class="hint">현금은 <b>입금·출금만</b> 관리합니다. 레이드 정산이나 분배와는 연결되지 않으며, 보유 현금보다 많이 출금할 수 없습니다. 금액은 <b>원</b> 단위입니다.</p>'+
+      '<p class="hint">현금은 <b>입금·출금만</b> 관리합니다. 레이드 정산이나 분배와는 연결되지 않습니다. 보유 현금보다 많이 출금하면 잔액이 <b class="neg">마이너스</b>로 기록됩니다. 금액은 <b>원</b> 단위입니다.</p>'+
       cashFormHtml(null)+'<div class="toolbar"><button class="btn primary lg" data-act="cashAdd">내역 추가</button></div>')+
-    card('purple','현금 입출금 내역 <span class="chip coin" style="margin-left:10px">보유 '+fmtWon(c.bal)+'</span>',
+    card('purple','현금 입출금 내역 <span class="chip '+(c.bal<0?'out':'coin')+'" style="margin-left:10px">보유 '+fmtWon(c.bal)+'</span>',
       '<select data-chg="cfm" aria-label="기간 선택"><option value="">전체 기간</option>'+months.map(m=>'<option value="'+m+'"'+(ui.cf.month===m?' selected':'')+'>'+m.replace('-','년 ')+'월</option>').join('')+'</select>',t);
 }
 function ledgerFormHtml(e){
@@ -1048,8 +1049,8 @@ const draftBlank=d=>d.rows.every(r=>!num(r.count)&&!Object.values(r.bonus||{}).s
 function viewDist(){
   ensureDraft();
   return ruleCardHtml()+
-    card('coin','분배 가능 여부','<span class="chip th-chip">-</span>','<span class="th-text" style="font-size:15px;font-weight:700"></span><div class="prog"><i class="th-fill"></i></div>'+
-      '<p class="hint" style="margin:12px 0 0">길자금 잔액이 분배 기준 금액 이상일 때만 분배를 완료할 수 있습니다. 잔액이 기준 금액보다 적으면 분배가 진행되지 않습니다.</p>')+
+    card('coin','분배 기준 대비 잔액','<span class="chip th-chip">-</span>','<span class="th-text" style="font-size:15px;font-weight:700"></span><div class="prog"><i class="th-fill"></i></div>'+
+      '<p class="hint" style="margin:12px 0 0">길자금 잔액이 분배 기준 금액보다 적어도 분배할 수 있습니다. 이 경우 분배 후 길자금이 <b class="neg">마이너스</b>가 되며, 이후 레이드 정산 등 수입으로 채워집니다.</p>')+
     '<div id="sessionWrap">'+sessionHtml()+'</div>'+statusCardHtml();
 }
 const ratioSum=()=>S.rule.components.filter(c=>c.enabled&&!isAmt(c)).reduce((a,c)=>a+num(c.pct),0);
@@ -1059,7 +1060,7 @@ function ruleCardHtml(){
     '<div class="field"><label>분배 기준 금액 (만 실버) · 분배 1회 지급 금액</label>'+moneyIn('data-chg="threshold"',S.settings.distThreshold)+'</div>'+
     '<div class="field"><label>지급 단위</label><select data-chg="roundUnit">'+
       [1,10,100,1000].map(u=>'<option value="'+u+'"'+(r.roundUnit==u?' selected':'')+'>'+fmtM(u)+' 실버 단위</option>').join('')+'</select></div></div>'+
-    '<p class="hint"><b>분배 기준 금액</b>: 분배 1회에 사용할 금액입니다. 분배 진행의 "분배 대상 금액"에 자동으로 적용되며, 길자금 잔액이 이 금액보다 적으면 분배할 수 없습니다.<br>'+
+    '<p class="hint"><b>분배 기준 금액</b>: 분배 1회에 사용할 금액입니다. 분배 진행의 "분배 대상 금액"에 자동으로 적용됩니다. 길자금 잔액이 이 금액보다 적어도 분배할 수 있으며, 이 경우 길자금이 마이너스가 됩니다.<br>'+
     '<b>지급 단위</b>: 개인에게 줄 금액을 이 단위로 끊어서 지급합니다. 예) 계산 결과가 1,234만인데 단위가 100만이면 1,200만을 지급하고 나머지 34만은 길자금에 남습니다.</p>'+
     '<h3 style="margin-bottom:8px">분배 비율 <span class="small muted" style="font-weight:500">항목을 추가·삭제·변경할 수 있고, 합계가 100%여야 분배할 수 있습니다</span></h3>'+
     '<div class="stack" id="ratioBar" style="height:22px"></div>'+
@@ -1118,7 +1119,7 @@ function sessionHtml(){
   const cw=[44,64,200,120].concat(comps.map(c=>c.type==='bonus'?170:150)).concat([170]);
   let b=distTitleHtml(d)+'<div class="rule-grid"><div class="field"><label>분배일 (이 날짜로 길자금 지출 처리)</label><input type="date" value="'+esc(d.date)+'" data-chg="dDate"></div>'+
     '<div class="field"><label>분배 대상 금액 · 분배 RULE의 분배 기준 금액과 자동 연동</label><div class="ro" id="poolShow"></div></div>'+
-    '<div class="field"><label>현재 길자금 잔액</label><div class="ro" id="balShow">'+fmtM(p.bal)+'</div></div></div>'+
+    '<div class="field"><label>현재 길자금 잔액</label><div class="ro'+negc(p.bal)+'" id="balShow">'+fmtM(p.bal)+'</div></div></div>'+
     '<div class="toolbar" style="margin:0 0 12px"><button class="btn sm" data-act="joinAll">전원 참여</button><button class="btn sm" data-act="joinNone">전원 제외</button><button class="btn sm" data-act="countReset">횟수 모두 0</button>'+
     '<button class="btn sm ghost" style="margin-left:auto" data-act="distReset">입력 초기화</button></div>';
   if(comps.some(c=>c.type==='bonus')) b+='<p class="hint"><b>포상(수고비)</b> 칸에는 별도로 수고비를 줄 길드원에게만 금액을 입력하세요. 분배에 참여하지 않는 사람에게도 줄 수 있고, 금액은 분배 대상 금액에서 먼저 차감됩니다.</p>';
@@ -1146,7 +1147,7 @@ function updateDistCalc(){
   const pool=Math.round(num(S.settings.distThreshold)); d.poolAmount=pool;
   const ps=$('#poolShow'); if(ps) ps.textContent=fmtM(pool);
   const p=pools(), res=calcDist(pool, S.rule, d.rows);
-  const bs=$('#balShow'); if(bs) bs.textContent=fmtM(p.bal);
+  const bs=$('#balShow'); if(bs){ bs.textContent=fmtM(p.bal); bs.classList.toggle('neg',p.bal<0); }
   const cells={}; $$('[data-cell]').forEach(e=>{ cells[e.dataset.cell]=e; });
   const comps=res.comps;
   res.persons.forEach(o=>{
@@ -1165,8 +1166,7 @@ function updateDistCalc(){
   if(cells.tt) cells.tt.textContent=fmtM(res.totalPayout);
   const errs=res.errors.slice(), notes=[];
   if(pool<=0) errs.push('분배 RULE에서 분배 기준 금액을 입력하세요.');
-  else if(pool>p.bal) errs.push('분배 기준 금액('+fmtM(pool)+')이 길자금 잔액('+fmtM(p.bal)+')보다 많아 분배할 수 없습니다.');
-  else if(res.totalPayout>p.bal) errs.push('총 지급액('+fmtM(res.totalPayout)+')이 길자금 잔액('+fmtM(p.bal)+')보다 많아 분배할 수 없습니다.');
+  if(pool>0&&p.bal-res.totalPayout<0) notes.push('⚠ 총 지급액('+fmtM(res.totalPayout)+')이 길자금 잔액('+fmtM(p.bal)+')보다 많아, 분배 후 길자금이 '+fmtM(p.bal-res.totalPayout)+'(마이너스)가 됩니다. 마이너스로도 분배할 수 있습니다.');
   if(res.retained>0) notes.push('길드자금 적립 '+fmtM(res.retained)+'은 지급하지 않고 길자금에 그대로 남습니다.');
   if(res.leftover-res.retained>0) notes.push('지급 단위로 내림하고 남는 금액 '+fmtM(res.leftover-res.retained)+'도 길자금에 남습니다.');
   if(res.overage>0) notes.push('동순위 전액 지급으로 분배 대상 금액을 '+fmtM(res.overage)+' 초과합니다. 초과분도 길자금에서 지급됩니다.');
@@ -1692,9 +1692,9 @@ function viewNotice(){
     '<div class="chips"><span class="chip">현재 공지 '+act.length+'건</span><span class="chip coin">📌 고정 '+pinned.length+'건</span><span class="chip purple">이번 달 회의 '+mcnt+'건</span><span class="chip">History '+arc.length+'건</span>'+(last?'<span class="chip">최근 업데이트 '+last+'</span>':'')+'</div></div>'+
     '<div><button class="btn primary lg" data-act="noticeAdd">＋ 공지 작성</button></div></div>';
   const strip='<div class="nstrip">'+
-    '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>실버 길자금</span><span>→</span></div><div class="v">'+fmtM(p.bal)+'</div></div>'+
-    '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>현금 보유</span><span>→</span></div><div class="v">'+fmtWon(c.bal)+'</div></div>'+
-    '<div class="nstat" data-act="goDist" role="button" tabindex="0"><div class="k"><span>분배</span><span>→</span></div><div class="v '+(ready?'pos':'coin')+'">'+(ready?'분배 가능':'잔액 부족')+'</div></div>'+
+    '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>실버 길자금</span><span>→</span></div><div class="v'+negc(p.bal)+'">'+fmtM(p.bal)+'</div></div>'+
+    '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>현금 보유</span><span>→</span></div><div class="v'+negc(c.bal)+'">'+fmtWon(c.bal)+'</div></div>'+
+    '<div class="nstat" data-act="goDist" role="button" tabindex="0"><div class="k"><span>분배</span><span>→</span></div><div class="v '+(ready?'pos':'coin')+'">'+(ready?'잔액 충분':(th>0?'잔액 부족':'-'))+'</div></div>'+
     '<div class="nstat" data-act="goStock" role="button" tabindex="0"><div class="k"><span>미판매 재고템</span><span>→</span></div><div class="v">'+S.stock.length+'개</div></div></div>';
   const nav='<div class="seg nav"><button type="button" data-act="noticeView" data-v="now" class="'+(ui.nView==='now'?'on':'')+'">📌 현재 공지 ('+act.length+')</button><button type="button" data-act="noticeView" data-v="history" class="'+(ui.nView==='history'?'on':'')+'">📚 History ('+arc.length+')</button></div>';
   if(ui.nView==='history') return hero+strip+nav+noticeHistoryCard(arc);
@@ -1815,8 +1815,10 @@ A.amtAdd=el=>{ const f=el.closest('.ledform'), i=f.querySelector('#lAmt'); i.val
 A.amtClear=el=>{ const f=el.closest('.ledform'), i=f.querySelector('#lAmt'); i.value=''; moneyHint(i); i.focus(); };
 A.ledAdd=()=>{
   const v=readLedgerForm($('#ledForm')); if(!v) return;
+  const before=pools().bal;
   S.ledger.push(Object.assign({id:uid()},v));
-  commit(); toast('내역을 추가했습니다');
+  commit(); const after=pools().bal;
+  toast(after<0&&after<before?'내역을 추가했습니다 · ⚠ 길자금 잔액 '+fmtM(after)+' (마이너스)':'내역을 추가했습니다');
 };
 A.ledEdit=async el=>{
   const e=S.ledger.find(x=>x.id===el.dataset.id); if(!e) return;
@@ -1855,10 +1857,8 @@ A.distDone=async()=>{
   const pool=Math.round(num(S.settings.distThreshold)), p=pools(), res=calcDist(pool,S.rule,d.rows);
   const errs=res.errors.slice();
   if(pool<=0) errs.push('분배 RULE에서 분배 기준 금액을 입력하세요.');
-  else if(pool>p.bal) errs.push('길자금 잔액이 분배 기준 금액보다 적어 분배할 수 없습니다.');
-  else if(res.totalPayout>p.bal) errs.push('총 지급액이 길자금 잔액보다 많아 분배할 수 없습니다.');
   if(errs.length) return toast(errs[0]);
-  let msg='"'+title+'"\n'+fmtDate(d.date)+' 분배를 완료합니다.\n\n· 참여 '+res.n+'명'+(res.bonusTotal?' · 포상 '+fmtM(res.bonusTotal):'')+(res.retained?'\n· 길드자금 적립 '+fmtM(res.retained)+' (지급하지 않고 길자금에 남음)':'')+'\n· 총 지급 '+fmtM(res.totalPayout)+' (길자금 지출로 기록)\n· 분배 후 길자금 잔액 '+fmtM(p.bal-res.totalPayout);
+  let msg='"'+title+'"\n'+fmtDate(d.date)+' 분배를 완료합니다.\n\n· 참여 '+res.n+'명'+(res.bonusTotal?' · 포상 '+fmtM(res.bonusTotal):'')+(res.retained?'\n· 길드자금 적립 '+fmtM(res.retained)+' (지급하지 않고 길자금에 남음)':'')+'\n· 총 지급 '+fmtM(res.totalPayout)+' (길자금 지출로 기록)\n· 분배 후 길자금 잔액 '+fmtM(p.bal-res.totalPayout)+(p.bal-res.totalPayout<0?'\n\n⚠ 분배 후 길자금이 마이너스가 됩니다.':'');
   if(!await confirmBox(msg,{ok:'분배 완료',title:'분배를 완료할까요?'})) return;
   const lid=uid(), nameOf=id=>(S.members.find(m=>m.id===id)||{}).name||'(삭제됨)';
   d.title=title; d.status='completed'; d.completedAt=new Date().toISOString(); d.ledgerId=lid; d.unitSnap=S.rule.roundUnit; d.poolAmount=pool;
@@ -1970,8 +1970,7 @@ A.raidUncomplete=async()=>{
   const r=curRaid(); if(!r||r.status!=='completed') return;
   const rest=S.ledger.filter(e=>e.id!==r.ledgerId);
   let bal=0; rest.forEach(e=>{ bal+=e.type==='income'?num(e.amount):-num(e.amount); });
-  if(bal<0) return toast('이미 분배 등으로 사용된 금액이 있어 취소할 수 없습니다. 먼저 해당 분배를 취소하세요');
-  if(!await confirmBox('완료를 취소하면 길자금에 기록된 정산금 내역이 삭제되고 다시 수정할 수 있게 됩니다.\n이월했던 재고템은 판매 대기로 되돌아옵니다.',{ok:'완료 취소',danger:true})) return;
+  if(!await confirmBox('완료를 취소하면 길자금에 기록된 정산금 내역이 삭제되고 다시 수정할 수 있게 됩니다.\n이월했던 재고템은 판매 대기로 되돌아옵니다.'+(bal<0?'\n\n⚠ 취소하면 길자금이 '+fmtM(bal)+'(마이너스)가 됩니다.':''),{ok:'완료 취소',danger:true})) return;
   S.ledger=rest;
   const back=new Map();
   (r.carried||[]).forEach(id=>{ const i=S.stock.findIndex(x=>x.id===id); if(i>=0){ const x=S.stock.splice(i,1)[0]; back.set(x.name,(back.get(x.name)||0)+1); } });
@@ -2169,8 +2168,7 @@ A.stockSell=async el=>{
 A.stockSaleUndo=async el=>{
   const x=S.stockSales.find(v=>v.id===el.dataset.id); if(!x) return;
   const rest=S.ledger.filter(e=>e.id!==x.ledgerId); let bal=0; rest.forEach(e=>{ bal+=e.type==='income'?num(e.amount):-num(e.amount); });
-  if(bal<0) return toast('이미 분배 등으로 사용된 금액이 있어 되돌릴 수 없습니다');
-  if(!await confirmBox('"'+x.name+'" 판매를 취소하고 재고로 되돌립니다.\n길자금 수입 내역도 함께 삭제됩니다.',{ok:'되돌리기',danger:true})) return;
+  if(!await confirmBox('"'+x.name+'" 판매를 취소하고 재고로 되돌립니다.\n길자금 수입 내역도 함께 삭제됩니다.'+(bal<0?'\n\n⚠ 되돌리면 길자금이 '+fmtM(bal)+'(마이너스)가 됩니다.':''),{ok:'되돌리기',danger:true})) return;
   S.ledger=rest; (x.items||[]).forEach(it=>S.stock.push(it)); S.stockSales=S.stockSales.filter(v=>v!==x); commit(); toast('재고로 되돌렸습니다');
 };
 
@@ -2186,22 +2184,21 @@ A.cAmtClear=el=>{ const f=el.closest('.cashform'), i=f.querySelector('#cAmt'); i
 A.memoPick=el=>{ const f=el.closest('.cashform'); if(f) f.querySelector('#cMemo').value=el.dataset.v; };
 A.cashAdd=()=>{
   const v=readCashForm($('#cashForm')); if(!v) return;
-  if(v.type==='out'&&v.amount>cashPools().bal) return toast('보유 현금('+fmtWon(cashPools().bal)+')보다 많이 출금할 수 없습니다');
-  S.cash.push(Object.assign({id:uid()},v)); commit(); toast((v.type==='in'?'입금 ':'출금 ')+fmtWon(v.amount)+'을 기록했습니다');
+  S.cash.push(Object.assign({id:uid()},v)); commit(); const after=cashPools().bal;
+  toast((v.type==='in'?'입금 ':'출금 ')+fmtWon(v.amount)+'을 기록했습니다'+(after<0&&v.type==='out'?' · ⚠ 보유 현금 '+fmtWon(after)+' (마이너스)':''));
 };
 A.cashEdit=async el=>{
   const e=S.cash.find(x=>x.id===el.dataset.id); if(!e) return;
   const res=await modal({title:'현금 내역 수정',wide:true,body:cashFormHtml(e),ok:'수정 저장',onOk(root){
     const v=readCashForm(root); if(!v) return false;
     let bal=0; S.cash.filter(x=>x!==e).forEach(x=>{ bal+=x.type==='in'?num(x.amount):-num(x.amount); }); bal+=v.type==='in'?v.amount:-v.amount;
-    if(bal<0){ toast('수정하면 보유 현금이 마이너스가 됩니다'); return false; }
     return v; }});
-  if(!res||res===true) return; Object.assign(e,res); commit(); toast('수정했습니다');
+  if(!res||res===true) return; Object.assign(e,res); commit(); const after=cashPools().bal; toast('수정했습니다'+(after<0?' · ⚠ 보유 현금 '+fmtWon(after)+' (마이너스)':''));
 };
 A.cashDel=async el=>{
   const e=S.cash.find(x=>x.id===el.dataset.id); if(!e) return;
-  if(e.type==='in'&&cashPools().bal-num(e.amount)<0) return toast('이 입금을 삭제하면 보유 현금이 마이너스가 됩니다');
-  if(!await confirmBox(fmtDate(e.date)+' '+(e.type==='in'?'입금 ':'출금 ')+fmtWon(e.amount)+' 내역을 삭제할까요?',{ok:'삭제',danger:true})) return;
+  const after=cashPools().bal+(e.type==='in'?-num(e.amount):num(e.amount));
+  if(!await confirmBox(fmtDate(e.date)+' '+(e.type==='in'?'입금 ':'출금 ')+fmtWon(e.amount)+' 내역을 삭제할까요?'+(after<0&&e.type==='in'?'\n\n⚠ 삭제하면 보유 현금이 '+fmtWon(after)+'(마이너스)가 됩니다.':''),{ok:'삭제',danger:true})) return;
   S.cash=S.cash.filter(x=>x!==e); commit(); toast('삭제했습니다');
 };
 
