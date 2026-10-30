@@ -103,6 +103,16 @@ input.big{font-size:22px;font-weight:800;height:50px}
 .chip.cls-rg{color:var(--green);border-color:var(--green);background:var(--green-soft)}
 .chip.cls-el{color:var(--teal);border-color:var(--teal);background:var(--teal-soft)}
 .chip.cls-sm{color:var(--purple);border-color:var(--purple);background:rgba(201,160,255,.14)}
+.chip.cls-as{color:#ff6b8a;border-color:#ff6b8a;background:rgba(255,107,138,.13)}
+/* 클래스 아이콘 (파일 안에 직접 그린 SVG — 인터넷 없이 모든 기기에서 같은 모양) */
+.chip[class*="cls-"]{display:inline-flex;align-items:center;gap:4px}
+.ci{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.chip.sm2 .ci{width:12px;height:12px}
+.clsico{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);flex:none}
+.clsico .ci{width:16px;height:16px}
+.clsico.cls-kn{color:#ff9f7a;border-color:#ff9f7a} .clsico.cls-rg{color:var(--green);border-color:var(--green)} .clsico.cls-el{color:var(--teal);border-color:var(--teal)}
+.clsico.cls-sm{color:var(--purple);border-color:var(--purple)} .clsico.cls-as{color:#ff6b8a;border-color:#ff6b8a} .clsico.none{color:var(--muted);border-style:dashed}
+.clscell{display:flex;gap:6px;align-items:center}
 .chip.sm2{font-size:11px;padding:0 7px;margin-left:6px;font-weight:600}
 .chip.link{cursor:pointer;padding:3px 11px}
 .chip.link:hover{filter:brightness(1.35);border-color:var(--teal);color:var(--text)}
@@ -233,6 +243,8 @@ details.hist .inner{padding:14px}
 .qitems .chip{cursor:pointer;font-size:13px;padding:5px 10px}
 .qitems .chip.picked{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
 .qitems .chip b{margin-left:4px}
+.qitems .chip small{margin-left:5px;color:var(--muted);font-weight:500}
+.est{color:var(--muted);font-style:italic}
 .qcart{margin-top:12px;border-top:1px dashed var(--line2);padding-top:10px}
 .qcart .qrow{display:grid;grid-template-columns:minmax(120px,1fr) auto auto;gap:8px;align-items:center;padding:4px 0}
 .qcart .qty{display:inline-flex;align-items:center;gap:4px}
@@ -435,7 +447,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.10.30-d';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.10.30-g';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -529,6 +541,13 @@ function guessCat(n){
   if(/무기|검$|대검|단검|도끼|활$|석궁|창$|지팡이|스태프|크로우|블레이드|보우|너클|이도류|양손|한손/.test(n)) return 'weapon';
   return 'misc';
 }
+// 판매 기록에서 아이템별 최근 판매가(1개당) 찾기 → 기본 가격 초기값
+function saleHistory(o){
+  const h=new Map(), put=(n,price,date)=>{ n=normName(n).toLowerCase(); price=Math.round(num(price)); if(!n||!(price>0)) return; const c=h.get(n); if(!c||(date||'')>=(c.date||'')) h.set(n,{price,date:date||''}); };
+  (o.raids||[]).forEach(r=>(r.lots||[]).forEach(l=>{ if(l.state==='sold') put(l.name,l.price,l.soldDate||r.date); }));
+  (o.stockSales||[]).forEach(x=>put(x.name,x.price,x.date));
+  return h;
+}
 function seedCatalog(o){
   const map=new Map();
   const add=(n,date)=>{ n=normName(n); if(!n) return; const k=n.toLowerCase(); let it=map.get(k);
@@ -537,14 +556,24 @@ function seedCatalog(o){
   (((o.settings||{}).itemPresets||{}).income||[]).forEach(n=>add(n));
   (o.raids||[]).forEach(r=>(r.lots||[]).forEach(l=>add(l.name,r.date||'')));
   (o.stock||[]).forEach(x=>add(x.name)); (o.stockSales||[]).forEach(x=>add(x.name));
+  const hist=saleHistory(o);
+  map.forEach((it,k)=>{ const sh=hist.get(k); it.price=sh?sh.price:0; it.soldPrice=sh?sh.price:0; it.soldAt=sh?sh.date:''; it.prevPrice=0; });
   return Array.from(map.values());
 }
 const PRESET_EXPENSE = ['봉줌 1층','봉줌 2층','봉줌 3층','봉줌 4층','이계상인'];
 const MEMBERS0 = ['와꾸','빵양','미륵','마린','콜라','리즈','구슬','스페','봉대장','허리','젠키','꿀꿀이','짜잔','애무','수박'];
 const HAMMER_URL = 'https://jins-project.github.io/R2_Cash/r2_item_timer.html';   // 이전에 만든 캐쉬템 잔여 시간 페이지 (관리자가 ⚙ 로 변경 가능)
-const CLASSES = ['나이트','레인저','엘프','서머너'];
-const CLASS_CSS = {'나이트':'kn','레인저':'rg','엘프':'el','서머너':'sm'};
-const classChip = (c,small)=>c&&CLASS_CSS[c]?'<span class="chip cls-'+CLASS_CSS[c]+(small?' sm2':'')+'">'+esc(c)+'</span>':'<span class="chip'+(small?' sm2':'')+'">미지정</span>';
+const CLASSES = ['나이트','레인저','엘프','서머너','어쎄신'];
+const CLASS_CSS = {'나이트':'kn','레인저':'rg','엘프':'el','서머너':'sm','어쎄신':'as'};
+const CLASS_SVG = {   // 나이트=방패 · 레인저=활 · 엘프=나뭇잎 · 서머너=수정구 · 어쎄신=단검
+  '나이트':'<path d="M8 1.5 13.5 3.5V7.5C13.5 11 11 13.3 8 14.5 5 13.3 2.5 11 2.5 7.5V3.5Z"/><path d="M8 4.5V11.5M5.5 7.5H10.5"/>',
+  '레인저':'<path d="M5 1.8C11.5 3.5 11.5 12.5 5 14.2"/><path d="M5 1.8V14.2"/><path d="M2 8H13.5M11.3 5.8 13.5 8 11.3 10.2"/>',
+  '엘프':'<path d="M2.8 13.2C2.8 6.3 6.8 2.8 13.2 2.8 13.2 9.2 9.7 13.2 2.8 13.2Z"/><path d="M2.8 13.2 10 6M6 9.8V7.2M8.2 7.8H10.6"/>',
+  '서머너':'<circle cx="8" cy="6.8" r="4.6"/><path d="M4.6 14.2H11.4M5.6 11.3 4.6 14.2M10.4 11.3 11.4 14.2"/><path d="M6.3 4.8C6.9 4.2 7.6 4 8.3 4.1"/>',
+  '어쎄신':'<path d="M13.6 2.4 13 5.2 7.6 10.6 5.4 8.4 10.8 3Z"/><path d="M4.3 7.3 8.7 11.7M6 10 2.6 13.4"/>'};
+const classIco = c=>CLASS_SVG[c]?'<svg class="ci" viewBox="0 0 16 16" aria-hidden="true">'+CLASS_SVG[c]+'</svg>':'';
+const classIcon = c=>'<span class="clsico '+(CLASS_CSS[c]?'cls-'+CLASS_CSS[c]:'none')+'" title="'+esc(c||'미지정')+'">'+(classIco(c)||'?')+'</span>';
+const classChip = (c,small)=>c&&CLASS_CSS[c]?'<span class="chip cls-'+CLASS_CSS[c]+(small?' sm2':'')+'">'+classIco(c)+esc(c)+'</span>':'<span class="chip'+(small?' sm2':'')+'">미지정</span>';
 const COMP_TYPES = {bonus:'포상(수고비)', base:'고정 기본급(1인당 금액)', guild:'길드자금 적립', equal:'균등 지급(기본급)', perCount:'횟수 비례 분배', rank:'순위 상금'};
 const RATIO_LABEL = {guild:'길드자금 적립 (지급 안 함)', perCount:'횟수 비례 분배', equal:'균등 지급 (기본급)', rank:'순위 상금'};
 const isAmt = c=>c.type==='bonus'||c.type==='base';
@@ -675,8 +704,18 @@ function normalize(d){
   // 판매 아이템 목록 (없으면 기본 품목 + 지금까지 등록된 아이템으로 처음 한 번 만듦)
   const cat0=d.settings&&d.settings.itemCatalog;
   if(Array.isArray(cat0)){ const seen=new Set(); o.settings.itemCatalog=cat0.filter(x=>{ const n=normName(x&&x.name).toLowerCase(); if(!n||seen.has(n)) return false; seen.add(n); return true; })
-      .map(x=>({id:x.id||uid(),name:normName(x.name),cat:catOk(x.cat),uses:Math.max(0,Math.round(num(x.uses))),last:x.last||''})); }
+      .map(x=>({id:x.id||uid(),name:normName(x.name),cat:catOk(x.cat),uses:Math.max(0,Math.round(num(x.uses))),last:x.last||'',
+        price:Math.max(0,Math.round(num(x.price))),soldPrice:Math.max(0,Math.round(num(x.soldPrice))),soldAt:x.soldAt||'',prevPrice:Math.max(0,Math.round(num(x.prevPrice))),auto:!!x.auto,_np:x.price===undefined}));
+    // 기본 가격이 아직 없던 목록(이전 버전)은 판매 기록의 최근 판매가로 채움
+    if(o.settings.itemCatalog.some(x=>x._np)){ const hist=saleHistory(o); o.settings.itemCatalog.forEach(x=>{ if(x._np){ const sh=hist.get(x.name.toLowerCase()); if(sh){ x.price=sh.price; x.soldPrice=sh.price; x.soldAt=sh.date; } } }); }
+    o.settings.itemCatalog.forEach(x=>{ delete x._np; }); }
   else o.settings.itemCatalog=seedCatalog(o);
+  o.settings.itemHidden=Array.isArray(o.settings.itemHidden)?o.settings.itemHidden.map(n=>normName(n).toLowerCase()).filter(Boolean):[];
+  // 레이드·재고에 있는데 목록에 빠진 아이템 보충 (사용자가 직접 삭제한 이름은 제외) → '잡템 · 정리 필요'로 추가
+  { const have=new Set(o.settings.itemCatalog.map(x=>x.name.toLowerCase())), hid=new Set(o.settings.itemHidden), hist=saleHistory(o);
+    const fill=n=>{ n=normName(n); const k=n.toLowerCase(); if(!n||have.has(k)||hid.has(k)) return; have.add(k); const sh=hist.get(k);
+      o.settings.itemCatalog.push({id:uid(),name:n,cat:'misc',uses:0,last:'',price:sh?sh.price:0,soldPrice:sh?sh.price:0,soldAt:sh?sh.date:'',prevPrice:0,auto:true}); };
+    o.raids.forEach(r=>(r.lots||[]).forEach(l=>fill(l.name))); o.stock.forEach(x=>fill(x.name)); o.stockSales.forEach(x=>fill(x.name)); }
   return o;
 }
 
@@ -833,7 +872,7 @@ function sha256(str){
   }
   return H.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
 }
-const READ_ACT=new Set(['tab','cloudOpen','itemCat','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
+const READ_ACT=new Set(['tab','cloudOpen','itemCat','itemShowAll','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
 const READ_CHG=new Set(['lfm','cfm','sfilter','ms','mcls','nfType','nfMonth']);
 const READ_INP=new Set(['lfq','mq','nfq','iq']);
 function setAdmin(on){
@@ -1369,11 +1408,11 @@ function quickRegHtml(r){
   const cnt=c=>(S.settings.itemCatalog||[]).filter(x=>c==='all'||x.cat===c).length;
   let h='<div class="qreg"><div class="qhead"><b>⚡ 빠른 등록</b><span class="small muted">아이템을 누를 때마다 1개씩 담깁니다 · 수량을 고친 뒤 [한 번에 등록]</span><span style="flex:1"></span><button class="btn ghost sm" data-act="tab" data-tab="items">아이템 관리 →</button></div>'+
     '<div class="seg"><button type="button" data-act="qCat" data-v="all" class="'+(cat==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="qCat" data-v="'+c[0]+'" class="'+(cat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+'</div>'+
-    '<div class="qitems">'+(items.length?items.map(x=>{ const q=inCart.get(x.name); return '<button type="button" class="chip'+(q?' picked':'')+'" data-act="qPick" data-name="'+esc(x.name)+'" title="'+esc(catName(x.cat))+(x.uses?' · '+x.uses+'회 등록':'')+'">+ '+esc(x.name)+(q?'<b>×'+q+'</b>':'')+'</button>'; }).join(''):'<span class="small muted">이 분류에 등록된 아이템이 없습니다. "아이템 관리"에서 추가하세요.</span>')+'</div>';
+    '<div class="qitems">'+(items.length?items.map(x=>{ const q=inCart.get(x.name); return '<button type="button" class="chip'+(q?' picked':'')+'" data-act="qPick" data-name="'+esc(x.name)+'" title="'+esc(catName(x.cat))+(x.uses?' · '+x.uses+'회 등록':'')+'">+ '+esc(x.name)+(x.price?'<small>'+fmtM(x.price)+'</small>':'')+(q?'<b>×'+q+'</b>':'')+'</button>'; }).join(''):'<span class="small muted">이 분류에 등록된 아이템이 없습니다. "아이템 관리"에서 추가하세요.</span>')+'</div>';
   if(cart.list.length){
     const tq=cart.list.reduce((a,x)=>a+x.qty,0);
     h+='<div class="qcart"><div class="small muted" style="margin-bottom:4px">담은 아이템</div>'+cart.list.map((x,i)=>
-      '<div class="qrow"><span><b>'+esc(x.name)+'</b></span><span class="qty"><button type="button" class="btn sm" data-act="qDec" data-i="'+i+'">−</button><input type="number" min="1" max="50" value="'+x.qty+'" data-inp="qQty" data-i="'+i+'"><button type="button" class="btn sm" data-act="qInc" data-i="'+i+'">+</button></span><button type="button" class="btn ghost sm" data-act="qDel" data-i="'+i+'" title="빼기">✕</button></div>').join('')+
+      '<div class="qrow"><span><b>'+esc(x.name)+'</b>'+(catPrice(x.name)?' <span class="small est">예상 '+fmtM(catPrice(x.name)*x.qty)+'</span>':'')+'</span><span class="qty"><button type="button" class="btn sm" data-act="qDec" data-i="'+i+'">−</button><input type="number" min="1" max="50" value="'+x.qty+'" data-inp="qQty" data-i="'+i+'"><button type="button" class="btn sm" data-act="qInc" data-i="'+i+'">+</button></span><button type="button" class="btn ghost sm" data-act="qDel" data-i="'+i+'" title="빼기">✕</button></div>').join('')+
       '<div class="qfoot"><span class="small muted" id="qTotal">'+cart.list.length+'종 · 총 '+tq+'개</span><button type="button" class="btn ghost sm" data-act="qClear">비우기</button><button type="button" class="btn primary" data-act="qSubmit">⬆ 한 번에 등록</button></div></div>';
   }
   return h+'</div>';
@@ -1390,12 +1429,15 @@ function lotsCard(r,edit){
       b+='<tr><td><b>'+esc(l.name)+'</b>'+(l.qty>1?'<span class="chip sm2">×'+l.qty+'</span>':'')+'</td>'+
         '<td><span class="chip '+(sold?'in':'coin')+'">'+(sold?'판매 완료':'판매 대기')+'</span></td>'+
         '<td class="wrap">'+(sold?esc(buyerNames(l))+(l.drawId?'<span class="chip sm2 blue">뽑기</span>':''):'<span class="muted">-</span>')+'</td>'+
-        '<td class="num">'+(sold?'<b class="pos">+'+fmtM(lotTotal(l))+'</b>'+(l.buyers.length>1?'<div class="small muted">개당 '+fmtM(l.price)+' × '+l.buyers.length+'</div>':''):'<span class="muted">-</span>')+'</td>'+
+        '<td class="num">'+(sold?'<b class="pos">+'+fmtM(lotTotal(l))+'</b>'+(l.buyers.length>1?'<div class="small muted">개당 '+fmtM(l.price)+' × '+l.buyers.length+'</div>':'')
+          :(catPrice(l.name)?'<span class="est" title="판매 아이템 관리의 기본 가격 기준">예상 '+fmtM(catPrice(l.name)*l.qty)+'</span>'+(l.qty>1?'<div class="small muted">개당 '+fmtM(catPrice(l.name))+' × '+l.qty+'</div>':''):'<span class="muted">-</span>'))+'</td>'+
         (edit?'<td class="act">'+(sold
           ?'<button class="btn ghost sm" data-act="lotSell" data-id="'+id+'">수정</button><button class="btn ghost sm" data-act="lotUndo" data-id="'+id+'" title="판매를 취소하고 판매 대기로 되돌립니다">취소</button>'
           :'<button class="btn sm gold" data-act="lotSell" data-id="'+id+'">판매 입력</button><button class="btn ghost sm" data-act="lotUnsold" data-id="'+id+'" title="판매되지 않아 미판매 재고템으로 이월합니다">미판매</button><button class="btn ghost sm" data-act="lotDel" data-id="'+id+'">삭제</button>')+'</td>':'')+'</tr>';
     });
-    b+='</tbody><tfoot><tr><td>판매 수입 합계</td><td>'+r.lots.filter(lotSold).length+'건</td><td></td><td class="num pos">+'+fmtM(t.inc)+'</td>'+(edit?'<td></td>':'')+'</tr></tfoot></table></div>';
+    const waitL=r.lots.filter(l=>!lotSold(l)), est=waitL.reduce((a,l)=>a+catPrice(l.name)*l.qty,0);
+    const estRow=waitL.length?'<tr><td class="muted">판매 대기 예상</td><td class="muted">'+waitL.length+'건</td><td class="small muted">기본 가격 기준'+(waitL.some(l=>!catPrice(l.name))?' · 가격 없는 '+waitL.filter(l=>!catPrice(l.name)).length+'건 제외':'')+'</td><td class="num est">'+(est?'+'+fmtM(est):'-')+'</td>'+(edit?'<td></td>':'')+'</tr>':'';
+    b+='</tbody><tfoot>'+estRow+'<tr><td>판매 수입 합계</td><td>'+r.lots.filter(lotSold).length+'건</td><td></td><td class="num pos">+'+fmtM(t.inc)+'</td>'+(edit?'<td></td>':'')+'</tr></tfoot></table></div>';
   }
   if(edit) b+='<div class="lotadd"><input class="ln" list="dl_income" placeholder="판매 아이템 이름" data-fk="lotname" data-enter="lotAdd"><input class="lq" type="number" min="1" max="50" value="1" title="수량"><button class="btn primary" data-act="lotAdd">판매 아이템 등록</button></div>'+
     quickRegHtml(r);
@@ -1457,7 +1499,7 @@ function parsePaste(text,r){
     if(type==='expense') r.expenses.push({id:uid(),name,price,note:buyerTxt,date:today()});
     else{
       const mem=buyerTxt&&S.members.find(m=>m.name===buyerTxt);
-      catalogTouch(name); r.lots.push({id:uid(),name,qty:1,state:'sold',price,buyers:[mem?{id:mem.id,name:mem.name}:{id:'__ext',name:buyerTxt||'외부/기타'}],bidders:[],soldDate:today()});
+      catalogTouch(name); catalogSold(name,price); r.lots.push({id:uid(),name,qty:1,state:'sold',price,buyers:[mem?{id:mem.id,name:mem.name}:{id:'__ext',name:buyerTxt||'외부/기타'}],bidders:[],soldDate:today()});
     }
     res.added++;
   });
@@ -1471,7 +1513,7 @@ function openSaleModal(r,lot){
   const st={checked:new Set(lot.bidders&&lot.bidders.length?lot.bidders:(lot.buyers||[]).map(b=>b.id)),
     draw:lot.drawId?(S.draws.find(x=>x.id===lot.drawId)||null):null};
   const body='<p class="hint">'+(r&&r.title?'출처 레이드: <b>'+esc(r.title)+'</b> · ':'')+'<b>'+esc(lot.name)+'</b> × '+K+'개 — 입찰에 참여한 사람만 체크하세요. 입찰자가 수량보다 많으면 보물상자 뽑기로 낙찰자를 정합니다.</p>'+
-    '<div class="field"><label>판매가 — 1개당 (만 실버)</label>'+moneyIn('id="sP" placeholder="0"',lot.price||'','big')+'</div>'+
+    '<div class="field"><label>판매가 — 1개당 (만 실버)'+(!lot.price&&catPrice(lot.name)?' <span class="small muted">· 기본 가격 '+fmtM(catPrice(lot.name))+'으로 채움 (고쳐도 됩니다)</span>':'')+'</label>'+moneyIn('id="sP" placeholder="0"',lot.price||catPrice(lot.name)||'','big')+'</div>'+
     '<div class="field"><label>입찰 참여자 <span id="bdCnt" class="coin"></span></label>'+
     '<div class="bdtools"><button type="button" class="btn sm" data-q="all">전체 선택</button><button type="button" class="btn sm" data-q="none">전체 해제</button></div>'+
     '<div class="biddergrid">'+pool.map(p=>'<label class="bd"><input type="checkbox" data-bid="'+esc(p.id)+'"'+(st.checked.has(p.id)?' checked':'')+'><span>'+esc(p.name)+'</span>'+(p.cls?classChip(p.cls,true):'')+'</label>').join('')+'</div></div>'+
@@ -1689,14 +1731,18 @@ function classCountHtml(){
 const classOptions=sel=>'<option value="">미지정</option>'+CLASSES.map(k=>'<option value="'+k+'"'+(sel===k?' selected':'')+'>'+k+'</option>').join('');
 /* ---- 판매 아이템 등록 (분류별 아이템 목록) ---- */
 function viewItems(){
-  const C=S.settings.itemCatalog||[], cnt=c=>C.filter(x=>c==='all'||x.cat===c).length;
+  const C=S.settings.itemCatalog||[], cnt=c=>C.filter(x=>c==='all'||x.cat===c).length, nAuto=C.filter(x=>x.auto).length;
+  if(ui.icat==='auto'&&!nAuto) ui.icat='all';
   return card('green','판매 아이템 추가','<span class="small muted">전체 '+C.length+'개</span>',
       '<div class="form-grid"><div class="field"><label>아이템 이름</label><input id="iName" data-enter="itemAdd" placeholder="이름 입력 후 Enter"></div>'+
       '<div class="field"><label>분류</label><select id="iCat">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(c[0]==='misc'?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>기본 가격 (1개당, 만 실버)</label>'+moneyIn('id="iPrice" data-enter="itemAdd" placeholder="0"','')+'</div>'+
       '<div class="field"><label>&nbsp;</label><div class="inl"><button class="btn primary" data-act="itemAdd">추가</button><button class="btn" data-act="itemBulk">여러 개 한 번에</button></div></div></div>'+
-      '<p class="hint" style="margin:10px 0 0">여기 등록한 아이템은 레이드 정산의 <b>⚡ 빠른 등록</b>에 분류별 버튼으로 나옵니다. 레이드에서 처음 등록한 아이템은 자동으로 <b>잡템</b>에 추가되니, 아래 목록에서 분류를 바꿔 정리하세요.</p>')+
+      '<p class="hint" style="margin:10px 0 0">여기 등록한 아이템은 레이드 정산의 <b>⚡ 빠른 등록</b>에 분류별 버튼으로 나옵니다. 레이드에서 처음 등록한 아이템은 자동으로 <b>잡템</b>에 추가되니, 아래 목록에서 분류를 바꿔 정리하세요.<br><b>기본 가격</b>은 판매 입력 창에 미리 채워지고, 판매 대기 아이템의 예상 가격으로 쓰입니다. 실제로 다른 가격에 팔리면 <b>최근 판매가로 자동 갱신</b>됩니다.</p>')+
     card('teal','아이템 목록','<input type="search" placeholder="아이템 검색" data-inp="iq" value="'+esc(ui.iq||'')+'" style="width:170px">',
-      '<div class="seg" style="margin:0 0 12px"><button type="button" data-act="itemCat" data-v="all" class="'+((ui.icat||'all')==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="itemCat" data-v="'+c[0]+'" class="'+(ui.icat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+'</div><div id="itemTable"></div>');
+      (nAuto?'<div class="notice warn" style="margin:0 0 12px">🆕 레이드·재고에서 자동으로 추가된 아이템 <b>'+nAuto+'개</b>가 있습니다. 분류를 정해 주세요 (분류를 바꾸거나 "확인"을 누르면 정리 완료). <button class="btn sm gold" data-act="itemCat" data-v="auto">정리 필요만 보기</button></div>':'')+
+      '<div class="seg" style="margin:0 0 12px"><button type="button" data-act="itemCat" data-v="all" class="'+((ui.icat||'all')==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="itemCat" data-v="'+c[0]+'" class="'+(ui.icat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+(nAuto?'<button type="button" data-act="itemCat" data-v="auto" class="'+(ui.icat==='auto'?'on':'')+'">🆕 정리 필요 '+nAuto+'</button>':'')+'</div>'+
+      ((ui.icat&&ui.icat!=='all')||(ui.iq||'').trim()?'<div class="small muted" style="margin:-4px 0 10px">필터·검색이 적용되어 일부만 보입니다. <a class="link" data-act="itemShowAll">전체 보기</a></div>':'')+'<div id="itemTable"></div>');
 }
 function renderItemTable(){
   const el=$('#itemTable'); if(!el) return;
@@ -1704,17 +1750,20 @@ function renderItemTable(){
   const order=new Map(ITEM_CATS.map((c,i)=>[c[0],i]));
   const list=catalogSorted(cat).filter(x=>!q||x.name.toLowerCase().includes(q)).sort((a,b)=>order.get(a.cat)-order.get(b.cat)||(b.uses||0)-(a.uses||0)||a.name.localeCompare(b.name,'ko'));
   if(!list.length){ el.innerHTML='<div class="empty">표시할 아이템이 없습니다.</div>'; return; }
-  let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:640px"><colgroup><col style="width:50px"><col><col style="width:140px"><col style="width:110px"><col style="width:140px"><col style="width:80px"></colgroup>'+
-    '<thead><tr><th>#</th><th>아이템</th><th>분류</th><th class="num">등록 횟수</th><th>최근 사용</th><th></th></tr></thead><tbody>', prev=null;
+  let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:880px"><colgroup><col style="width:46px"><col><col style="width:120px"><col style="width:170px"><col style="width:190px"><col style="width:90px"><col style="width:130px"><col style="width:70px"></colgroup>'+
+    '<thead><tr><th>#</th><th>아이템</th><th>분류</th><th class="num">기본 가격 (1개당)</th><th>최근 판매</th><th class="num">등록 횟수</th><th>최근 사용</th><th></th></tr></thead><tbody>', prev=null;
   list.forEach((x,i)=>{
-    if(cat==='all'&&x.cat!==prev){ h+='<tr class="grp"><td colspan="6" style="background:var(--panel2)">'+catChip(x.cat)+' <span class="small muted">'+list.filter(y=>y.cat===x.cat).length+'개</span></td></tr>'; prev=x.cat; }
+ if(cat==='all'&&x.cat!==prev){ h+='<tr class="grp"><td colspan="8" style="background:var(--panel2)">'+catChip(x.cat)+' <span class="small muted">'+list.filter(y=>y.cat===x.cat).length+'개</span></td></tr>'; prev=x.cat; }
     const id=esc(x.id);
-    h+='<tr><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(x.name)+'" data-chg="itemName" data-id="'+id+'"></td>'+
+    h+='<tr'+(x.auto?' style="background:var(--coin-soft,rgba(244,199,107,.08))"':'')+'><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(x.name)+'" data-chg="itemName" data-id="'+id+'">'+(x.auto?'<div class="small coin" style="margin-top:3px">🆕 자동 추가 · 분류 정리 필요 <a class="link" data-act="itemOk" data-id="'+id+'">확인</a></div>':'')+'</td>'+
       '<td><select class="w100" data-chg="itemCatSet" data-id="'+id+'">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(x.cat===c[0]?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></td>'+
+      '<td>'+moneyIn('data-chg="itemPrice" data-id="'+id+'" placeholder="0"',x.price||'')+'</td>'+
+      '<td class="small">'+(x.soldAt?fmtM(x.soldPrice)+' <span class="muted">· '+esc(x.soldAt.slice(5))+'</span>'+(x.prevPrice&&x.prevPrice!==x.soldPrice?'<div class="muted">이전 '+fmtM(x.prevPrice)+'</div>':''):'<span class="muted">-</span>')+'</td>'+
       '<td class="num">'+(x.uses?x.uses+'회':'-')+'</td><td class="nowrap">'+(x.last?fmtDate(x.last):'-')+'</td>'+
       '<td class="act"><button class="btn ghost sm" data-act="itemDel" data-id="'+id+'">삭제</button></td></tr>';
   });
   el.innerHTML=h+'</tbody></table></div>';
+  $$('#itemTable [data-money]').forEach(moneyHint);
 }
 function viewMember(){
   const act=activeMembers().length;
@@ -1735,13 +1784,13 @@ function renderMemberTable(){
   const list=S.members.filter(m=>pick(m)&&m.status!=='left').concat(S.members.filter(m=>pick(m)&&m.status==='left'));   // 활동 → 비활동 순서 (각 그룹 안에서는 등록 순)
   const nOff=list.filter(m=>m.status==='left').length, firstOff=list.findIndex(m=>m.status==='left');
   if(!list.length){ el.innerHTML='<div class="empty">표시할 길드원이 없습니다.</div>'; return; }
-  let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:860px"><colgroup><col style="width:50px"><col style="width:170px"><col style="width:130px"><col style="width:110px"><col style="width:170px"><col style="width:140px"><col><col style="width:80px"></colgroup>'+
+  let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:860px"><colgroup><col style="width:50px"><col style="width:170px"><col style="width:160px"><col style="width:110px"><col style="width:170px"><col style="width:140px"><col><col style="width:80px"></colgroup>'+
     '<thead><tr><th>#</th><th>닉네임</th><th>클래스</th><th>상태</th><th class="num">누적 분배 수령</th><th>최근 분배일</th><th>메모</th><th></th></tr></thead><tbody>';
   list.forEach((m,i)=>{
     const s=st[m.id]||{sum:0,n:0,last:''}, id=esc(m.id);
     if(i===firstOff&&i>0) h+='<tr class="grp"><td colspan="8" class="small muted" style="background:var(--panel2);font-weight:700">비활동 '+nOff+'명 — 기록 보존을 위해 목록에 남겨 둡니다 (분배·회의 참석자 선택에는 나오지 않음)</td></tr>';
     h+='<tr class="'+(m.status==='left'?'off':'')+'"><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(m.name)+'" data-chg="memName" data-m="'+id+'"></td>'+
-      '<td><select class="w100" data-chg="memCls" data-m="'+id+'">'+classOptions(m.cls)+'</select></td>'+
+      '<td><div class="clscell">'+classIcon(m.cls)+'<select class="w100" data-chg="memCls" data-m="'+id+'">'+classOptions(m.cls)+'</select></div></td>'+
       '<td><select class="w100" data-chg="memStatus" data-m="'+id+'"><option value="active"'+(m.status!=='left'?' selected':'')+'>활동</option><option value="left"'+(m.status==='left'?' selected':'')+'>비활동</option></select></td>'+
       '<td class="num">'+(s.n?fmtM(s.sum)+' <span class="small muted">('+s.n+'회)</span>':'-')+'</td><td class="nowrap">'+(s.last?fmtDate(s.last):'-')+'</td>'+
       '<td><input class="w100" value="'+esc(m.memo||'')+'" data-chg="memMemo" data-m="'+id+'"></td><td class="act"><button class="btn ghost sm" data-act="memDel" data-id="'+id+'">삭제</button></td></tr>';
@@ -1990,13 +2039,27 @@ A.togglePaid=el=>{
 const mkStock=(name,r)=>({id:uid(),name,from:r?r.id:'',fromTitle:r?(r.title||''):'',date:r?r.date:today(),at:today()});
 // 아이템 목록에 사용 기록 (처음 보는 이름이면 '잡템'으로 자동 추가) → 새로 추가됐으면 true
 function catalogTouch(name,count){
-  const n=normName(name); if(!n) return false;
-  const C=S.settings.itemCatalog||(S.settings.itemCatalog=[]); let it=C.find(x=>x.name.toLowerCase()===n.toLowerCase()), isNew=false;
-  if(!it){ it={id:uid(),name:n,cat:'misc',uses:0,last:''}; C.push(it); isNew=true; }
+  const n=normName(name); if(!n) return false; const k=n.toLowerCase();
+  const C=S.settings.itemCatalog||(S.settings.itemCatalog=[]); let it=C.find(x=>x.name.toLowerCase()===k), isNew=false;
+  const H=S.settings.itemHidden||(S.settings.itemHidden=[]);
+  if(!it&&count===false&&H.includes(k)) return false;                 // 목록에서 지운 아이템은 판매 기록만으로는 다시 추가하지 않음
+  if(H.includes(k)) S.settings.itemHidden=H.filter(x=>x!==k);         // 다시 직접 등록하면 목록에 복귀
+  if(!it){ it={id:uid(),name:n,cat:'misc',uses:0,last:'',price:0,soldPrice:0,soldAt:'',prevPrice:0,auto:true}; C.push(it); isNew=true; }
   if(count!==false){ it.uses=(it.uses||0)+1; it.last=today(); }
   return isNew;
 }
-const catalogSorted=cat=>(S.settings.itemCatalog||[]).filter(x=>!cat||cat==='all'||x.cat===cat).slice().sort((a,b)=>(b.uses||0)-(a.uses||0)||a.name.localeCompare(b.name,'ko'));
+const catPrice=name=>{ const n=normName(name).toLowerCase(); const it=(S.settings.itemCatalog||[]).find(x=>x.name.toLowerCase()===n); return it?Math.round(num(it.price)):0; };
+// 판매 확정 시: 그 아이템의 기본 가격을 최근 판매가로 자동 갱신 → 바뀐 경우 이전 가격 반환
+function catalogSold(name,price,date){
+  price=Math.round(num(price)); if(!(price>0)) return null;
+  catalogTouch(name,false);
+  const n=normName(name).toLowerCase(), it=S.settings.itemCatalog.find(x=>x.name.toLowerCase()===n); if(!it) return null;
+  const prev=Math.round(num(it.price)), changed=prev!==price;
+  if(changed) it.prevPrice=prev; it.price=price; it.soldPrice=price; it.soldAt=date||today();
+  return changed?{prev,price}:null;
+}
+const priceMsg=ch=>ch?(ch.prev>0?' · 기본 가격 '+fmtM(ch.prev)+' → '+fmtM(ch.price)+' 갱신':' · 기본 가격 '+fmtM(ch.price)+' 저장'):'';
+const catalogSorted=cat=>(S.settings.itemCatalog||[]).filter(x=>!cat||cat==='all'||(cat==='auto'?x.auto:x.cat===cat)).slice().sort((a,b)=>(b.uses||0)-(a.uses||0)||a.name.localeCompare(b.name,'ko'));
 const newLot=(name,qty)=>{ catalogTouch(name); return {id:uid(),name:normName(name),qty,state:'wait',price:0,buyers:[],bidders:[]}; };
 A.raidNew=async()=>{
   const res=await modal({title:'새 레이드 정산',body:'<div class="field"><label>레이드 날짜</label><input type="date" id="nrDate" value="'+today()+'"></div><div class="field"><label>이름</label><input id="nrTitle" placeholder="예: 메테 3마리"></div>',ok:'만들기',
@@ -2039,7 +2102,8 @@ async function saleFlow(r,lot){
   lot.price=res.price; lot.buyers=res.buyers; lot.bidders=res.bidders; lot.drawId=res.drawId; lot.state='sold'; lot.soldDate=today();
   const rem=lot.qty-res.buyers.length;
   if(rem>0){ for(let i=0;i<rem;i++) S.stock.push(mkStock(lot.name,r)); lot.qty=res.buyers.length; }
-  commit(); toast(lot.name+' 판매 입력 완료 · '+fmtM(lotTotal(lot))+(rem>0?' · 남은 '+rem+'개는 미판매 재고로 이월':''));
+  const ch=catalogSold(lot.name,res.price);
+  commit(); toast(lot.name+' 판매 입력 완료 · '+fmtM(lotTotal(lot))+(rem>0?' · 남은 '+rem+'개는 미판매 재고로 이월':'')+priceMsg(ch));
 }
 A.lotSell=el=>{ const r=curRaid(), l=r&&r.lots.find(x=>x.id===el.dataset.id); if(l) saleFlow(r,l); };
 A.lotUnsold=el=>{
@@ -2263,8 +2327,9 @@ A.stockAdd=el=>{
   if(!name) return nm.focus();
   const q=clamp(Math.round(num(box.querySelector('.sq').value))||1,1,50);
   const raid=S.raids.find(r=>r.id===box.querySelector('.ss').value)||null;
-  for(let i=0;i<q;i++) S.stock.push(mkStock(name,raid));
-  commit(); toast(name+' '+q+'개를 재고에 추가했습니다');
+  const isNew=catalogTouch(name);
+  for(let i=0;i<q;i++) S.stock.push(mkStock(normName(name),raid));
+  commit(); toast(normName(name)+' '+q+'개를 재고에 추가했습니다'+(isNew?' · 판매 아이템 목록에 "잡템"으로 추가':''));
 };
 A.stockDel=async el=>{
   const items=S.stock.filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
@@ -2283,7 +2348,8 @@ A.stockSell=async el=>{
   S.ledger.push({id:lid,date,type:'income',category:'재고템 판매',amount:res.price*n,
     memo:first.name+(n>1?' ×'+n:'')+' → '+res.buyers.map(b=>b.name).join(', ')+' · 출처: '+src+' 이월',ref:{kind:'stock',raidId:first.from||'',saleId:sid}});
   S.stockSales.push({id:sid,date,name:first.name,qty:n,price:res.price,buyers:res.buyers,drawId:res.drawId,fromRaid:first.from||'',fromTitle:first.fromTitle||'',fromDate:first.date||'',ledgerId:lid,items:soldItems});
-  commit(); toast(first.name+' 판매 완료 · 길자금 수입 +'+fmtM(res.price*n)+' (출처: '+(first.fromTitle||'직접 추가')+')');
+  const ch=catalogSold(first.name,res.price,date);
+  commit(); toast(first.name+' 판매 완료 · 길자금 수입 +'+fmtM(res.price*n)+' (출처: '+(first.fromTitle||'직접 추가')+')'+priceMsg(ch));
 };
 A.stockSaleUndo=async el=>{
   const x=S.stockSales.find(v=>v.id===el.dataset.id); if(!x) return;
@@ -2337,7 +2403,7 @@ A.memAdd=()=>{
 };
 A.memBulk=async()=>{
   const res=await modal({title:'길드원 여러 명 추가',ok:'추가',wide:true,body:
-    '<p class="hint">한 줄에 한 명씩 <b>닉네임 클래스</b> 형태로 붙여넣으세요. 클래스는 '+CLASSES.join(' / ')+' 중 하나이며, 생략하면 "미지정"으로 추가되고 목록에서 바꿀 수 있습니다. 이미 있는 닉네임은 건너뜁니다.</p><textarea id="bulkTx" rows="8" placeholder="와꾸 나이트&#10;빵양 엘프&#10;미륵"></textarea>',
+    '<p class="hint">한 줄에 한 명씩 <b>닉네임 클래스</b> 형태로 붙여넣으세요. 클래스는 '+CLASSES.join(' / ')+' 중 하나이며, 생략하면 "미지정"으로 추가되고 목록에서 바꿀 수 있습니다. 이미 있는 닉네임은 건너뜁니다.</p><textarea id="bulkTx" rows="8" placeholder="와꾸 나이트&#10;빵양 엘프&#10;그림자 어쎄신&#10;미륵"></textarea>',
     onOk(root){ return root.querySelector('#bulkTx').value; }});
   if(!res||res===true) return;
   const list=[]; let last=null;
@@ -2464,34 +2530,43 @@ I.iq=el=>{ ui.iq=el.value; renderItemTable(); };
 A.itemCat=el=>{ ui.icat=el.dataset.v; render(); };
 const findItem=n=>(S.settings.itemCatalog||[]).find(x=>x.name.toLowerCase()===normName(n).toLowerCase());
 A.itemAdd=()=>{
-  const nm=$('#iName'), n=normName(nm.value), cat=catOk($('#iCat').value);
+  const nm=$('#iName'), n=normName(nm.value), cat=catOk($('#iCat').value), price=Math.max(0,Math.round(num(($('#iPrice')||{}).value)));
   if(!n) return nm.focus();
   if(findItem(n)) return toast('이미 있는 아이템입니다: '+n);
-  S.settings.itemCatalog.push({id:uid(),name:n,cat,uses:0,last:''}); ui.focusFk=null; commit();
+  S.settings.itemCatalog.push({id:uid(),name:n,cat,uses:0,last:'',price,soldPrice:0,soldAt:'',prevPrice:0}); S.settings.itemHidden=(S.settings.itemHidden||[]).filter(k=>k!==n.toLowerCase()); ui.focusFk=null; commit();
   const el=$('#iName'); if(el){ el.focus(); } const sel=$('#iCat'); if(sel) sel.value=cat; toast(catName(cat)+'에 "'+n+'"을(를) 추가했습니다');
 };
 A.itemBulk=async()=>{
   const res=await modal({title:'판매 아이템 여러 개 추가',ok:'추가',wide:true,body:
-    '<p class="hint">한 줄에 하나씩 붙여넣으세요. 줄 끝에 분류(무기/방어구/악세사리/주문서/잡템)를 쓰면 그 분류로, 안 쓰면 아래에서 고른 분류로 추가됩니다. 이미 있는 아이템은 건너뜁니다.</p>'+
+    '<p class="hint">한 줄에 하나씩 <b>이름 [분류] [가격]</b> 형태로 붙여넣으세요. 분류(무기/방어구/악세사리/주문서/잡템)를 안 쓰면 아래에서 고른 분류로, 가격(1개당, 만 실버)을 안 쓰면 0으로 추가됩니다. 이미 있는 아이템은 가격을 쓴 경우 가격만 바꿉니다.</p>'+
     '<div class="field"><label>기본 분류</label><select id="bkCat">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(c[0]==='misc'?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></div>'+
-    '<textarea id="bkTx" rows="8" placeholder="롱소드 무기&#10;어쎄메일 방어구&#10;고줌 주문서&#10;향태반"></textarea>',
+    '<textarea id="bkTx" rows="8" placeholder="롱소드 무기 30,000&#10;어쎄메일 방어구 100000&#10;고줌 주문서 550000&#10;향태반"></textarea>',
     onOk(root){ return {cat:root.querySelector('#bkCat').value,tx:root.querySelector('#bkTx').value}; }});
   if(!res||res===true) return;
-  let added=0, skip=0;
+  let added=0, skip=0, upd=0; const CM={'무기':'weapon','방어구':'armor','악세사리':'acc','악세':'acc','주문서':'scroll','잡템':'misc'};
   res.tx.split(/\r?\n/).forEach(line=>{
-    line=normName(line); if(!line) return; let cat=catOk(res.cat);
-    const m=line.match(/^(.*\S)\s+(무기|방어구|악세사리|악세|주문서|잡템)$/); if(m){ line=m[1]; cat=({'무기':'weapon','방어구':'armor','악세사리':'acc','악세':'acc','주문서':'scroll','잡템':'misc'})[m[2]]; }
-    if(findItem(line)){ skip++; return; }
-    S.settings.itemCatalog.push({id:uid(),name:line,cat,uses:0,last:''}); added++;
+    const tk=normName(line).split(' ').filter(Boolean); if(!tk.length) return; let cat=null, price=null;
+    for(let k=0;k<2&&tk.length>1;k++){ const t=tk[tk.length-1];
+      if(price===null&&/^\d[\d,]*$/.test(t)){ price=Math.round(num(t)); tk.pop(); continue; }
+      if(cat===null&&CM[t]){ cat=CM[t]; tk.pop(); continue; } break; }
+    const name=tk.join(' '); if(!name) return;
+    const ex=findItem(name);
+    if(ex){ if(price!==null){ ex.price=price; upd++; } else skip++; return; }
+    S.settings.itemCatalog.push({id:uid(),name,cat:cat||catOk(res.cat),uses:0,last:'',price:price||0,soldPrice:0,soldAt:'',prevPrice:0}); S.settings.itemHidden=(S.settings.itemHidden||[]).filter(k=>k!==name.toLowerCase()); added++;
   });
-  commit(); toast(added+'개를 추가했습니다'+(skip?' · 이미 있는 '+skip+'개는 건너뜀':''));
+  commit(); toast(added+'개를 추가했습니다'+(upd?' · 가격 변경 '+upd+'개':'')+(skip?' · 이미 있는 '+skip+'개는 건너뜀':''));
 };
 A.itemDel=async el=>{
   const C=S.settings.itemCatalog||[], x=C.find(v=>v.id===el.dataset.id); if(!x) return;
-  if(!await confirmBox('"'+x.name+'"을(를) 아이템 목록에서 삭제할까요?\n이미 등록된 레이드·재고 기록에는 영향이 없습니다. (다시 레이드에 등록하면 잡템으로 자동 추가됩니다)',{ok:'삭제',danger:true})) return;
-  S.settings.itemCatalog=C.filter(v=>v!==x); commit(); toast('삭제했습니다');
+  if(!await confirmBox('"'+x.name+'"을(를) 아이템 목록에서 삭제할까요?\n이미 등록된 레이드·재고 기록에는 영향이 없습니다. (나중에 레이드·재고에 직접 다시 등록하면 목록에 다시 추가됩니다)',{ok:'삭제',danger:true})) return;
+  S.settings.itemCatalog=C.filter(v=>v!==x);
+  const H=S.settings.itemHidden||(S.settings.itemHidden=[]), k=x.name.toLowerCase(); if(!H.includes(k)) H.push(k);   // 자동 보충으로 다시 생기지 않게
+  commit(); toast('삭제했습니다');
 };
-C.itemCatSet=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.cat=catOk(el.value); quiet(); renderItemTable(); toast('"'+x.name+'" → '+catName(x.cat)); } };
+C.itemPrice=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.price=Math.max(0,Math.round(num(el.value))); quiet(); toast('"'+x.name+'" 기본 가격 '+fmtM(x.price)); } };
+A.itemShowAll=()=>{ ui.icat='all'; ui.iq=''; render(); };
+A.itemOk=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.auto=false; commit(); toast('"'+x.name+'" 정리 완료 ('+catName(x.cat)+')'); } };
+C.itemCatSet=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.cat=catOk(el.value); x.auto=false; quiet(); if(ui.icat==='auto') return render(); renderItemTable(); toast('"'+x.name+'" → '+catName(x.cat)); } };
 C.itemName=el=>{
   const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(!x) return;
   const n=normName(el.value); if(!n){ el.value=x.name; return; }
@@ -2505,7 +2580,7 @@ C.memName=el=>{
   if(S.members.some(x=>x!==m&&x.name.toLowerCase()===n.toLowerCase())){ toast('이미 있는 닉네임입니다'); el.value=m.name; return; }
   m.name=n; quiet();
 };
-C.memCls=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.cls=el.value; quiet(); const c=$('#clsCount'); if(c) c.innerHTML=classCountHtml(); } };
+C.memCls=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.cls=el.value; quiet(); const ic=el.closest('.clscell'); if(ic) ic.firstElementChild.outerHTML=classIcon(m.cls); const c=$('#clsCount'); if(c) c.innerHTML=classCountHtml(); } };
 C.memStatus=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.status=el.value; quiet(); renderMemberTable(); const c=$('#clsCount'); if(c) c.innerHTML=classCountHtml(); } };
 C.memMemo=el=>{ const m=S.members.find(x=>x.id===el.dataset.m); if(m){ m.memo=el.value.trim(); quiet(); } };
 
