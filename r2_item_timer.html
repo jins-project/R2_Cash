@@ -170,6 +170,18 @@ details.log summary{cursor:pointer;font-weight:500}
 details.log ul{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px;max-height:320px;overflow:auto}
 details.log li{padding:3px 0;border-bottom:1px solid #ffffff0a;color:var(--muted)}
 details.log li b{color:var(--text);font-weight:500}
+.myip{font-size:12px;color:var(--muted);margin-left:4px}
+.myip b{color:var(--text);font-weight:500}
+/* IP 목록 표 (관리자만) */
+.iptable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.iptable th,.iptable td{padding:5px 8px;border-bottom:1px solid #ffffff0f;text-align:left;white-space:nowrap}
+.iptable th{color:var(--muted);font-weight:500}
+.iptable td.last{white-space:normal;color:var(--muted)}
+.iptable .me{color:var(--ok);font-size:11px;margin-left:4px}
+.ipwrap{overflow-x:auto}
+.admin-only{display:none !important}
+body.is-admin .admin-only{display:revert !important}
+body.is-admin details.admin-only{display:block !important}
 
 /* ---------- 팝업창(모달) ---------- */
 .modal-bg{position:fixed;inset:0;background:#000a;display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
@@ -226,11 +238,12 @@ details.log li b{color:var(--text);font-weight:500}
 <header>
   <h1>R2 캐쉬템 기간 관리 <small>함께 쓰는 연장 알리미</small></h1>
   <span class="conn" id="conn"><i></i><span>시작 중…</span></span>
+  <span class="myip" id="myIp">내 IP 확인 중…</span>
   <span class="spacer"></span>
-  <button class="btn" id="btnSaveJson" title="현재 데이터를 JSON 파일로 내려받습니다">JSON 저장</button>
-  <button class="btn" id="btnLoadJson" title="JSON 파일에서 데이터를 불러옵니다">JSON 불러오기</button>
+  <!-- JSON 저장/불러오기: 관리자 로그인 후에만 보입니다 -->
+  <button class="btn admin-only" id="btnSaveJson" title="현재 데이터를 JSON 파일로 내려받습니다">JSON 저장</button>
+  <button class="btn admin-only" id="btnLoadJson" title="JSON 파일에서 데이터를 불러옵니다">JSON 불러오기</button>
   <input type="file" id="fileInput" accept=".json,application/json" hidden>
-  <button class="btn" id="btnNick">내 이름: <span id="nickView">미설정</span></button>
   <button class="btn" id="btnAdmin">관리자</button>
   <button class="btn primary" id="btnAdd">+ 캐릭터 추가</button>
 </header>
@@ -257,6 +270,11 @@ details.log li b{color:var(--text);font-weight:500}
   </div>
 
   <section id="grid"></section>
+
+  <details class="log admin-only" id="ipBox">
+    <summary>수정한 IP 목록 <span id="ipCount" style="color:var(--muted);font-weight:400"></span> <small style="color:var(--muted);font-weight:400">· 관리자만 보임</small></summary>
+    <div id="ipList"></div>
+  </details>
 
   <details class="log">
     <summary>최근 기록 (누가 언제 연장했는지)</summary>
@@ -343,10 +361,17 @@ details.log li b{color:var(--text);font-weight:500}
       <label for="newPw2">새 비밀번호 확인</label>
       <input type="password" id="newPw2">
     </div>
-    <div id="adminMainBox">
+    <div id="adminLoginBox">
+      <p class="hint">관리자 로그인을 하면 일괄 시간 증가, JSON 저장·불러오기, 수정한 IP 목록을 사용할 수 있습니다.</p>
       <label for="adminPw">관리자 비밀번호</label>
       <input type="password" id="adminPw" autocomplete="off">
-
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn primary" id="btnAdminLogin">로그인</button>
+      </div>
+    </div>
+    <div id="adminMainBox">
+      <p class="hint" style="margin-top:0">관리자로 로그인되어 있습니다. 상단에 <b>JSON 저장 / JSON 불러오기</b> 버튼이, 아래쪽에 <b>수정한 IP 목록</b>이 보입니다.
+        (이 브라우저 창을 닫으면 자동으로 로그아웃됩니다)</p>
       <hr>
       <h4>일괄 시간 증가 (서버 점검 보상 등)</h4>
       <div class="timein" style="border:0;grid-template-columns:1fr 64px 64px 64px">
@@ -372,19 +397,21 @@ details.log li b{color:var(--text);font-weight:500}
       <hr>
       <details>
         <summary style="cursor:pointer;color:var(--muted)">비밀번호 변경</summary>
-        <label for="chPw1">새 비밀번호 (위에 현재 비밀번호 입력 필요)</label>
+        <label for="chPw1">새 비밀번호 (4자 이상)</label>
         <input type="password" id="chPw1">
         <div class="row" style="justify-content:flex-start">
           <button class="btn" id="chPwBtn">비밀번호 변경</button>
         </div>
       </details>
     </div>
-    <hr>
-    <h4>저장 방식</h4>
-    <p class="hint" id="modeDesc"></p>
-    <div class="row" style="justify-content:flex-start">
-      <button class="btn" id="btnFbSetup">Firebase 연결 설정</button>
-      <button class="btn danger" id="btnToLocal">로컬 모드로 돌아가기</button>
+      <hr>
+      <h4>저장 방식</h4>
+      <p class="hint" id="modeDesc"></p>
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn" id="btnFbSetup">Firebase 연결 설정</button>
+        <button class="btn danger" id="btnToLocal">로컬 모드로 돌아가기</button>
+        <button class="btn" id="btnAdminLogout">관리자 로그아웃</button>
+      </div>
     </div>
     <div class="err" id="adminErr"></div>
     <div class="row">
@@ -449,7 +476,7 @@ function josa(word, withB, noB){
 }
 function actLabel(def){ return def.reset ? "교환" : "+7일"; }
 function actDesc(def){ return def.reset ? `${def.tool} 교환 → 지금부터 7일` : `${def.tool} 사용 → 7일 연장`; }
-const MAX_LOGS = 100;
+const MAX_LOGS = 200;
 const MAX_ACC = 4;                 // 악세사리 최대 개수
 
 /* =====================================================================
@@ -580,7 +607,25 @@ function toast(msg){
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
 }
-function nick(){ return localStorage.getItem("r2_nick") || "이름없음"; }
+/* 내 공인 IP 확인 — 브라우저는 자기 IP를 알 수 없어서 외부 서비스(ipify)에 물어봅니다.
+   실패하면 "IP 미확인"으로 기록하고 프로그램은 그대로 동작합니다. */
+let myIP = "";
+async function fetchIP(){
+  for (const url of ["https://api.ipify.org?format=json", "https://api64.ipify.org?format=json"]){
+    try {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 4000);
+      const r = await fetch(url, { signal: ctl.signal, cache: "no-store" }); clearTimeout(t);
+      const ip = (await r.json()).ip;
+      if (/^[0-9a-fA-F:.]{3,45}$/.test(ip)){ myIP = ip; break; }
+    } catch(e){ /* 다음 주소로 재시도 */ }
+  }
+  $("myIp").innerHTML = myIP ? `내 IP <b class="num">${esc(myIP)}</b>` : "내 IP 미확인";
+  renderLogs();
+  return myIP;
+}
+const ipReady = fetchIP();
+// 기록에 남길 "누가" — 이름 대신 IP를 씁니다
+function who(){ return myIP || "IP 미확인"; }
 function setConn(cls, text){
   $("conn").className = "conn " + cls;
   $("conn").querySelector("span").textContent = text;
@@ -647,11 +692,12 @@ function createLocalStore(){
   function publish(){ // 화면용 변수에 반영하고 다시 그리기
     chars = data.characters || {};
     adminHash = (data.settings || {}).adminHash || null;
+    updateAdminUI();
     logs = (data.logs || []).slice();
     renderAll(); renderLogs();
   }
   function log(text){
-    data.logs.unshift({ at: Date.now(), by: nick(), text });
+    data.logs.unshift({ at: Date.now(), by: who(), text });
     data.logs = data.logs.slice(0, MAX_LOGS);
   }
 
@@ -718,14 +764,15 @@ const FS_ROOT = "r2rooms";   // Firestore 최상위 컬렉션 이름 (보안 규
 // Firestore에 저장할 캐릭터 모양만 남기기 (이상한 값이 섞여 규칙에 막히지 않도록)
 function cleanChar(c){
   return { name: String(c.name || "").slice(0,20), memo: String(c.memo || "").slice(0,30),
-           items: c.items || {}, updatedBy: nick().slice(0,15) };
+           items: c.items || {}, updatedBy: who().slice(0,45) };
 }
 
 function createFirebaseStore(cfg, room){
   let db = null, roomRef = null, charCol = null, logCol = null;
   const SVT = () => firebase.firestore.FieldValue.serverTimestamp();
-  function log(text){
-    return logCol.add({ at: SVT(), by: nick().slice(0,15), text: String(text).slice(0,100) })
+  async function log(text){
+    await ipReady;   // IP 확인이 끝난 뒤 기록
+    return logCol.add({ at: SVT(), by: who().slice(0,45), text: String(text).slice(0,100) })
       .catch(e => console.warn("기록 저장 실패", e));
   }
   function permHint(err){
@@ -759,10 +806,10 @@ function createFirebaseStore(cfg, room){
         $("grid").innerHTML = `<div class="empty">데이터를 읽을 수 없습니다.<br>${esc(permHint(err))}</div>`;
       });
 
-      roomRef.onSnapshot(d => { adminHash = d.exists ? (d.data().adminHash || null) : null; },
+      roomRef.onSnapshot(d => { adminHash = d.exists ? (d.data().adminHash || null) : null; updateAdminUI(); },
                          err => console.warn(err));
 
-      logCol.orderBy("at", "desc").limit(40).onSnapshot(snap => {
+      logCol.orderBy("at", "desc").limit(MAX_LOGS).onSnapshot(snap => {
         logs = [];
         snap.forEach(d => {
           const v = d.data({ serverTimestamps: "estimate" });
@@ -959,9 +1006,9 @@ function renderGrid(){
   const g = $("grid");
   if (!Object.keys(chars).length){
     g.innerHTML = `<div class="empty">등록된 캐릭터가 없습니다.<br>
-      캐릭터를 추가하거나, 저장해둔 JSON 파일을 불러오세요.<br>
+      캐릭터를 추가해 주세요.<br>
       <button class="btn primary" data-action="add">+ 캐릭터 추가</button>
-      <button class="btn" data-action="load">JSON 불러오기</button></div>`;
+      ${isAdmin() ? `<button class="btn" data-action="load">JSON 불러오기</button>` : ""}</div>`;
     return;
   }
   if (!list.length){
@@ -987,10 +1034,43 @@ function renderGrid(){
   }).join("");
 }
 
+// 최근 기록: IP는 관리자에게만 보여줍니다 (다른 사람의 IP가 모두에게 보이지 않도록)
 function renderLogs(){
+  const admin = isAdmin();
   $("logList").innerHTML = logs.length
-    ? logs.map(l => `<li><span class="num">${l.at ? fmtLogTime(l.at) : ""}</span> · <b>${esc(l.by)}</b> ${esc(l.text)}</li>`).join("")
+    ? logs.slice(0, 40).map(l => `<li><span class="num">${l.at ? fmtLogTime(l.at) : ""}</span> · ${admin ? `<b class="num">${esc(l.by)}</b> ` : ""}${esc(l.text)}</li>`).join("")
     : `<li>아직 기록이 없습니다.</li>`;
+  renderIpList();
+}
+
+// 수정한 IP 목록: 최근 기록(최대 200개)을 IP별로 모아서 보여줍니다
+function renderIpList(){
+  if (!isAdmin()){ $("ipList").innerHTML = ""; return; }
+  const map = {};
+  for (const l of logs){
+    const ip = l.by || "알 수 없음";
+    const m = map[ip] || (map[ip] = { ip, n: 0, last: 0, text: "" });
+    m.n++;
+    if ((l.at || 0) > m.last){ m.last = l.at || 0; m.text = l.text; }
+  }
+  const rows = Object.values(map).sort((a, b) => b.last - a.last);
+  $("ipCount").textContent = `(${rows.length}개)`;
+  if (!rows.length){ $("ipList").innerHTML = `<p class="hint" style="color:var(--muted)">아직 기록이 없습니다.</p>`; return; }
+  $("ipList").innerHTML = `<div class="ipwrap"><table class="iptable">
+      <tr><th>IP</th><th>수정 횟수</th><th>마지막 수정</th><th>마지막 내용</th></tr>
+      ${rows.map(r => `<tr><td class="num">${esc(r.ip)}${r.ip === myIP ? `<span class="me">(나)</span>` : ""}</td>
+        <td class="num">${r.n}</td><td class="num">${r.last ? fmtLogTime(r.last) : ""}</td><td class="last">${esc(r.text)}</td></tr>`).join("")}
+    </table></div>
+    <div class="row" style="justify-content:flex-start;margin-top:8px">
+      <button class="btn sm" id="btnCopyIps">IP 목록 복사</button>
+      <span class="hint" style="color:var(--muted);font-size:12px;align-self:center">최근 기록 ${logs.length}건 기준입니다.</span>
+    </div>`;
+  $("btnCopyIps").onclick = () => {
+    const list = rows.map(r => r.ip).filter(ip => /^[0-9a-fA-F:.]+$/.test(ip)).join("\n");
+    const done = () => toast("IP 목록을 복사했습니다.");
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(list).then(done, () => prompt("아래 내용을 복사하세요", list));
+    else prompt("아래 내용을 복사하세요", list);
+  };
 }
 
 // 1초마다 남은 시간 숫자만 갱신 (화면 전체를 다시 그리지 않아서 가볍습니다)
@@ -1127,7 +1207,7 @@ function saveChar(){
     items[k] = it;
   });
 
-  const data = { name, memo: $("cMemo").value.trim(), items, updatedBy: nick() };
+  const data = { name, memo: $("cMemo").value.trim(), items, updatedBy: who() };
   const wasEdit = !!editingId;
   Store.saveChar(editingId, data, wasEdit ? `${name} 정보 수정` : `${name} 캐릭터 추가`).then(() => {
     hideModal("mChar");
@@ -1179,13 +1259,19 @@ function buildExport(){
   }
   return {
     app: APP_ID, version: DATA_VERSION,
-    savedAt: fmtFull(now()), savedBy: nick(),
+    savedAt: fmtFull(now()), savedBy: who(),
     adminHash: adminHash || null,
     characters: out,
   };
 }
 
+function needAdmin(){
+  if (isAdmin()) return true;
+  toast("관리자 로그인 후 사용할 수 있습니다.");
+  return false;
+}
 function saveJson(){
+  if (!needAdmin()) return;
   const data = buildExport();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
   const a = document.createElement("a");
@@ -1239,7 +1325,7 @@ function parseImport(text){
 }
 
 function onFilePicked(file){
-  if (!file) return;
+  if (!file || !needAdmin()) return;
   const reader = new FileReader();
   reader.onload = () => {
     try { pendingImport = parseImport(reader.result); }
@@ -1259,7 +1345,7 @@ function onFilePicked(file){
 }
 
 function applyImport(){
-  if (!pendingImport) return;
+  if (!pendingImport || !needAdmin()) return;
   const mode = document.querySelector('input[name="impMode"]:checked').value;
   let next;
   if (mode === "replace"){
@@ -1290,13 +1376,39 @@ function markDirty(on){
 }
 
 /* ===================== 8. 관리자 ===================== */
+// 관리자 로그인 상태: 이 브라우저 창(탭)이 열려 있는 동안만 유지됩니다 (sessionStorage)
+// 비밀번호가 바뀌면 기존 로그인은 자동으로 풀립니다.
+function isAdmin(){ return !!adminHash && sessionStorage.getItem("r2_admin_ok") === adminHash; }
+function updateAdminUI(){
+  const a = isAdmin();
+  document.body.classList.toggle("is-admin", a);
+  $("btnAdmin").textContent = a ? "관리자 ✓" : "관리자";
+  renderLogs();
+}
+function adminLogin(){
+  if (!adminHash){ $("adminErr").textContent = "관리자 비밀번호가 아직 없습니다."; return; }
+  if (hashPw($("adminPw").value) !== adminHash){ $("adminErr").textContent = "관리자 비밀번호가 틀렸습니다."; return; }
+  sessionStorage.setItem("r2_admin_ok", adminHash);
+  updateAdminUI(); renderAll();
+  toast("관리자로 로그인했습니다.");
+  openAdmin();
+}
+function adminLogout(){
+  sessionStorage.removeItem("r2_admin_ok");
+  updateAdminUI(); renderAll();
+  hideModal("mAdmin");
+  toast("관리자 로그아웃했습니다.");
+}
+
 function openAdmin(){
   $("adminErr").textContent = "";
   $("adminPw").value = ""; $("newPw1").value = ""; $("newPw2").value = ""; $("chPw1").value = "";
-  const first = !adminHash;
+  const first = !adminHash, authed = isAdmin();
   $("adminSetupBox").style.display = first ? "" : "none";
-  $("adminMainBox").style.display = first ? "none" : "";
+  $("adminLoginBox").style.display = !first && !authed ? "" : "none";
+  $("adminMainBox").style.display = authed ? "" : "none";
   $("adminSetBtn").style.display = first ? "" : "none";
+  if (!first && !authed) setTimeout(() => $("adminPw").focus(), 50);
   const isLocal = Store.mode === "local";
   $("modeDesc").textContent = isLocal
     ? "지금은 로컬 모드입니다. 데이터는 이 브라우저에만 저장되며, 다른 사람과는 JSON 파일로 주고받습니다."
@@ -1314,13 +1426,15 @@ function setFirstPw(){
   Store.setAdminHash(hashPw(a), true, "관리자 비밀번호 설정").then(ok => {
     if (!ok){ $("adminErr").textContent = "이미 다른 사람이 비밀번호를 정했습니다."; return; }
     adminHash = hashPw(a);
-    toast("관리자 비밀번호를 설정했습니다.");
+    sessionStorage.setItem("r2_admin_ok", adminHash);   // 설정한 사람은 바로 로그인
+    updateAdminUI(); renderAll();
+    toast("관리자 비밀번호를 설정하고 로그인했습니다.");
     openAdmin();
   });
 }
 
 function checkPw(){
-  if (hashPw($("adminPw").value) !== adminHash){ $("adminErr").textContent = "관리자 비밀번호가 틀렸습니다."; return false; }
+  if (!isAdmin()){ $("adminErr").textContent = "관리자 로그인이 필요합니다."; return false; }
   $("adminErr").textContent = "";
   return true;
 }
@@ -1372,6 +1486,9 @@ function changePw(){
   const n = $("chPw1").value;
   if (n.length < 4){ $("adminErr").textContent = "새 비밀번호는 4자 이상으로 정해주세요."; return; }
   Store.setAdminHash(hashPw(n), false, "관리자 비밀번호 변경").then(() => {
+    adminHash = hashPw(n);
+    sessionStorage.setItem("r2_admin_ok", adminHash);   // 바꾼 사람은 로그인 유지
+    updateAdminUI();
     toast("비밀번호를 변경했습니다."); $("chPw1").value = "";
   });
 }
@@ -1411,14 +1528,17 @@ document.addEventListener("click", e => {
   else if (t.dataset.clear) $("mChar").querySelectorAll(`input[data-k="${t.dataset.clear}"]`).forEach(i => i.value = "");
   else if (t.dataset.accdel){ t.closest(".acc-row").remove(); updateAccCount(); }
   else if (t.dataset.action === "add") openChar(null);
-  else if (t.dataset.action === "load") $("fileInput").click();
+  else if (t.dataset.action === "load"){ if (needAdmin()) $("fileInput").click(); }
 });
 
 $("btnAdd").onclick = () => openChar(null);
 $("charSave").onclick = saveChar;
 $("accAdd").onclick = addAccRow;
 $("btnSaveJson").onclick = saveJson;
-$("btnLoadJson").onclick = () => $("fileInput").click();
+$("btnLoadJson").onclick = () => { if (needAdmin()) $("fileInput").click(); };
+$("btnAdminLogin").onclick = adminLogin;
+$("btnAdminLogout").onclick = adminLogout;
+$("adminPw").addEventListener("keydown", e => { if (e.key === "Enter") adminLogin(); });
 $("fileInput").onchange = e => { onFilePicked(e.target.files[0]); e.target.value = ""; };
 $("importApply").onclick = applyImport;
 $("btnAdmin").onclick = openAdmin;
@@ -1443,11 +1563,7 @@ $("cfgSave").onclick = () => {
   } catch(e){ $("cfgErr").textContent = "설정을 읽지 못했습니다: " + e.message; }
 };
 
-$("btnNick").onclick = () => {
-  const v = prompt("기록에 남길 내 이름(닉네임)을 입력하세요.", localStorage.getItem("r2_nick") || "");
-  if (v !== null){ localStorage.setItem("r2_nick", v.trim().slice(0,15)); $("nickView").textContent = nick(); }
-};
-$("nickView").textContent = localStorage.getItem("r2_nick") || "미설정";
+localStorage.removeItem("r2_nick");   // 예전 "내 이름" 설정은 더 이상 쓰지 않습니다
 
 /* ===================== 10. 시작 ===================== */
 (function boot(){
