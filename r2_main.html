@@ -420,7 +420,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.10.30-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.10.30-c';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -628,7 +628,7 @@ function normalize(d){
   o.rule.ratioInit=true;
   ['members','ledger','raids','distributions','stock','stockSales','cash','draws','notices'].forEach(k=>{ o[k]=Array.isArray(d[k])?d[k]:(d[k]===undefined&&k==='members'?D.members:[]); });
   o.members.forEach(m=>{ if(!CLASSES.includes(m.cls)) m.cls=''; delete m.joinedAt; });
-  o.notices.forEach(n=>{ n.type=n.type==='meeting'?'meeting':'notice'; n.status=n.status==='archived'?'archived':'active'; n.title=n.title||''; n.body=n.body||''; n.date=n.date||today(); n.attendees=Array.isArray(n.attendees)?n.attendees:[]; n.pinned=!!n.pinned; });
+  o.notices.forEach(n=>{ n.type=n.type==='meeting'?'meeting':'notice'; n.status=n.status==='archived'?'archived':'active'; n.title=n.title||''; n.body=n.body||''; n.date=n.date||today(); n.attendees=Array.isArray(n.attendees)?n.attendees:[]; if(!Array.isArray(n.attendeeNames)||n.attendeeNames.length!==n.attendees.length) n.attendeeNames=n.attendees.map(id=>{ const m=o.members.find(x=>x.id===id); return m?m.name:''; }); n.pinned=!!n.pinned; });
   o.raids.forEach(r=>{ r.lots=Array.isArray(r.lots)?r.lots:[]; r.expenses=Array.isArray(r.expenses)?r.expenses:[]; r.status=r.status==='completed'?'completed':'draft';
     r.lots.forEach(l=>{ l.buyers=Array.isArray(l.buyers)?l.buyers:[]; l.bidders=Array.isArray(l.bidders)?l.bidders:[]; l.qty=Math.max(1,Math.round(num(l.qty))||1); }); });
   o.distributions.forEach(x=>{ x.rows=Array.isArray(x.rows)?x.rows:[]; });
@@ -730,7 +730,7 @@ function calcDist(pool, rule, rows){
 /* =====================================================================
    4. 저장 / 렌더 공통
    ===================================================================== */
-const ui = {scrollTop:false, scrollBottom:false, tab:'notice', nView:'now', nf:{type:'',month:'',q:''}, nOpen:new Set(), admin:false, adminUntil:0, authFail:0, authBlock:0, distView:'', sf:'', ledSub:'silver', cf:{month:''}, raidId:null, stockSel:null, lf:{month:'',q:''}, mq:'', ms:'active', mc:'', focusFk:null, open:new Set()};
+const ui = {scrollTop:false, scrollBottom:false, tab:'notice', nView:'now', nf:{type:'',month:'',q:''}, nOpen:new Set(), admin:false, adminUntil:0, authFail:0, authBlock:0, distView:'', sf:'', ledSub:'silver', cf:{month:''}, raidId:null, stockSel:null, lf:{month:'',q:''}, mq:'', ms:'all', mc:'', focusFk:null, open:new Set()};
 let saveOk=true, lastSaved=null, saveTimer=null;
 
 function doSave(){
@@ -1030,10 +1030,14 @@ function renderLedgerTable(){ const el=$('#ledgerTable'); if(el) el.innerHTML=le
 const draftDist=()=>S.distributions.find(d=>d.status==='draft')||null;
 const compById=id=>S.rule.components.find(c=>c.id===id);
 const activeMembers=()=>S.members.filter(m=>m.status!=='left');
+const rowHasInput=r=>!!r&&(num(r.count)>0||Object.values(r.bonus||{}).some(v=>num(v)>0));
 function syncDraft(d){
-  const active=activeMembers(), ids=new Set(active.map(m=>m.id));
-  d.rows=d.rows.filter(r=>ids.has(r.memberId));
-  active.forEach(m=>{ if(!d.rows.some(r=>r.memberId===m.id)) d.rows.push({memberId:m.id,join:true,count:0,bonus:{}}); });
+  const active=activeMembers(), ids=new Set(active.map(m=>m.id)), all=new Set(S.members.map(m=>m.id));
+  d.parked=(d.parked&&typeof d.parked==='object')?d.parked:{};
+  // 비활동이 된 길드원의 입력값은 버리지 않고 보관 (분배 계산에서는 제외)
+  d.rows=d.rows.filter(r=>{ if(ids.has(r.memberId)) return true; if(all.has(r.memberId)&&rowHasInput(r)) d.parked[r.memberId]=r; return false; });
+  active.forEach(m=>{ if(!d.rows.some(r=>r.memberId===m.id)){ d.rows.push(d.parked[m.id]||{memberId:m.id,join:true,count:0,bonus:{}}); delete d.parked[m.id]; } });
+  Object.keys(d.parked).forEach(id=>{ if(!all.has(id)||ids.has(id)) delete d.parked[id]; });
   const order=new Map(S.members.map((m,i)=>[m.id,i]));
   d.rows.sort((a,b)=>order.get(a.memberId)-order.get(b.memberId));
 }
@@ -1623,28 +1627,31 @@ function classCountHtml(){
 const classOptions=sel=>'<option value="">미지정</option>'+CLASSES.map(k=>'<option value="'+k+'"'+(sel===k?' selected':'')+'>'+k+'</option>').join('');
 function viewMember(){
   const act=activeMembers().length;
-  return card('blue','길드원 추가','<span class="small muted">활동 '+act+'명 · 탈퇴 '+(S.members.length-act)+'명</span>',
+  return card('blue','길드원 추가','<span class="small muted">활동 '+act+'명 · 비활동 '+(S.members.length-act)+'명</span>',
     '<div class="form-grid"><div class="field"><label>닉네임</label><input id="mName" data-enter="memAdd" placeholder="닉네임 입력 후 Enter"></div>'+
     '<div class="field"><label>클래스</label><select id="mCls"><option value="">클래스 선택</option>'+CLASSES.map(k=>'<option value="'+k+'">'+k+'</option>').join('')+'</select></div>'+
     '<div class="field"><label>메모</label><input id="mMemo" data-enter="memAdd"></div>'+
     '<div class="field"><label>&nbsp;</label><div class="inl"><button class="btn primary" data-act="memAdd">추가</button><button class="btn" data-act="memBulk">여러 명 한 번에</button></div></div></div>'+
     '<div class="chips" id="clsCount" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);gap:18px;align-items:center">'+classCountHtml()+'</div>')+
-    card('teal','길드원 목록','<select data-chg="ms"><option value="active"'+(ui.ms==='active'?' selected':'')+'>활동 중</option><option value="left"'+(ui.ms==='left'?' selected':'')+'>탈퇴</option><option value="all"'+(ui.ms==='all'?' selected':'')+'>전체</option></select>'+
+    card('teal','길드원 목록','<select data-chg="ms"><option value="all"'+(ui.ms==='all'?' selected':'')+'>전체 (활동 → 비활동)</option><option value="active"'+(ui.ms==='active'?' selected':'')+'>활동</option><option value="left"'+(ui.ms==='left'?' selected':'')+'>비활동</option></select>'+
       '<select data-chg="mcls"><option value="">모든 클래스</option>'+CLASSES.map(k=>'<option value="'+k+'"'+(ui.mc===k?' selected':'')+'>'+k+'</option>').join('')+'</select>'+
       '<input type="search" placeholder="닉네임 검색" data-inp="mq" value="'+esc(ui.mq)+'" style="width:160px">','<div id="memTable"></div>');
 }
 function renderMemberTable(){
   const el=$('#memTable'); if(!el) return;
   const st=memberStats(); const q=ui.mq.trim().toLowerCase();
-  const list=S.members.filter(m=>(ui.ms==='all'||(ui.ms==='left'?m.status==='left':m.status!=='left'))&&(!ui.mc||m.cls===ui.mc)&&(!q||m.name.toLowerCase().includes(q)));
+  const pick=m=>(ui.ms==='all'||(ui.ms==='left'?m.status==='left':m.status!=='left'))&&(!ui.mc||m.cls===ui.mc)&&(!q||m.name.toLowerCase().includes(q));
+  const list=S.members.filter(m=>pick(m)&&m.status!=='left').concat(S.members.filter(m=>pick(m)&&m.status==='left'));   // 활동 → 비활동 순서 (각 그룹 안에서는 등록 순)
+  const nOff=list.filter(m=>m.status==='left').length, firstOff=list.findIndex(m=>m.status==='left');
   if(!list.length){ el.innerHTML='<div class="empty">표시할 길드원이 없습니다.</div>'; return; }
   let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:860px"><colgroup><col style="width:50px"><col style="width:170px"><col style="width:130px"><col style="width:110px"><col style="width:170px"><col style="width:140px"><col><col style="width:80px"></colgroup>'+
     '<thead><tr><th>#</th><th>닉네임</th><th>클래스</th><th>상태</th><th class="num">누적 분배 수령</th><th>최근 분배일</th><th>메모</th><th></th></tr></thead><tbody>';
   list.forEach((m,i)=>{
     const s=st[m.id]||{sum:0,n:0,last:''}, id=esc(m.id);
+    if(i===firstOff&&i>0) h+='<tr class="grp"><td colspan="8" class="small muted" style="background:var(--panel2);font-weight:700">비활동 '+nOff+'명 — 기록 보존을 위해 목록에 남겨 둡니다 (분배·회의 참석자 선택에는 나오지 않음)</td></tr>';
     h+='<tr class="'+(m.status==='left'?'off':'')+'"><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(m.name)+'" data-chg="memName" data-m="'+id+'"></td>'+
       '<td><select class="w100" data-chg="memCls" data-m="'+id+'">'+classOptions(m.cls)+'</select></td>'+
-      '<td><select class="w100" data-chg="memStatus" data-m="'+id+'"><option value="active"'+(m.status!=='left'?' selected':'')+'>활동</option><option value="left"'+(m.status==='left'?' selected':'')+'>탈퇴</option></select></td>'+
+      '<td><select class="w100" data-chg="memStatus" data-m="'+id+'"><option value="active"'+(m.status!=='left'?' selected':'')+'>활동</option><option value="left"'+(m.status==='left'?' selected':'')+'>비활동</option></select></td>'+
       '<td class="num">'+(s.n?fmtM(s.sum)+' <span class="small muted">('+s.n+'회)</span>':'-')+'</td><td class="nowrap">'+(s.last?fmtDate(s.last):'-')+'</td>'+
       '<td><input class="w100" value="'+esc(m.memo||'')+'" data-chg="memMemo" data-m="'+id+'"></td><td class="act"><button class="btn ghost sm" data-act="memDel" data-id="'+id+'">삭제</button></td></tr>';
   });
@@ -1666,7 +1673,7 @@ function richText(t){      // 줄바꿈 유지 + http(s) 주소 자동 링크 (H
   while((m=re.exec(t))){ const u=m[0].replace(/[.,;:!?)]+$/,''); out+=esc(t.slice(last,m.index))+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(u)+'</a>'; last=m.index+u.length; re.lastIndex=last; }
   return out+esc(t.slice(last));
 }
-const attNames=n=>(n.attendees||[]).map(id=>{ const m=S.members.find(x=>x.id===id); return m?m.name:null; }).filter(Boolean);
+const attNames=n=>(n.attendees||[]).map((id,i)=>{ const m=S.members.find(x=>x.id===id); return m?m.name:((n.attendeeNames||[])[i]||null); }).filter(Boolean);   // 저장된 이름으로 항상 표시
 function noticeCardHtml(n){
   const t=NT[n.type], long=n.body.length>260||n.body.split('\n').length>6, open=ui.nOpen.has(n.id), id=esc(n.id), att=attNames(n), age=daysSince(n.date);
   return '<article class="ncard c-'+t.color+(n.pinned?' pin':'')+'"><div class="nhead"><span class="chip '+t.color+'">'+t.icon+' '+t.label+'</span>'+
@@ -1765,8 +1772,10 @@ function openNoticeModal(n,defType){
       const type=root.querySelector('[data-nt].on').dataset.nt;
       if(!title){ toast('제목을 입력하세요'); root.querySelector('#nTitle').focus(); return false; }
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('날짜를 선택하세요'); return false; }
-      return {type,title,date,author:root.querySelector('#nAuthor').value.trim(),pinned:root.querySelector('#nPin').checked,body:root.querySelector('#nBody').value.replace(/\s+$/,''),
+      const v={type,title,date,author:root.querySelector('#nAuthor').value.trim(),pinned:root.querySelector('#nPin').checked,body:root.querySelector('#nBody').value.replace(/\s+$/,''),
         attendees:type==='meeting'?Array.from(root.querySelectorAll('[data-att]:checked')).map(cb=>cb.dataset.att):[]};
+      v.attendeeNames=v.attendees.map(id=>{ const m=S.members.find(x=>x.id===id); return m?m.name:''; });
+      return v;
     }});
 }
 
@@ -2227,12 +2236,29 @@ A.memBulk=async()=>{
   let n=0,skip=0; list.forEach(x=>{ if(addMember(x.name,x.cls,'')) n++; else skip++; });
   commit(); toast(n+'명 추가'+(skip?' · '+skip+'명은 중복이라 건너뜀':''));
 };
+// 길드원이 남긴 기록 찾기 (하나라도 있으면 삭제하지 않고 비활동으로 관리)
+function memberRefs(id){
+  const out=[], has=a=>(a||[]).some(x=>(x&&typeof x==='object'?x.id:x)===id);
+  const n1=S.distributions.filter(d=>d.status==='completed'&&(d.results||[]).some(r=>r.memberId===id)).length; if(n1) out.push('완료된 분배 '+n1+'건');
+  const dr=S.distributions.find(d=>d.status==='draft'); if(dr&&(rowHasInput((dr.rows||[]).find(r=>r.memberId===id))||(dr.parked&&rowHasInput(dr.parked[id])))) out.push('진행 중인 분배 입력값');
+  let nb=0, nbid=0; S.raids.forEach(r=>(r.lots||[]).forEach(l=>{ if(has(l.buyers)) nb++; else if(has(l.bidders)) nbid++; }));
+  if(nb) out.push('레이드 낙찰 '+nb+'건'); if(nbid) out.push('레이드 입찰 '+nbid+'건');
+  const nd=S.draws.filter(d=>(d.bidderIds||[]).includes(id)||has(d.winners)).length; if(nd) out.push('보물상자 뽑기 '+nd+'건');
+  const ns=S.stockSales.filter(x=>has(x.buyers)||has(x.bidders)).length; if(ns) out.push('재고템 판매 '+ns+'건');
+  const nn=S.notices.filter(n=>(n.attendees||[]).includes(id)).length; if(nn) out.push('회의 참석 '+nn+'건');
+  return out;
+}
 A.memDel=async el=>{
   const m=S.members.find(x=>x.id===el.dataset.id); if(!m) return;
-  if(S.distributions.some(d=>d.status==='completed'&&d.results.some(r=>r.memberId===m.id)))
-    return toast('분배 내역이 있는 길드원은 삭제할 수 없습니다. 상태를 "탈퇴"로 바꿔 주세요');
-  if(!await confirmBox('"'+m.name+'" 길드원을 삭제할까요?',{ok:'삭제',danger:true})) return;
-  S.members=S.members.filter(x=>x!==m); commit();
+  const refs=memberRefs(m.id);
+  if(refs.length){
+    const off=m.status==='left';
+    const ok=await confirmBox('"'+m.name+'" 님은 아래 기록이 있어 삭제할 수 없습니다.\n\n· '+refs.join('\n· ')+'\n\n삭제하면 이 기록들의 이름 표시·통계가 끊어질 수 있어, 기록이 있는 길드원은 '+(off?'비활동 상태로 보관됩니다.':'"비활동"으로 바꿔 보관합니다.'),{ok:off?'확인':'비활동으로 변경',title:'삭제할 수 없는 길드원'});
+    if(ok&&!off){ m.status='left'; commit(); toast('"'+m.name+'" 님을 비활동으로 바꿨습니다'); }
+    return;
+  }
+  if(!await confirmBox('"'+m.name+'" 길드원을 삭제할까요?\n(남긴 기록이 없어 삭제해도 다른 데이터에 영향이 없습니다)',{ok:'삭제',danger:true})) return;
+  S.members=S.members.filter(x=>x!==m); commit(); toast('삭제했습니다');
 };
 
 /* --- 데이터(내보내기/불러오기/예시/초기화) --- */
@@ -2611,7 +2637,7 @@ const fmtTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   const viaLink=cloudCfgFromHash();
