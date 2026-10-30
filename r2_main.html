@@ -225,6 +225,20 @@ details.hist .inner{padding:14px}
 .stockitem:hover{border-color:var(--line2)}
 .lotadd{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .lotadd .ln{width:240px;max-width:100%} .lotadd .lq{width:72px}
+/* 빠른 등록(담기) */
+.qreg{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+.qreg .qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.qreg .seg{margin:0 0 10px}
+.qitems{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow:auto;padding:2px}
+.qitems .chip{cursor:pointer;font-size:13px;padding:5px 10px}
+.qitems .chip.picked{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+.qitems .chip b{margin-left:4px}
+.qcart{margin-top:12px;border-top:1px dashed var(--line2);padding-top:10px}
+.qcart .qrow{display:grid;grid-template-columns:minmax(120px,1fr) auto auto;gap:8px;align-items:center;padding:4px 0}
+.qcart .qty{display:inline-flex;align-items:center;gap:4px}
+.qcart .qty input{width:58px;text-align:center}
+.qcart .qfoot{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
+.catchip{font-size:12px}
 .biddergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;max-height:250px;overflow:auto;padding:8px;border:1px solid var(--line2);border-radius:8px;background:var(--field)}
 .bd{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;min-width:0}
 .bd:hover{border-color:var(--teal)}
@@ -400,6 +414,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
     <button class="tab" data-act="tab" data-tab="dist">길자금 분배</button>
     <button class="tab" data-act="tab" data-tab="raid">레이드 정산</button>
     <button class="tab" data-act="tab" data-tab="stock">미판매 재고템<span class="cnt" id="stockCnt"></span></button>
+    <button class="tab" data-act="tab" data-tab="items">판매 아이템 등록</button>
     <button class="tab" data-act="tab" data-tab="member">길드원 관리</button>
     <a class="tab tablink" id="hammerTab" href="#" target="_blank" rel="noopener noreferrer">망치질 관리 ↗</a><button class="tab gear" id="hammerGear" data-act="hammerSet" title="링크 주소 변경 (관리자)" aria-label="망치질 관리 링크 변경" hidden>⚙</button>
   </nav>
@@ -420,7 +435,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.10.30-c';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.10.30-d';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -500,6 +515,30 @@ function formatMoneyInput(el){
    2. 기본 데이터 / 정규화 / 이전 버전 변환
    ===================================================================== */
 const PRESET_INCOME = ['롱쉴드','거친','다마','어쎄메일','5어쎄글러브','고줌','향태반','잡무기','잡방어구','잡주문서','불강 셋트(2)'];
+// 판매 아이템 분류
+const ITEM_CATS=[['weapon','무기','out'],['armor','방어구','blue'],['acc','악세사리','purple'],['scroll','주문서','coin'],['misc','잡템','']];
+const catOk=c=>ITEM_CATS.some(x=>x[0]===c)?c:'misc';
+const catName=c=>(ITEM_CATS.find(x=>x[0]===c)||ITEM_CATS[4])[1];
+const catChip=c=>{ const x=ITEM_CATS.find(y=>y[0]===c)||ITEM_CATS[4]; return '<span class="chip catchip '+x[2]+'">'+x[1]+'</span>'; };
+const normName=n=>String(n==null?'':n).trim().replace(/\s+/g,' ');
+// 처음 목록을 만들 때만 이름으로 분류를 추정 (이후 새 아이템은 '잡템'으로 자동 등록)
+function guessCat(n){
+  if(/주문서|스크롤|줌$|줌\b|강화/.test(n)) return 'scroll';
+  if(/반지|목걸이|귀걸이|팔찌|벨트|아뮬렛|링$|이어링|악세|장신구/.test(n)) return 'acc';
+  if(/갑옷|메일|쉴드|방패|투구|헬름|장갑|글러브|부츠|신발|망토|클로크|로브|방어구|각반|티셔츠|셔츠/.test(n)) return 'armor';
+  if(/무기|검$|대검|단검|도끼|활$|석궁|창$|지팡이|스태프|크로우|블레이드|보우|너클|이도류|양손|한손/.test(n)) return 'weapon';
+  return 'misc';
+}
+function seedCatalog(o){
+  const map=new Map();
+  const add=(n,date)=>{ n=normName(n); if(!n) return; const k=n.toLowerCase(); let it=map.get(k);
+    if(!it){ it={id:uid(),name:n,cat:guessCat(n),uses:0,last:''}; map.set(k,it); }
+    if(date!==undefined){ it.uses++; if(date&&date>it.last) it.last=date; } };
+  (((o.settings||{}).itemPresets||{}).income||[]).forEach(n=>add(n));
+  (o.raids||[]).forEach(r=>(r.lots||[]).forEach(l=>add(l.name,r.date||'')));
+  (o.stock||[]).forEach(x=>add(x.name)); (o.stockSales||[]).forEach(x=>add(x.name));
+  return Array.from(map.values());
+}
 const PRESET_EXPENSE = ['봉줌 1층','봉줌 2층','봉줌 3층','봉줌 4층','이계상인'];
 const MEMBERS0 = ['와꾸','빵양','미륵','마린','콜라','리즈','구슬','스페','봉대장','허리','젠키','꿀꿀이','짜잔','애무','수박'];
 const HAMMER_URL = 'https://jins-project.github.io/R2_Cash/r2_item_timer.html';   // 이전에 만든 캐쉬템 잔여 시간 페이지 (관리자가 ⚙ 로 변경 가능)
@@ -525,7 +564,8 @@ function defaultData(){
     schemaVersion:SCHEMA,
     meta:{createdAt:new Date().toISOString(),updatedAt:null},
     settings:{unit:'만 실버',distThreshold:500000,lastExportAt:null,hammerUrl:HAMMER_URL,
-      itemPresets:{income:PRESET_INCOME.slice(),expense:PRESET_EXPENSE.slice()}},
+      itemPresets:{income:PRESET_INCOME.slice(),expense:PRESET_EXPENSE.slice()},
+      itemCatalog:seedCatalog({settings:{itemPresets:{income:PRESET_INCOME}}})},
     rule:{roundUnit:1,bonusInit:true,ratioInit:true,components:makeComps([{type:'bonus',name:'포상(수고비)'}].concat(DEFAULT_RATIOS()))},
     members:MEMBERS0.map(n=>({id:uid(),name:n,cls:'',status:'active',memo:''})),
     ledger:[], raids:[], distributions:[], stock:[], stockSales:[], cash:[], draws:[], notices:[]
@@ -632,6 +672,11 @@ function normalize(d){
   o.raids.forEach(r=>{ r.lots=Array.isArray(r.lots)?r.lots:[]; r.expenses=Array.isArray(r.expenses)?r.expenses:[]; r.status=r.status==='completed'?'completed':'draft';
     r.lots.forEach(l=>{ l.buyers=Array.isArray(l.buyers)?l.buyers:[]; l.bidders=Array.isArray(l.bidders)?l.bidders:[]; l.qty=Math.max(1,Math.round(num(l.qty))||1); }); });
   o.distributions.forEach(x=>{ x.rows=Array.isArray(x.rows)?x.rows:[]; });
+  // 판매 아이템 목록 (없으면 기본 품목 + 지금까지 등록된 아이템으로 처음 한 번 만듦)
+  const cat0=d.settings&&d.settings.itemCatalog;
+  if(Array.isArray(cat0)){ const seen=new Set(); o.settings.itemCatalog=cat0.filter(x=>{ const n=normName(x&&x.name).toLowerCase(); if(!n||seen.has(n)) return false; seen.add(n); return true; })
+      .map(x=>({id:x.id||uid(),name:normName(x.name),cat:catOk(x.cat),uses:Math.max(0,Math.round(num(x.uses))),last:x.last||''})); }
+  else o.settings.itemCatalog=seedCatalog(o);
   return o;
 }
 
@@ -730,7 +775,7 @@ function calcDist(pool, rule, rows){
 /* =====================================================================
    4. 저장 / 렌더 공통
    ===================================================================== */
-const ui = {scrollTop:false, scrollBottom:false, tab:'notice', nView:'now', nf:{type:'',month:'',q:''}, nOpen:new Set(), admin:false, adminUntil:0, authFail:0, authBlock:0, distView:'', sf:'', ledSub:'silver', cf:{month:''}, raidId:null, stockSel:null, lf:{month:'',q:''}, mq:'', ms:'all', mc:'', focusFk:null, open:new Set()};
+const ui = {scrollTop:false, scrollBottom:false, icat:'all', iq:'', qcat:'all', qcart:null, tab:'notice', nView:'now', nf:{type:'',month:'',q:''}, nOpen:new Set(), admin:false, adminUntil:0, authFail:0, authBlock:0, distView:'', sf:'', ledSub:'silver', cf:{month:''}, raidId:null, stockSel:null, lf:{month:'',q:''}, mq:'', ms:'all', mc:'', focusFk:null, open:new Set()};
 let saveOk=true, lastSaved=null, saveTimer=null;
 
 function doSave(){
@@ -788,9 +833,9 @@ function sha256(str){
   }
   return H.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
 }
-const READ_ACT=new Set(['tab','cloudOpen','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
+const READ_ACT=new Set(['tab','cloudOpen','itemCat','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
 const READ_CHG=new Set(['lfm','cfm','sfilter','ms','mcls','nfType','nfMonth']);
-const READ_INP=new Set(['lfq','mq','nfq']);
+const READ_INP=new Set(['lfq','mq','nfq','iq']);
 function setAdmin(on){
   ui.admin=!!on; ui.adminUntil=on?Date.now()+ADMIN_TTL:0;
   try{ if(on) sessionStorage.setItem('r2_admin_until',String(ui.adminUntil)); else sessionStorage.removeItem('r2_admin_until'); }catch(e){}
@@ -823,10 +868,11 @@ function render(){
   const act=document.activeElement, sy=ui.scrollBottom?1e7:(ui.scrollTop?0:window.scrollY); ui.scrollTop=false; ui.scrollBottom=false;   // 화면 이동이면 맨 위로(한 번만), 그 외 갱신은 현재 위치 유지
   const fk = ui.focusFk || (act && act.dataset ? act.dataset.fk : null); ui.focusFk=null;
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ui.tab));
-  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,member:viewMember})[ui.tab]();
+  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,items:viewItems,member:viewMember})[ui.tab]();
   if(ui.tab==='dist') updateDistCalc();
   if(ui.tab==='ledger') renderLedgerTable();
   if(ui.tab==='member') renderMemberTable();
+  if(ui.tab==='items') renderItemTable();
   $$('#view [data-money]').forEach(moneyHint);
   applyLock(); updateThresholdUI(); updateHeader();
   window.scrollTo(0,sy);
@@ -1288,7 +1334,7 @@ function viewRaid(){
 }
 function raidList(){
   const list=S.raids.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
-  const right='<span class="chip coin link" data-act="goStock">미판매 재고 '+S.stock.length+'개 →</span><button class="btn sm" data-act="presetsEdit">기본 품목 설정</button><button class="btn primary" data-act="raidNew">새 레이드 정산</button>';
+  const right='<span class="chip coin link" data-act="goStock">미판매 재고 '+S.stock.length+'개 →</span><button class="btn sm" data-act="tab" data-tab="items">판매 아이템 관리</button><button class="btn sm" data-act="presetsEdit">지출 품목 설정</button><button class="btn primary" data-act="raidNew">새 레이드 정산</button>';
   if(!list.length) return card('green','레이드 정산 목록',right,'<div class="empty">아직 정산한 레이드가 없습니다. "새 레이드 정산"으로 시작하세요.<br><span class="small">판매 아이템을 등록하고 입찰자를 체크해 판매를 입력한 뒤, 마지막에 <b>판매 완료 → 길자금 수입</b>을 누르면 길자금에 반영됩니다.</span></div>');
   let b='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:120px"><col style="width:130px"><col style="width:130px"><col style="width:140px"></colgroup>'+
     '<thead><tr><th>날짜</th><th>레이드</th><th class="num">판매 수입</th><th class="num">지출</th><th class="num">정산금</th><th>상태</th><th></th></tr></thead><tbody>';
@@ -1316,6 +1362,22 @@ function totalList(r,type){
     '</tbody><tfoot><tr><td>합계</td><td class="num">'+cnt+'</td><td class="num '+(isIn?'pos':'neg')+'">'+(isIn?'':'-')+fmtM(sum)+'</td></tr></tfoot></table></div>';
   return h;
 }
+// 빠른 등록: 분류 탭 → 아이템을 누를 때마다 1개씩 담기 → 수량 조정 → 한 번에 등록
+function qCart(r){ if(!ui.qcart||ui.qcart.raidId!==r.id) ui.qcart={raidId:r.id,list:[]}; return ui.qcart; }
+function quickRegHtml(r){
+  const cart=qCart(r), cat=ui.qcat||'all', items=catalogSorted(cat), inCart=new Map(cart.list.map(x=>[x.name,x.qty]));
+  const cnt=c=>(S.settings.itemCatalog||[]).filter(x=>c==='all'||x.cat===c).length;
+  let h='<div class="qreg"><div class="qhead"><b>⚡ 빠른 등록</b><span class="small muted">아이템을 누를 때마다 1개씩 담깁니다 · 수량을 고친 뒤 [한 번에 등록]</span><span style="flex:1"></span><button class="btn ghost sm" data-act="tab" data-tab="items">아이템 관리 →</button></div>'+
+    '<div class="seg"><button type="button" data-act="qCat" data-v="all" class="'+(cat==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="qCat" data-v="'+c[0]+'" class="'+(cat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+'</div>'+
+    '<div class="qitems">'+(items.length?items.map(x=>{ const q=inCart.get(x.name); return '<button type="button" class="chip'+(q?' picked':'')+'" data-act="qPick" data-name="'+esc(x.name)+'" title="'+esc(catName(x.cat))+(x.uses?' · '+x.uses+'회 등록':'')+'">+ '+esc(x.name)+(q?'<b>×'+q+'</b>':'')+'</button>'; }).join(''):'<span class="small muted">이 분류에 등록된 아이템이 없습니다. "아이템 관리"에서 추가하세요.</span>')+'</div>';
+  if(cart.list.length){
+    const tq=cart.list.reduce((a,x)=>a+x.qty,0);
+    h+='<div class="qcart"><div class="small muted" style="margin-bottom:4px">담은 아이템</div>'+cart.list.map((x,i)=>
+      '<div class="qrow"><span><b>'+esc(x.name)+'</b></span><span class="qty"><button type="button" class="btn sm" data-act="qDec" data-i="'+i+'">−</button><input type="number" min="1" max="50" value="'+x.qty+'" data-inp="qQty" data-i="'+i+'"><button type="button" class="btn sm" data-act="qInc" data-i="'+i+'">+</button></span><button type="button" class="btn ghost sm" data-act="qDel" data-i="'+i+'" title="빼기">✕</button></div>').join('')+
+      '<div class="qfoot"><span class="small muted" id="qTotal">'+cart.list.length+'종 · 총 '+tq+'개</span><button type="button" class="btn ghost sm" data-act="qClear">비우기</button><button type="button" class="btn primary" data-act="qSubmit">⬆ 한 번에 등록</button></div></div>';
+  }
+  return h+'</div>';
+}
 function lotsCard(r,edit){
   const t=raidTotals(r); let b='';
   if(!r.lots.length) b+='<div class="empty">등록된 판매 아이템이 없습니다. 아래에서 아이템을 등록하거나 오른쪽 미판매 재고템에서 "등록"을 누르세요.</div>';
@@ -1336,7 +1398,7 @@ function lotsCard(r,edit){
     b+='</tbody><tfoot><tr><td>판매 수입 합계</td><td>'+r.lots.filter(lotSold).length+'건</td><td></td><td class="num pos">+'+fmtM(t.inc)+'</td>'+(edit?'<td></td>':'')+'</tr></tfoot></table></div>';
   }
   if(edit) b+='<div class="lotadd"><input class="ln" list="dl_income" placeholder="판매 아이템 이름" data-fk="lotname" data-enter="lotAdd"><input class="lq" type="number" min="1" max="50" value="1" title="수량"><button class="btn primary" data-act="lotAdd">판매 아이템 등록</button></div>'+
-    '<div class="chips" style="margin-top:8px"><span class="small muted" style="align-self:center">빠른 등록:</span>'+S.settings.itemPresets.income.map(n=>'<span class="chip link" data-act="lotAddPreset" data-name="'+esc(n)+'" title="클릭하면 1개 등록">+ '+esc(n)+'</span>').join('')+'</div>';
+    quickRegHtml(r);
   return card('green','판매 수입 목록','<span class="small muted">등록 → 판매 입력(입찰자 체크 · 뽑기)</span>',b);
 }
 function expensesCard(r,edit){
@@ -1373,7 +1435,7 @@ function raidDetail(r){
     '<div class="split" style="margin-top:14px">'+totalList(r,'income')+totalList(r,'expense')+'</div>'+
     (edit?'<div class="toolbar"><button class="btn gold lg" data-act="raidComplete">판매 완료 → 길자금 수입</button>'+(wait.length?'<span class="small muted">판매 대기 '+wait.length+'개는 미판매 재고템으로 이월됩니다</span>':'')+'</div>':''));
   return head+summary+lotsCard(r,edit)+expensesCard(r,edit)+drawLogCard(r)+
-    '<datalist id="dl_income">'+S.settings.itemPresets.income.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+    '<datalist id="dl_income">'+catalogSorted('all').map(x=>'<option value="'+esc(x.name)+'">').join('')+'</datalist>'+
     '<datalist id="dl_expense">'+S.settings.itemPresets.expense.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>';
 }
 // 빠른 입력: "품목 금액 구매자" 줄 → 판매 완료된 아이템 / 지출로 바로 기록
@@ -1395,7 +1457,7 @@ function parsePaste(text,r){
     if(type==='expense') r.expenses.push({id:uid(),name,price,note:buyerTxt,date:today()});
     else{
       const mem=buyerTxt&&S.members.find(m=>m.name===buyerTxt);
-      r.lots.push({id:uid(),name,qty:1,state:'sold',price,buyers:[mem?{id:mem.id,name:mem.name}:{id:'__ext',name:buyerTxt||'외부/기타'}],bidders:[],soldDate:today()});
+      catalogTouch(name); r.lots.push({id:uid(),name,qty:1,state:'sold',price,buyers:[mem?{id:mem.id,name:mem.name}:{id:'__ext',name:buyerTxt||'외부/기타'}],bidders:[],soldDate:today()});
     }
     res.added++;
   });
@@ -1606,7 +1668,7 @@ function viewStock(){
       '<td class="act"><button class="btn ghost sm" data-act="stockSaleUndo" data-id="'+esc(x.id)+'" title="판매를 취소하고 재고로 되돌립니다">되돌리기</button></td></tr>').join('')+
     '</tbody></table></div>';
   return head+card('green','재고템 판매 내역','<span class="small muted">판매 즉시 길자금 수입으로 자동 기록</span>',sb)+
-    '<datalist id="dl_income">'+S.settings.itemPresets.income.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>';
+    '<datalist id="dl_income">'+catalogSorted('all').map(x=>'<option value="'+esc(x.name)+'">').join('')+'</datalist>';
 }
 
 /* =====================================================================
@@ -1625,6 +1687,35 @@ function classCountHtml(){
   return '<span class="small muted">활동 중 클래스별</span>'+CLASSES.map(k=>'<span>'+classChip(k)+' <b>'+c[k]+'명</b></span>').join('')+(none?'<span>'+classChip('')+' <b>'+none+'명</b></span>':'');
 }
 const classOptions=sel=>'<option value="">미지정</option>'+CLASSES.map(k=>'<option value="'+k+'"'+(sel===k?' selected':'')+'>'+k+'</option>').join('');
+/* ---- 판매 아이템 등록 (분류별 아이템 목록) ---- */
+function viewItems(){
+  const C=S.settings.itemCatalog||[], cnt=c=>C.filter(x=>c==='all'||x.cat===c).length;
+  return card('green','판매 아이템 추가','<span class="small muted">전체 '+C.length+'개</span>',
+      '<div class="form-grid"><div class="field"><label>아이템 이름</label><input id="iName" data-enter="itemAdd" placeholder="이름 입력 후 Enter"></div>'+
+      '<div class="field"><label>분류</label><select id="iCat">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(c[0]==='misc'?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>&nbsp;</label><div class="inl"><button class="btn primary" data-act="itemAdd">추가</button><button class="btn" data-act="itemBulk">여러 개 한 번에</button></div></div></div>'+
+      '<p class="hint" style="margin:10px 0 0">여기 등록한 아이템은 레이드 정산의 <b>⚡ 빠른 등록</b>에 분류별 버튼으로 나옵니다. 레이드에서 처음 등록한 아이템은 자동으로 <b>잡템</b>에 추가되니, 아래 목록에서 분류를 바꿔 정리하세요.</p>')+
+    card('teal','아이템 목록','<input type="search" placeholder="아이템 검색" data-inp="iq" value="'+esc(ui.iq||'')+'" style="width:170px">',
+      '<div class="seg" style="margin:0 0 12px"><button type="button" data-act="itemCat" data-v="all" class="'+((ui.icat||'all')==='all'?'on':'')+'">전체 '+cnt('all')+'</button>'+ITEM_CATS.map(c=>'<button type="button" data-act="itemCat" data-v="'+c[0]+'" class="'+(ui.icat===c[0]?'on':'')+'">'+c[1]+' '+cnt(c[0])+'</button>').join('')+'</div><div id="itemTable"></div>');
+}
+function renderItemTable(){
+  const el=$('#itemTable'); if(!el) return;
+  const cat=ui.icat||'all', q=(ui.iq||'').trim().toLowerCase();
+  const order=new Map(ITEM_CATS.map((c,i)=>[c[0],i]));
+  const list=catalogSorted(cat).filter(x=>!q||x.name.toLowerCase().includes(q)).sort((a,b)=>order.get(a.cat)-order.get(b.cat)||(b.uses||0)-(a.uses||0)||a.name.localeCompare(b.name,'ko'));
+  if(!list.length){ el.innerHTML='<div class="empty">표시할 아이템이 없습니다.</div>'; return; }
+  let h='<div class="tablewrap"><table class="tbl fixed" style="min-width:640px"><colgroup><col style="width:50px"><col><col style="width:140px"><col style="width:110px"><col style="width:140px"><col style="width:80px"></colgroup>'+
+    '<thead><tr><th>#</th><th>아이템</th><th>분류</th><th class="num">등록 횟수</th><th>최근 사용</th><th></th></tr></thead><tbody>', prev=null;
+  list.forEach((x,i)=>{
+    if(cat==='all'&&x.cat!==prev){ h+='<tr class="grp"><td colspan="6" style="background:var(--panel2)">'+catChip(x.cat)+' <span class="small muted">'+list.filter(y=>y.cat===x.cat).length+'개</span></td></tr>'; prev=x.cat; }
+    const id=esc(x.id);
+    h+='<tr><td class="muted">'+(i+1)+'</td><td><input class="w100" value="'+esc(x.name)+'" data-chg="itemName" data-id="'+id+'"></td>'+
+      '<td><select class="w100" data-chg="itemCatSet" data-id="'+id+'">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(x.cat===c[0]?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></td>'+
+      '<td class="num">'+(x.uses?x.uses+'회':'-')+'</td><td class="nowrap">'+(x.last?fmtDate(x.last):'-')+'</td>'+
+      '<td class="act"><button class="btn ghost sm" data-act="itemDel" data-id="'+id+'">삭제</button></td></tr>';
+  });
+  el.innerHTML=h+'</tbody></table></div>';
+}
 function viewMember(){
   const act=activeMembers().length;
   return card('blue','길드원 추가','<span class="small muted">활동 '+act+'명 · 비활동 '+(S.members.length-act)+'명</span>',
@@ -1897,7 +1988,16 @@ A.togglePaid=el=>{
 
 /* --- 레이드 정산 --- */
 const mkStock=(name,r)=>({id:uid(),name,from:r?r.id:'',fromTitle:r?(r.title||''):'',date:r?r.date:today(),at:today()});
-const newLot=(name,qty)=>({id:uid(),name,qty,state:'wait',price:0,buyers:[],bidders:[]});
+// 아이템 목록에 사용 기록 (처음 보는 이름이면 '잡템'으로 자동 추가) → 새로 추가됐으면 true
+function catalogTouch(name,count){
+  const n=normName(name); if(!n) return false;
+  const C=S.settings.itemCatalog||(S.settings.itemCatalog=[]); let it=C.find(x=>x.name.toLowerCase()===n.toLowerCase()), isNew=false;
+  if(!it){ it={id:uid(),name:n,cat:'misc',uses:0,last:''}; C.push(it); isNew=true; }
+  if(count!==false){ it.uses=(it.uses||0)+1; it.last=today(); }
+  return isNew;
+}
+const catalogSorted=cat=>(S.settings.itemCatalog||[]).filter(x=>!cat||cat==='all'||x.cat===cat).slice().sort((a,b)=>(b.uses||0)-(a.uses||0)||a.name.localeCompare(b.name,'ko'));
+const newLot=(name,qty)=>{ catalogTouch(name); return {id:uid(),name:normName(name),qty,state:'wait',price:0,buyers:[],bidders:[]}; };
 A.raidNew=async()=>{
   const res=await modal({title:'새 레이드 정산',body:'<div class="field"><label>레이드 날짜</label><input type="date" id="nrDate" value="'+today()+'"></div><div class="field"><label>이름</label><input id="nrTitle" placeholder="예: 메테 3마리"></div>',ok:'만들기',
     onOk(root){ const date=root.querySelector('#nrDate').value; if(!date){ toast('날짜를 선택하세요'); return false; } return {date,title:root.querySelector('#nrTitle').value.trim()}; }});
@@ -1916,12 +2016,24 @@ A.raidDel=async el=>{
 };
 A.lotAdd=el=>{
   const r=curRaid(); if(!r||r.status==='completed') return;
-  const box=el.closest('.lotadd'), nm=box.querySelector('.ln'), name=nm.value.trim();
+  const box=el.closest('.lotadd'), nm=box.querySelector('.ln'), name=normName(nm.value);
   if(!name) return nm.focus();
   const q=clamp(Math.round(num(box.querySelector('.lq').value))||1,1,50);
-  r.lots.push(newLot(name,q)); ui.focusFk='lotname'; commit(); toast(name+' ×'+q+' 등록했습니다');
+  const isNew=!(S.settings.itemCatalog||[]).some(x=>x.name.toLowerCase()===name.toLowerCase());
+  r.lots.push(newLot(name,q)); ui.focusFk='lotname'; commit(); toast(name+' ×'+q+' 등록했습니다'+(isNew?' · 아이템 목록에 "잡템"으로 추가':''));
 };
-A.lotAddPreset=el=>{ const r=curRaid(); if(!r) return; r.lots.push(newLot(el.dataset.name,1)); commit(); };
+A.qCat=el=>{ ui.qcat=el.dataset.v; render(); };
+A.qPick=el=>{ const r=curRaid(); if(!r) return; const c=qCart(r), n=el.dataset.name, x=c.list.find(v=>v.name===n); if(x) x.qty=Math.min(50,x.qty+1); else c.list.push({name:n,qty:1}); render(); };
+A.qInc=el=>{ const r=curRaid(); if(!r) return; const x=qCart(r).list[+el.dataset.i]; if(x){ x.qty=Math.min(50,x.qty+1); render(); } };
+A.qDec=el=>{ const r=curRaid(); if(!r) return; const c=qCart(r), i=+el.dataset.i, x=c.list[i]; if(!x) return; if(x.qty>1) x.qty--; else c.list.splice(i,1); render(); };
+A.qDel=el=>{ const r=curRaid(); if(!r) return; qCart(r).list.splice(+el.dataset.i,1); render(); };
+A.qClear=()=>{ const r=curRaid(); if(!r) return; qCart(r).list=[]; render(); };
+A.qSubmit=()=>{
+  const r=curRaid(); if(!r||r.status==='completed') return; const c=qCart(r); if(!c.list.length) return;
+  const tq=c.list.reduce((a,x)=>a+x.qty,0), kinds=c.list.length;
+  c.list.forEach(x=>r.lots.push(newLot(x.name,clamp(Math.round(x.qty)||1,1,50)))); c.list=[];
+  commit(); toast(kinds+'종 · 총 '+tq+'개를 등록했습니다');
+};
 async function saleFlow(r,lot){
   const res=await openSaleModal(r,lot); if(!res||res===true) return;
   lot.price=res.price; lot.buyers=res.buyers; lot.bidders=res.bidders; lot.drawId=res.drawId; lot.state='sold'; lot.soldDate=today();
@@ -1998,10 +2110,9 @@ A.raidPaste=async()=>{
 };
 A.presetsEdit=async()=>{
   const P=S.settings.itemPresets;
-  const res=await modal({title:'기본 품목 설정',wide:true,ok:'저장',body:'<p class="hint">줄바꿈으로 구분합니다. 판매 아이템 빠른 등록 칩과 지출 항목 자동완성에 쓰입니다.</p>'+
-    '<div class="field"><label>레이드 아이템 품목</label><textarea id="pIn" rows="7">'+esc(P.income.join('\n'))+'</textarea></div>'+
-    '<div class="field"><label>지출 품목</label><textarea id="pOut" rows="4">'+esc(P.expense.join('\n'))+'</textarea></div>',
-    onOk(root){ const f=id=>root.querySelector(id).value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); return {income:f('#pIn'),expense:f('#pOut')}; }});
+  const res=await modal({title:'지출 품목 설정',wide:true,ok:'저장',body:'<p class="hint">줄바꿈으로 구분합니다. 레이드 지출 항목 자동완성에 쓰입니다. 판매 아이템은 <b>판매 아이템 등록</b> 탭에서 관리합니다.</p>'+
+    '<div class="field"><label>지출 품목</label><textarea id="pOut" rows="6">'+esc(P.expense.join('\n'))+'</textarea></div>',
+    onOk(root){ const f=id=>root.querySelector(id).value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); return {income:P.income,expense:f('#pOut')}; }});
   if(!res||res===true) return; S.settings.itemPresets=res; commit(); toast('저장했습니다');
 };
 
@@ -2348,6 +2459,46 @@ C.raidDate=el=>{ const r=curRaid(); if(r&&el.value){ r.date=el.value; quiet(); }
 C.ms=el=>{ ui.ms=el.value; renderMemberTable(); };
 C.mcls=el=>{ ui.mc=el.value; renderMemberTable(); };
 I.mq=el=>{ ui.mq=el.value; renderMemberTable(); };
+/* --- 판매 아이템 등록 --- */
+I.iq=el=>{ ui.iq=el.value; renderItemTable(); };
+A.itemCat=el=>{ ui.icat=el.dataset.v; render(); };
+const findItem=n=>(S.settings.itemCatalog||[]).find(x=>x.name.toLowerCase()===normName(n).toLowerCase());
+A.itemAdd=()=>{
+  const nm=$('#iName'), n=normName(nm.value), cat=catOk($('#iCat').value);
+  if(!n) return nm.focus();
+  if(findItem(n)) return toast('이미 있는 아이템입니다: '+n);
+  S.settings.itemCatalog.push({id:uid(),name:n,cat,uses:0,last:''}); ui.focusFk=null; commit();
+  const el=$('#iName'); if(el){ el.focus(); } const sel=$('#iCat'); if(sel) sel.value=cat; toast(catName(cat)+'에 "'+n+'"을(를) 추가했습니다');
+};
+A.itemBulk=async()=>{
+  const res=await modal({title:'판매 아이템 여러 개 추가',ok:'추가',wide:true,body:
+    '<p class="hint">한 줄에 하나씩 붙여넣으세요. 줄 끝에 분류(무기/방어구/악세사리/주문서/잡템)를 쓰면 그 분류로, 안 쓰면 아래에서 고른 분류로 추가됩니다. 이미 있는 아이템은 건너뜁니다.</p>'+
+    '<div class="field"><label>기본 분류</label><select id="bkCat">'+ITEM_CATS.map(c=>'<option value="'+c[0]+'"'+(c[0]==='misc'?' selected':'')+'>'+c[1]+'</option>').join('')+'</select></div>'+
+    '<textarea id="bkTx" rows="8" placeholder="롱소드 무기&#10;어쎄메일 방어구&#10;고줌 주문서&#10;향태반"></textarea>',
+    onOk(root){ return {cat:root.querySelector('#bkCat').value,tx:root.querySelector('#bkTx').value}; }});
+  if(!res||res===true) return;
+  let added=0, skip=0;
+  res.tx.split(/\r?\n/).forEach(line=>{
+    line=normName(line); if(!line) return; let cat=catOk(res.cat);
+    const m=line.match(/^(.*\S)\s+(무기|방어구|악세사리|악세|주문서|잡템)$/); if(m){ line=m[1]; cat=({'무기':'weapon','방어구':'armor','악세사리':'acc','악세':'acc','주문서':'scroll','잡템':'misc'})[m[2]]; }
+    if(findItem(line)){ skip++; return; }
+    S.settings.itemCatalog.push({id:uid(),name:line,cat,uses:0,last:''}); added++;
+  });
+  commit(); toast(added+'개를 추가했습니다'+(skip?' · 이미 있는 '+skip+'개는 건너뜀':''));
+};
+A.itemDel=async el=>{
+  const C=S.settings.itemCatalog||[], x=C.find(v=>v.id===el.dataset.id); if(!x) return;
+  if(!await confirmBox('"'+x.name+'"을(를) 아이템 목록에서 삭제할까요?\n이미 등록된 레이드·재고 기록에는 영향이 없습니다. (다시 레이드에 등록하면 잡템으로 자동 추가됩니다)',{ok:'삭제',danger:true})) return;
+  S.settings.itemCatalog=C.filter(v=>v!==x); commit(); toast('삭제했습니다');
+};
+C.itemCatSet=el=>{ const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(x){ x.cat=catOk(el.value); quiet(); renderItemTable(); toast('"'+x.name+'" → '+catName(x.cat)); } };
+C.itemName=el=>{
+  const x=(S.settings.itemCatalog||[]).find(v=>v.id===el.dataset.id); if(!x) return;
+  const n=normName(el.value); if(!n){ el.value=x.name; return; }
+  const dup=findItem(n); if(dup&&dup!==x){ toast('이미 있는 아이템 이름입니다'); el.value=x.name; return; }
+  x.name=n; quiet();
+};
+I.qQty=el=>{ const r=curRaid(); if(!r) return; const x=qCart(r).list[+el.dataset.i]; if(!x) return; const v=Math.round(num(el.value)); if(v>=1){ x.qty=Math.min(50,v); const c=qCart(r), t=$('#qTotal'); if(t) t.textContent=c.list.length+'종 · 총 '+c.list.reduce((a,y)=>a+y.qty,0)+'개'; } };
 C.memName=el=>{
   const m=S.members.find(x=>x.id===el.dataset.m); if(!m) return; const n=el.value.trim();
   if(!n){ el.value=m.name; return; }
