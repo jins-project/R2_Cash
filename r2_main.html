@@ -255,6 +255,18 @@ details.hist .inner{padding:14px}
 .qcart .qty input{width:58px;text-align:center}
 .qcart .qfoot{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
 .catchip{font-size:12px}
+/* 공성전 출석 */
+.tab .cnt.live{background:#ff6b6b;color:#fff}
+.sg-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.sg-head .when{font-size:18px;font-weight:800}
+.sg-btn{min-width:78px}
+.sg-btn.on.in{background:var(--green);border-color:var(--green);color:#0b1a12}
+.sg-btn.on.out{background:#ff6b6b;border-color:#ff6b6b;color:#200}
+.sg-tbl td{vertical-align:middle}
+.sg-cell{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;border-radius:6px;font-weight:800;cursor:default}
+.sg-cell.in{background:rgba(90,209,154,.18);color:var(--green)} .sg-cell.out{background:rgba(255,107,107,.18);color:#ff6b6b} .sg-cell.none{color:var(--muted)}
+.sg-cell.click{cursor:pointer} .sg-cell.click:hover{outline:1px solid currentColor}
+.sg-rate{font-weight:800}
 .cswatch{display:inline-flex;gap:4px;flex-wrap:wrap}
 .cdot{width:18px;height:18px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer}
 .cdot.on{border-color:var(--text);box-shadow:0 0 0 2px var(--bg) inset}
@@ -423,7 +435,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
       <span id="bkInfo" class="bk"></span>
       <button class="btn sm" data-act="exportJson" title="전체 데이터를 JSON 파일로 저장합니다">JSON 내보내기</button>
       <button class="btn sm" data-act="importJson" title="JSON 파일로 데이터를 복원합니다">JSON 불러오기</button>
-      <button class="btn sm ghost" data-act="sample">엑셀 예시 데이터</button>
+      
       <button class="btn sm ghost" data-act="resetAll">초기화</button>
       <input type="file" id="fileIn" accept=".json,application/json" hidden>
     </div>
@@ -436,7 +448,9 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
     <button class="tab" data-act="tab" data-tab="stock">미판매 재고템<span class="cnt" id="stockCnt"></span></button>
     <button class="tab" data-act="tab" data-tab="items">판매 아이템 등록</button>
     <button class="tab" data-act="tab" data-tab="member">길드원 관리</button>
+    <button class="tab" data-act="tab" data-tab="siege">공성전 참여 현황<span class="cnt live" id="siegeCnt"></span></button>
     <a class="tab tablink" id="hammerTab" href="#" target="_blank" rel="noopener noreferrer">망치질 관리 ↗</a><button class="tab gear" id="hammerGear" data-act="hammerSet" title="링크 주소 변경 (관리자)" aria-label="망치질 관리 링크 변경" hidden>⚙</button>
+    <button class="tab" data-act="tab" data-tab="log" id="logTab" hidden>🔒 로그</button>
   </nav>
 </div></div>
 <main id="view"></main>
@@ -455,7 +469,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.10.30-i';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.01-b';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -619,7 +633,7 @@ function defaultData(){
       itemCats:DEFAULT_CATS.map(c=>Object.assign({},c))},
     rule:{roundUnit:1,bonusInit:true,ratioInit:true,components:makeComps([{type:'bonus',name:'포상(수고비)'}].concat(DEFAULT_RATIOS()))},
     members:MEMBERS0.map(n=>({id:uid(),name:n,cls:'',status:'active',memo:''})),
-    ledger:[], raids:[], distributions:[], stock:[], stockSales:[], cash:[], draws:[], notices:[]
+    ledger:[], raids:[], distributions:[], stock:[], stockSales:[], cash:[], draws:[], notices:[], siege:[]
   };
 }
 // 레이드의 판매/지출 내역 → 길자금 입출금 내역(자동 기록)
@@ -717,13 +731,16 @@ function normalize(d){
     o.rule.components=o.rule.components.filter(c=>c.type==='bonus').concat(makeComps(DEFAULT_RATIOS()));
   }
   o.rule.ratioInit=true;
-  ['members','ledger','raids','distributions','stock','stockSales','cash','draws','notices'].forEach(k=>{ o[k]=Array.isArray(d[k])?d[k]:(d[k]===undefined&&k==='members'?D.members:[]); });
+  ['members','ledger','raids','distributions','stock','stockSales','cash','draws','notices','siege'].forEach(k=>{ o[k]=Array.isArray(d[k])?d[k]:(d[k]===undefined&&k==='members'?D.members:[]); });
   o.members.forEach(m=>{ if(!CLASSES.includes(m.cls)) m.cls=''; delete m.joinedAt; });
   o.notices.forEach(n=>{ n.type=n.type==='meeting'?'meeting':'notice'; n.status=n.status==='archived'?'archived':'active'; n.title=n.title||''; n.body=n.body||''; n.date=n.date||today(); n.attendees=Array.isArray(n.attendees)?n.attendees:[]; if(!Array.isArray(n.attendeeNames)||n.attendeeNames.length!==n.attendees.length) n.attendeeNames=n.attendees.map(id=>{ const m=o.members.find(x=>x.id===id); return m?m.name:''; }); n.pinned=!!n.pinned; });
   o.raids.forEach(r=>{ r.lots=Array.isArray(r.lots)?r.lots:[]; r.expenses=Array.isArray(r.expenses)?r.expenses:[]; r.status=r.status==='completed'?'completed':'draft';
     r.lots.forEach(l=>{ l.buyers=Array.isArray(l.buyers)?l.buyers:[]; l.bidders=Array.isArray(l.bidders)?l.bidders:[]; l.qty=Math.max(1,Math.round(num(l.qty))||1); }); });
   o.distributions.forEach(x=>{ x.rows=Array.isArray(x.rows)?x.rows:[]; });
   // 판매 아이템 목록 (없으면 기본 품목 + 지금까지 등록된 아이템으로 처음 한 번 만듦)
+  // 공성전 출석: 주차(일요일 날짜)·길드원별 1건
+  { const seen=new Set(); o.siege=o.siege.filter(x=>x&&/^\d{4}-\d{2}-\d{2}$/.test(x.week||'')&&x.memberId&&(x.status==='in'||x.status==='out')).filter(x=>{ const k=x.week+'|'+x.memberId; if(seen.has(k)) return false; seen.add(k); return true; })
+      .map(x=>({id:x.week.replace(/-/g,'')+'_'+x.memberId,week:x.week,memberId:x.memberId,name:String(x.name||''),status:x.status,reason:String(x.reason||'').slice(0,200),at:x.at||'',by:String(x.by||'').slice(0,30),pre:!!x.pre})); }
   o.settings.itemCats=normCats(d.settings&&d.settings.itemCats);
   const cat0=d.settings&&d.settings.itemCatalog;
   if(Array.isArray(cat0)){ const seen=new Set(); o.settings.itemCatalog=cat0.filter(x=>{ const n=normName(x&&x.name).toLowerCase(); if(!n||seen.has(n)) return false; seen.add(n); return true; })
@@ -844,6 +861,7 @@ let saveOk=true, lastSaved=null, saveTimer=null;
 function doSave(){
   S.meta.updatedAt=new Date().toISOString();
   const pr=Repo.save(S).then(ok=>{ saveOk=ok; lastSaved=new Date(); updateStatus(); });
+  try{ logTrack(); }catch(e){}
   cloudSchedule();                       // 관리자 로그인 상태면 바뀐 문서만 클라우드에 반영
   return pr;
 }
@@ -896,9 +914,9 @@ function sha256(str){
   }
   return H.map(x=>('00000000'+(x>>>0).toString(16)).slice(-8)).join('');
 }
-const READ_ACT=new Set(['tab','cloudOpen','itemCat','itemShowAll','catToggle','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
-const READ_CHG=new Set(['lfm','cfm','sfilter','ms','mcls','nfType','nfMonth']);
-const READ_INP=new Set(['lfq','mq','nfq','iq']);
+const READ_ACT=new Set(['tab','cloudOpen','sgIn','sgOut','sgCell','sgCancel','logReload','logMore','itemCat','itemShowAll','catToggle','qCat','goNotice','noticeView','noticeToggle','goDist','goLedger','goStock','goDistHist','openRaidFrom','raidOpen','raidBack','monthPick','ledSub','distView','adminAuth','adminLogout']);
+const READ_CHG=new Set(['logKind','sgReason','sgRange','lfm','cfm','sfilter','ms','mcls','nfType','nfMonth']);
+const READ_INP=new Set(['lfq','mq','nfq','iq','logq','sgq']);
 function setAdmin(on){
   ui.admin=!!on; ui.adminUntil=on?Date.now()+ADMIN_TTL:0;
   try{ if(on) sessionStorage.setItem('r2_admin_until',String(ui.adminUntil)); else sessionStorage.removeItem('r2_admin_until'); }catch(e){}
@@ -921,7 +939,7 @@ function applyLock(){
   $$('#view input,#view select,#view textarea').forEach(el=>{ const c=el.dataset.chg, i=el.dataset.inp; if((c&&READ_CHG.has(c))||(i&&READ_INP.has(i))) return; el.disabled=true; });
   $$('#view [data-act]').forEach(b=>{ if(!READ_ACT.has(b.dataset.act)){ b.classList.add('lockd'); b.title='관리자 인증이 필요합니다'; } });
 }
-setInterval(()=>{ if(ui.admin&&Date.now()>ui.adminUntil){ setAdmin(false); if(S) render(); toast('30분 동안 활동이 없어 관리자 모드가 해제되었습니다'); } },20000);
+setInterval(()=>{ if(ui.admin&&Date.now()>ui.adminUntil){ try{ logEvent('[관리자] 자동 해제 (30분 미사용)'); }catch(e){} setAdmin(false); if(S) render(); toast('30분 동안 활동이 없어 관리자 모드가 해제되었습니다'); } },20000);
 
 const confirmBox=(msg,o={})=>modal({title:o.title||'확인',body:'<p class="pre">'+esc(msg)+'</p>',ok:o.ok||'확인',danger:o.danger});
 
@@ -931,11 +949,14 @@ function render(){
   const act=document.activeElement, sy=ui.scrollBottom?1e7:(ui.scrollTop?0:window.scrollY); ui.scrollTop=false; ui.scrollBottom=false;   // 화면 이동이면 맨 위로(한 번만), 그 외 갱신은 현재 위치 유지
   const fk = ui.focusFk || (act && act.dataset ? act.dataset.fk : null); ui.focusFk=null;
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ui.tab));
-  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,items:viewItems,member:viewMember})[ui.tab]();
+  if(ui.tab==='log'&&!ui.admin) ui.tab='notice';
+  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,items:viewItems,member:viewMember,siege:viewSiege,log:viewLog})[ui.tab]();
   if(ui.tab==='dist') updateDistCalc();
   if(ui.tab==='ledger') renderLedgerTable();
   if(ui.tab==='member') renderMemberTable();
   if(ui.tab==='items') renderItemTable();
+  if(ui.tab==='log') renderLogTable();
+  if(ui.tab==='siege') renderSiegeSummary();
   $$('#view [data-money]').forEach(moneyHint);
   applyLock(); updateThresholdUI(); updateHeader();
   window.scrollTo(0,sy);
@@ -948,6 +969,8 @@ function updateStatus(){
 }
 function updateHeader(){
   updateStatus(); updateCloudUI();
+  { const b=document.getElementById('siegeCnt'); if(b) b.textContent=siegeState().open?'출석 중':''; }
+  const lt=document.getElementById('logTab'); if(lt) lt.hidden=!ui.admin;
   const vEl=document.getElementById('appVer'); if(vEl) vEl.textContent='v'+APP_VER;
   const as=$('#adminStatus'), ab=$('#adminBtn');
   if(as){ as.className='save '+(ui.admin?'ok':''); as.textContent=ui.admin?'🔓 관리자 모드':'🔒 읽기 전용'; }
@@ -1807,6 +1830,100 @@ function renderItemTable(){
   el.innerHTML=h+'</tbody></table></div>';
   $$('#itemTable [data-money]').forEach(moneyHint);
 }
+/* ---- 공성전 출석: 매주 일요일 20:00~21:00 공성전, 19:30 ~ 23:59 출석 체크 (그 주만) ---- */
+const SIEGE_T={open:19*60+30,start:20*60,end:21*60};
+const nowD=()=>window.__R2_NOW?new Date(window.__R2_NOW):new Date();      // 시험용으로 시각을 바꿀 수 있게
+const ymdL=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const addDays=(ymd,n)=>{ const p=ymd.split('-').map(Number), d=new Date(p[0],p[1]-1,p[2]); d.setDate(d.getDate()+n); return ymdL(d); };
+const sgLabel=ymd=>{ const p=ymd.split('-'); return p[1]+'-'+p[2]+'(일)'; };
+// week: 이번 주(월~일)의 공성전 날짜(일요일) · open: 참석 체크 열림(일 19:30~23:59) · 불참 신청은 그 주 내내 가능
+function siegeState(){
+  const n=nowD(), mins=n.getHours()*60+n.getMinutes(), sun=n.getDay()===0, today=ymdL(n);
+  const sunD=new Date(n.getFullYear(),n.getMonth(),n.getDate()); if(!sun) sunD.setDate(sunD.getDate()+(7-n.getDay()));
+  const week=ymdL(sunD), closeAt=new Date(sunD.getFullYear(),sunD.getMonth(),sunD.getDate(),23,59,59), openAt=new Date(sunD.getFullYear(),sunD.getMonth(),sunD.getDate(),19,30,0);
+  if(sun&&mins>=SIEGE_T.open) return {open:true,week,phase:mins<SIEGE_T.start?'pre':mins<SIEGE_T.end?'live':'after',closeAt,openAt,latest:today};
+  return {open:false,week,phase:'advance',nextAt:openAt,openAt,closeAt,latest:sun?addDays(today,-7):addDays(today,-n.getDay())};
+}
+const sgTime=iso=>{ const d=new Date(iso); return isNaN(d)?'':pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); };   // 한국(기기) 시각으로 표시
+const sgLeft=ms=>{ ms=Math.max(0,ms); const d=Math.floor(ms/864e5), h=Math.floor(ms%864e5/36e5), m=Math.floor(ms%36e5/6e4); return (d?d+'일 ':'')+(d||h?h+'시간 ':'')+m+'분'; };
+const sgRec=(week,mid)=>S.siege.find(x=>x.week===week&&x.memberId===mid);
+// 출석 저장 (관리자가 아니어도 가능: 열려 있는 주차만 / 관리자는 지난 주차도 수정)
+function siegeSet(week,mid,status,reason){
+  const st=siegeState(), isNow=week===st.week&&(st.open||status!=='in');     // 이번 주: 불참 신청·취소는 언제나, 참석은 19:30부터
+  if(!isNow&&!ui.admin){ toast(week!==st.week?'이번 주('+sgLabel(st.week)+') 공성전만 입력할 수 있습니다':'참석 체크는 일요일 19:30부터 열립니다 (불참 신청은 지금 가능)'); return false; }
+  const m=S.members.find(x=>x.id===mid); if(!m) return false;
+  const prev=sgRec(week,mid), id=week.replace(/-/g,'')+'_'+mid, docId='siege__'+safeId(id);
+  if(status==='none'){ if(!prev) return false; S.siege=S.siege.filter(x=>x!==prev); }
+  else if(prev){ const was=prev.status; prev.status=status; prev.reason=status==='out'?String(reason==null?prev.reason:reason).slice(0,200):''; prev.name=m.name; prev.at=nowD().toISOString(); prev.by=deviceLabel().slice(0,30);
+    prev.pre=status==='out'&&(was==='out'?!!prev.pre:!st.open&&week===st.week); }
+  else S.siege.push({id,week,memberId:mid,name:m.name,status,reason:status==='out'?String(reason||'').slice(0,200):'',at:nowD().toISOString(),by:deviceLabel().slice(0,30),pre:status==='out'&&!st.open&&week===st.week});
+  const rec=sgRec(week,mid);
+  // 변경 기록: 이 저장은 직접 기록하므로 자동 비교 대상에서 제외
+  if(LOG.base){ if(rec){ const pl=clean(rec); LOG.base.set(docId,{type:'siege',payload:pl,str:stable(pl)}); } else LOG.base.delete(docId); }
+  const pre=rec&&rec.pre&&!st.open;
+  logPush(['[공성전] '+sgLabel(week)+' '+m.name+' '+(status==='in'?'참석':status==='out'?(pre?'불참 신청':'미참석')+(rec&&rec.reason?' · 사유: '+rec.reason:''):(prev&&prev.status==='out'&&!st.open?'불참 신청 취소':'입력 취소'))+(isNow?'':' (관리자 수정)')]);
+  Repo.save(S);
+  if(Cloud.enabled&&Cloud.m&&Cloud.db){        // 한 사람당 문서 하나를 바로 저장 → 여러 명이 동시에 체크해도 서로 덮어쓰지 않음
+    try{ const mm=Cloud.m, b=mm.writeBatch(Cloud.db), ref=mm.doc(Cloud.db,...CLOUD_ROOT,'docs',docId);
+      if(rec){ const pl=clean(rec); b.set(ref,{type:'siege',payload:pl,ord:ordFor(docId),updatedAt:mm.serverTimestamp(),updatedBy:deviceLabel().slice(0,30)}); Cloud.base.set(docId,stable(pl)); Cloud.seen.add(docId); }
+      else { b.delete(ref); Cloud.base.delete(docId); Cloud.seen.delete(docId); }
+      Promise.resolve(b.commit()).catch(e=>{ const c=((e&&e.code)||'').replace('firestore/','');
+        toast(c==='permission-denied'?'☁ 출석 저장이 거부되었습니다 — Firebase 규칙의 종류 목록에 \'siege\'를 추가했는지 확인하세요':'☁ 출석 저장 실패: '+cloudErr(e)); ctrace('출석 저장 실패: '+c); });
+    }catch(e){}
+  }
+  return true;
+}
+function viewSiege(){
+  const st=siegeState(), act=activeMembers(), q=(ui.sgq||'').trim().toLowerCase();
+  const recs=act.map(m=>sgRec(st.week,m.id)), nIn=recs.filter(r=>r&&r.status==='in').length, nOut=recs.filter(r=>r&&r.status==='out').length;
+  const ph=st.open?{pre:['참석 체크 진행 중 · 공성전 시작 전','coin'],live:['⚔ 공성전 진행 중 (20:00~21:00)','out'],after:['공성전 종료 · 미참석 사유 입력 가능','blue']}[st.phase]:['불참 사전 신청 기간','purple'];
+  let rows=''; act.filter(m=>!q||m.name.toLowerCase().includes(q)).forEach(m=>{ const r=sgRec(st.week,m.id), sts=r?r.status:'';
+    const inBtn=st.open?'<button type="button" class="btn sm sg-btn in'+(sts==='in'?' on':'')+'" data-act="sgIn" data-m="'+esc(m.id)+'">✓ 참석</button>'
+                       :'<button type="button" class="btn sm sg-btn" disabled title="참석 체크는 일요일 19:30부터 열립니다">✓ 참석 (19:30~)</button>';
+    const outBtn='<button type="button" class="btn sm sg-btn out'+(sts==='out'?' on':'')+'" data-act="sgOut" data-m="'+esc(m.id)+'">✗ '+(st.open?'미참석':'불참 신청')+'</button>';
+    const cancel=sts==='out'&&!st.open?' <button type="button" class="btn ghost sm" data-act="sgCancel" data-m="'+esc(m.id)+'" title="불참 신청 취소">취소</button>':'';
+    const stat=sts==='out'?(r.pre?'<span class="chip purple sm2">사전 신청</span> ':'')+'<input class="w100" data-chg="sgReason" data-m="'+esc(m.id)+'" maxlength="200" placeholder="불참 사유를 적어 주세요 (입력 후 Enter)" value="'+esc(r.reason||'')+'" style="margin-top:4px">'
+      :'<span class="small muted">'+(sts==='in'?'참석 확인':(st.open?'아직 체크하지 않음':'참석 예정 (19:30에 체크)'))+'</span>';
+    rows+='<tr><td><span class="clscell">'+classIcon(m.cls)+'<b>'+esc(m.name)+'</b></span></td><td class="nowrap">'+inBtn+' '+outBtn+cancel+'</td><td>'+stat+'</td>'+
+      '<td class="small muted nowrap">'+(r&&r.at?esc(sgTime(r.at)):'')+'</td></tr>'; });
+  const headInfo=st.open?'<span class="small muted">출석 체크 마감까지 '+sgLeft(st.closeAt-nowD())+' (23:59)</span>'
+                        :'<span class="small muted">참석 체크는 <b>'+sgLabel(st.week)+' 19:30</b>에 열립니다 ('+sgLeft(st.openAt-nowD())+' 후)</span>';
+  const hint=st.open?'본인 이름 옆의 <b>참석 / 미참석</b>을 눌러 주세요. 관리자 인증 없이 누구나 입력할 수 있고, 마감(23:59) 전까지 다시 바꿀 수 있습니다. 미참석은 사유를 적어 주세요.'
+                    :'이번 주 공성전에 <b>참석하지 못하는 분은 미리 불참 신청</b>과 사유를 남겨 주세요. 관리자 인증 없이 누구나 할 수 있고, <b>신청 취소</b>도 됩니다. <b>참석 체크는 일요일 19:30부터</b> 열리며, 불참 신청했다가 참석하게 되면 그때 참석으로 바꾸면 됩니다.';
+  const top=card('out','⚔ '+(st.open?'이번 주 공성전 출석 체크':'이번 주 공성전 불참 사전 신청'),'<span class="chip '+ph[1]+'">'+ph[0]+'</span>',
+    '<div class="sg-head"><span class="when">'+sgLabel(st.week)+' 20:00 ~ 21:00</span>'+headInfo+'<span style="flex:1"></span>'+
+      (st.open?'<span class="chip in">참석 '+nIn+'</span><span class="chip out">미참석 '+nOut+'</span><span class="chip">미체크 '+(act.length-nIn-nOut)+'</span>':'<span class="chip out">불참 신청 '+nOut+'명</span>')+'</div>'+
+    '<p class="hint" style="margin-top:0">'+hint+'</p>'+
+    '<div class="inl" style="margin-bottom:10px"><input type="search" data-inp="sgq" placeholder="내 이름 찾기" value="'+esc(ui.sgq||'')+'" style="width:200px"></div>'+
+    '<div class="tablewrap"><table class="tbl fixed sg-tbl" style="min-width:700px"><colgroup><col style="width:150px"><col style="width:330px"><col><col style="width:100px"></colgroup><thead><tr><th>길드원</th><th>'+(st.open?'출석':'신청')+'</th><th>'+(st.open?'상태 · 미참석 사유':'상태 · 불참 사유')+'</th><th>입력 시각</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="empty">해당하는 길드원이 없습니다.</td></tr>')+'</tbody></table></div>'+
+    '<p class="small muted" style="margin:10px 0 0">매주 일요일 20:00~21:00 공성전 · 불참 신청: 월요일 00:00 ~ 일요일 23:59 · 참석 체크: 일요일 19:30 ~ 23:59 (그 주만)</p>');
+  return top+card('purple','공성전 참여 현황','<select data-chg="sgRange"><option value="4"'+(ui.sgRange==='4'?' selected':'')+'>최근 4주</option><option value="8"'+(!ui.sgRange||ui.sgRange==='8'?' selected':'')+'>최근 8주</option><option value="12"'+(ui.sgRange==='12'?' selected':'')+'>최근 12주</option><option value="all"'+(ui.sgRange==='all'?' selected':'')+'>전체</option></select>','<div id="sgSummary"></div>');
+}
+function renderSiegeSummary(){
+  const el=$('#sgSummary'); if(!el) return;
+  const st=siegeState(), latest=st.latest, R=ui.sgRange||'8';
+  let n=R==='all'?0:+R;
+  if(R==='all'){ const ws=S.siege.map(x=>x.week).filter(w=>w<=latest).sort(); n=ws.length?Math.round((new Date(latest)-new Date(ws[0]))/6048e5)+1:1; }
+  const weeks=[]; for(let i=0;i<n;i++) weeks.push(addDays(latest,-7*i));
+  const upcoming=!st.open&&S.siege.some(x=>x.week===st.week)?st.week:null;   // 아직 열리지 않은 이번 주(불참 사전 신청)
+  const held=weeks.filter(w=>S.siege.some(x=>x.week===w));   // 출석 기록이 있는 공성전만 참석률 계산에 포함
+  const inWeeks=new Set(weeks.concat(upcoming?[upcoming]:[])), act=activeMembers();
+  const offWith=S.members.filter(m=>m.status==='left'&&S.siege.some(x=>x.memberId===m.id&&inWeeks.has(x.week)));
+  const people=act.concat(offWith);
+  if(!S.siege.length) { el.innerHTML='<div class="empty">아직 출석 기록이 없습니다. 불참 신청이나 일요일 19:30 참석 체크가 들어오면 여기에 자동으로 모입니다.</div>'; return; }
+  let h='<div class="small muted" style="margin-bottom:8px">✓ 참석 · ✗ 미참석/불참 신청 (칸에 마우스를 올리거나 누르면 사유) · − 미체크'+(upcoming?' · <b>예정</b> 열은 이번 주 불참 사전 신청 (참석률 계산 제외)':'')+(ui.admin?' · <b>관리자: 칸을 눌러 수정</b>':'')+'</div>'+
+    '<div class="tablewrap"><table class="tbl sg-tbl" style="min-width:'+(260+(weeks.length+(upcoming?1:0))*48)+'px"><thead><tr><th style="min-width:130px">길드원</th>'+(upcoming?'<th class="num" style="min-width:52px" title="아직 열리지 않은 이번 주 공성전 (불참 사전 신청)">'+upcoming.slice(5)+'<div class="small muted">예정</div></th>':'')+weeks.map(w=>'<th class="num" style="min-width:44px">'+w.slice(5)+'</th>').join('')+'<th class="num">참석</th><th class="num">미참석</th><th class="num" title="참석 ÷ 기록이 있는 공성전 수">참석률</th></tr></thead><tbody>';
+  const cellOf=(w,m)=>{ const r=sgRec(w,m.id);
+      const cls=r?r.status:'none', sym=r?(r.status==='in'?'✓':'✗'):'−', tip=r?(r.status==='in'?'참석':(r.pre?'불참 사전 신청':'미참석')+(r.reason?' · '+r.reason:' · 사유 없음'))+(r.by?' ('+r.by+')':''):'미체크';
+      return '<td class="num"><span class="sg-cell '+cls+(ui.admin||(r&&r.status==='out')?' click':'')+'" data-act="sgCell" data-w="'+w+'" data-m="'+esc(m.id)+'" title="'+esc(tip)+'">'+sym+'</span></td>'; };
+  people.forEach(m=>{ let a=0,b=0;
+    const upCell=upcoming?cellOf(upcoming,m):'';
+    const cells=weeks.map(w=>{ const r=sgRec(w,m.id); if(r&&r.status==='in') a++; else if(r&&r.status==='out') b++; return cellOf(w,m); }).join('');
+    const rate=held.length?Math.round(a/held.length*100):0;
+    h+='<tr class="'+(m.status==='left'?'off':'')+'"><td><span class="clscell">'+classIcon(m.cls)+esc(m.name)+'</span></td>'+upCell+cells+'<td class="num pos">'+a+'</td><td class="num neg">'+b+'</td><td class="num sg-rate '+(rate>=70?'pos':rate>=40?'coin':'neg')+'">'+rate+'%</td></tr>'; });
+  h+='</tbody><tfoot><tr><td>주차별 참석</td>'+(upcoming?'<td class="num small muted">불참 '+S.siege.filter(x=>x.week===upcoming&&x.status==='out').length+'</td>':'')+weeks.map(w=>{ const c=S.siege.filter(x=>x.week===w&&x.status==='in').length; return '<td class="num">'+c+'</td>'; }).join('')+'<td colspan="3" class="small muted">활동 '+act.length+'명 · 참석률 기준 '+held.length+'회</td></tr></tfoot></table></div>';
+  el.innerHTML=h;
+}
 function viewMember(){
   const act=activeMembers().length;
   return card('blue','길드원 추가','<span class="small muted">활동 '+act+'명 · 비활동 '+(S.members.length-act)+'명</span>',
@@ -1979,9 +2096,9 @@ A.adminAuth=async()=>{
       root.querySelector('#admPw').value=''; return false;
     }});
   if(res!==true) return;
-  setAdmin(true); render(); toast('🔓 관리자 인증 완료');
+  setAdmin(true); logEvent('[관리자] 인증 ('+deviceLabel()+')'); render(); toast('🔓 관리자 인증 완료');
 };
-A.adminLogout=()=>{ setAdmin(false); render(); toast('관리자 모드를 해제했습니다 (읽기 전용)'); };
+A.adminLogout=()=>{ logEvent('[관리자] 인증 해제'); setAdmin(false); render(); toast('관리자 모드를 해제했습니다 (읽기 전용)'); };
 A.hammerSet=async()=>{
   const res=await modal({title:'망치질 관리 링크 설정',ok:'저장',body:'<div class="field"><label>이전에 만든 "R2 온라인 캐쉬 아이템 잔여 시간" 페이지 주소</label><input id="hmUrl" value="'+esc(S.settings.hammerUrl)+'" placeholder="https://..."></div><p class="hint" style="margin-bottom:0">맨 위 "망치질 관리" 탭을 누르면 이 주소가 새 탭에서 열립니다.</p>',
     onOk(root){ const v=root.querySelector('#hmUrl').value.trim(); if(!/^https?:\/\/\S+$/i.test(v)){ toast('http:// 또는 https:// 로 시작하는 주소를 입력하세요'); return false; } return v; }});
@@ -2307,7 +2424,7 @@ A.cloudOpen=async(opt)=>{
       else if(k==='clear'){ localStorage.removeItem('r2_guild_fb_config'); toast('설정을 삭제했습니다. 새로 불러옵니다'); setTimeout(()=>{ try{ location.reload(); }catch(x){} },600); }
       else if(k==='upload'){
         if(!ui.admin) return toast('관리자 인증이 필요합니다');
-        t.disabled=true; Cloud.uploading=true; Cloud.allowMass=true; Cloud.localDirty=true; await cloudPush(); Cloud.uploading=false; if(Cloud.state!=='error'){ Cloud.synced=true; toast('클라우드에 올렸습니다'); } $q('#clOut').textContent='';
+        t.disabled=true; logEvent('[클라우드] 현재 데이터 업로드 (문서 '+collectDocs(S).size+'개)'); Cloud.uploading=true; Cloud.allowMass=true; Cloud.localDirty=true; await cloudPush(); Cloud.uploading=false; if(Cloud.state!=='error'){ Cloud.synced=true; toast('클라우드에 올렸습니다'); } $q('#clOut').textContent='';
       } else if(k==='diag') runDiag();
       else if(k==='syncNow'){ if(!ui.admin) return toast('관리자 인증이 필요합니다'); Cloud.localDirty=true; await cloudPush(); toast(Cloud.state==='error'?'동기화 실패: '+Cloud.err:'☁ 동기화 완료 — 클라우드 문서 '+Cloud.docs.size+'개'); }
       else if(k==='embedDl'){
@@ -2480,7 +2597,7 @@ A.memDel=async el=>{
   S.members=S.members.filter(x=>x!==m); commit(); toast('삭제했습니다');
 };
 
-/* --- 데이터(내보내기/불러오기/예시/초기화) --- */
+/* --- 데이터(내보내기/불러오기/초기화) --- */
 A.exportJson=()=>{
   S.settings.lastExportAt=new Date().toISOString(); doSave();
   const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
@@ -2491,30 +2608,7 @@ A.exportJson=()=>{
 A.importJson=()=>{ $('#fileIn').value=''; $('#fileIn').click(); };
 A.resetAll=async()=>{
   if(!await confirmBox('모든 데이터(길자금 내역, 레이드, 분배, 길드원)를 지우고 처음 상태로 되돌립니다.\n먼저 JSON 내보내기로 백업하세요.'+(Cloud.enabled?'\n\n⚠ 클라우드에 저장된 데이터도 모두 삭제됩니다.':''),{ok:'전부 초기화',danger:true})) return;
-  Cloud.allowMass=true; S=defaultData(); ui.raidId=null; ui.stockSel=null; commit(); toast('초기화했습니다');
-};
-A.sample=async()=>{
-  if(!await confirmBox('엑셀(메테정산표 Ver3)의 2025-05-11 메테 정산과 05-18 분배 입력값으로 예시 데이터를 만듭니다.\n현재 데이터는 모두 덮어씌워집니다.'+(Cloud.enabled?'\n⚠ 클라우드 데이터도 예시 데이터로 바뀝니다.':'')+' 계속할까요?',{ok:'예시 불러오기'})) return;
-  Cloud.allowMass=true; S=defaultData();
-  const byName=n=>S.members.find(m=>m.name===n);
-  const lot=(name,price,buyer)=>({id:uid(),name,qty:1,state:'sold',price,buyers:[{id:byName(buyer).id,name:buyer}],bidders:[],soldDate:'2025-05-11'});
-  const raid={id:uid(),date:'2025-05-11',title:'메테 3마리',status:'completed',lots:[
-    lot('롱쉴드',50000,'와꾸'),lot('거친',500000,'마린'),lot('다마',180000,'리즈'),lot('어쎄메일',100000,'스페'),lot('5어쎄글러브',100000,'허리'),lot('고줌',550000,'수박')],
-    expenses:[{id:uid(),name:'봉줌 1층',price:100000,note:'',date:'2025-05-11'},{id:uid(),name:'이계상인',price:100000,note:'',date:'2025-05-11'}]};
-  const t=raidTotals(raid), lid=uid();
-  raid.ledgerId=lid; raid.snap={date:'2025-05-11',net:t.net,inc:t.inc,exp:t.exp};
-  S.raids.push(raid);
-  S.ledger.push({id:lid,date:'2025-05-11',type:'income',category:'레이드 정산',amount:t.net,memo:'메테 3마리 · 판매 수입 '+fmtM(t.inc)+' − 지출 '+fmtM(t.exp),ref:{kind:'raid',id:raid.id}});
-  S.stock.push(mkStock('향태반',raid),mkStock('잡무기',raid));
-  const counts={'와꾸':1,'빵양':3,'미륵':1,'마린':15,'콜라':1,'리즈':11,'구슬':1,'스페':5,'봉대장':0,'허리':5,'젠키':5,'꿀꿀이':5,'짜잔':5,'애무':5,'수박':5};
-  S.settings.distThreshold=Math.round(t.net/2);   // 엑셀의 분배금 6,400(백만) = 64억
-  S.distributions.push({id:uid(),date:'2025-05-18',status:'draft',poolAmount:S.settings.distThreshold,rows:S.members.map(m=>({memberId:m.id,join:true,count:counts[m.name]||0,bonus:{}}))});
-  const nowIso=new Date().toISOString();
-  S.notices.push(
-    {id:uid(),type:'notice',status:'active',pinned:true,title:'(예시) 길드 레이드 일정 안내',date:today(),author:'길드마스터',createdAt:nowIso,attendees:[],body:'이번 주 일요일 21시 메테오스 레이드 진행합니다.\n\n- 참여 가능 인원은 일요일 18시까지 댓글로 남겨주세요.\n- 모니터링 횟수는 디코에서 확인 후 분배에 반영됩니다.\n\n자세한 내용: https://example.com/notice'},
-    {id:uid(),type:'meeting',status:'active',pinned:false,title:'(예시) 10월 길드 정기 회의',date:today(),author:'길드마스터',createdAt:nowIso,attendees:S.members.slice(0,8).map(m=>m.id),body:MEETING_TPL.replace('■ 안건\n- ','■ 안건\n- 길자금 분배 비율 조정\n- 레이드 일정').replace('■ 결정 사항\n- ','■ 결정 사항\n- 길드자금 20% / 분배 50% / 기본급 30% 유지')},
-    {id:uid(),type:'notice',status:'archived',archivedAt:today(),pinned:false,title:'(예시) 지난 주 정산 완료 안내',date:'2025-05-18',author:'길드마스터',createdAt:nowIso,attendees:[],body:'05-11 메테 3마리 레이드 정산이 완료되었습니다.\n분배금은 개인별로 확인해 주세요.'});
-  ui.tab='notice'; ui.nView='now'; ui.raidId=null; commit(); toast('예시 데이터를 불러왔습니다 (분배 탭에서 계산 결과를 확인하세요)');
+  logEvent('[데이터] 전체 초기화'); Cloud.allowMass=true; S=defaultData(); ui.raidId=null; ui.stockSel=null; commit(); logResetBase(); toast('초기화했습니다');
 };
 $('#fileIn').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return;
@@ -2524,7 +2618,7 @@ $('#fileIn').addEventListener('change',e=>{
     let data; try{ data=JSON.parse(rd.result); }catch(err){ return toast('JSON 형식이 올바르지 않습니다'); }
     if(!data||typeof data!=='object'||!('ledger' in data||'members' in data||'raids' in data)) return toast('이 프로그램에서 내보낸 JSON 파일이 아닙니다');
     if(!await confirmBox('"'+f.name+'" 파일로 현재 데이터를 덮어씁니다.'+(Cloud.enabled?'\n⚠ 클라우드 데이터도 이 파일 내용으로 바뀝니다.':'')+' 계속할까요?'+((data.schemaVersion||1)<SCHEMA?'\n(이전 버전 파일은 현재 버전에 맞게 자동 변환합니다)':''),{ok:'불러오기'})) return;
-    Cloud.allowMass=true; S=normalize(data); ui.raidId=null; ui.stockSel=null; commit(); toast('불러왔습니다');
+    logEvent('[데이터] JSON 불러오기 · '+f.name); Cloud.allowMass=true; S=normalize(data); ui.raidId=null; ui.stockSel=null; commit(); logResetBase(); toast('불러왔습니다');
   };
   rd.readAsText(f,'utf-8');
 });
@@ -2568,6 +2662,31 @@ C.ms=el=>{ ui.ms=el.value; renderMemberTable(); };
 C.mcls=el=>{ ui.mc=el.value; renderMemberTable(); };
 I.mq=el=>{ ui.mq=el.value; renderMemberTable(); };
 /* --- 판매 아이템 등록 --- */
+/* --- 공성전 출석 --- */
+A.sgIn=el=>{ const st=siegeState(); if(siegeSet(st.week,el.dataset.m,'in')) { render(); toast('✓ 참석으로 체크했습니다'); } };
+A.sgOut=el=>{ const st=siegeState(), r=sgRec(st.week,el.dataset.m); if(siegeSet(st.week,el.dataset.m,'out',r?r.reason:'')){ render(); const inp=document.querySelector('[data-chg=sgReason][data-m="'+el.dataset.m+'"]'); if(inp) inp.focus(); toast((st.open?'미참석으로 체크했습니다':'불참 신청했습니다')+' · 사유를 적어 주세요'); } };
+A.sgCancel=async el=>{ const st=siegeState(), m=S.members.find(x=>x.id===el.dataset.m); if(!m) return;
+  if(!await confirmBox('"'+m.name+'" 님의 '+sgLabel(st.week)+' 불참 신청을 취소할까요?',{ok:'신청 취소'})) return;
+  if(siegeSet(st.week,el.dataset.m,'none')){ render(); toast('불참 신청을 취소했습니다'); } };
+C.sgReason=el=>{ const st=siegeState(); siegeSet(st.week,el.dataset.m,'out',el.value.trim()); toast('사유를 저장했습니다'); };
+C.sgRange=el=>{ ui.sgRange=el.value; renderSiegeSummary(); };
+I.sgq=el=>{ ui.sgq=el.value; const pos=el.selectionStart; render(); const e2=document.querySelector('[data-inp=sgq]'); if(e2){ e2.focus(); try{ e2.setSelectionRange(pos,pos); }catch(x){} } };
+A.sgCell=async el=>{
+  const w=el.dataset.w, mid=el.dataset.m, r=sgRec(w,mid), m=S.members.find(x=>x.id===mid); if(!m) return;
+  if(!ui.admin){ if(r&&r.status==='out') toast(m.name+' · '+sgLabel(w)+' '+(r.pre?'불참 신청':'미참석')+' 사유: '+(r.reason||'(없음)')); return; }
+  const res=await modal({title:'공성전 출석 수정 (관리자)',ok:'저장',body:'<p class="hint" style="margin-top:0"><b>'+esc(m.name)+'</b> · '+sgLabel(w)+' 공성전</p>'+
+    '<div class="seg" style="margin-bottom:10px">'+[['in','✓ 참석'],['out','✗ 미참석'],['none','− 미체크']].map(o=>'<button type="button" data-sgv="'+o[0]+'" class="'+((r?r.status:'none')===o[0]?'on':'')+'">'+o[1]+'</button>').join('')+'</div>'+
+    '<div class="field"><label>미참석 사유</label><input id="sgR" maxlength="200" value="'+esc(r&&r.reason||'')+'"></div>',
+    onOpen(root){ root.querySelector('.mbody').addEventListener('click',e=>{ const b=e.target.closest('[data-sgv]'); if(!b) return; root.querySelectorAll('[data-sgv]').forEach(x=>x.classList.toggle('on',x===b)); }); },
+    onOk(root){ return {v:root.querySelector('[data-sgv].on').dataset.sgv,reason:root.querySelector('#sgR').value.trim()}; }});
+  if(!res||res===true) return; siegeSet(w,mid,res.v,res.reason); render(); toast('수정했습니다');
+};
+// 열림/닫힘 표시를 시간에 맞춰 갱신
+setInterval(()=>{ const st=siegeState(), b=$('#siegeCnt'); if(b) b.textContent=st.open?'출석 중':''; if(ui.tab==='siege'&&!cloudBusy()&&(ui.sgOpen!==st.open||ui.sgPhase!==st.phase)){ ui.sgOpen=st.open; ui.sgPhase=st.phase; render(); } },20000);
+A.logReload=()=>logLoad(true);
+A.logMore=()=>logLoad(false);
+C.logKind=el=>{ ui.logKind=el.value; renderLogTable(); };
+I.logq=el=>{ ui.logq=el.value; renderLogTable(); };
 I.iq=el=>{ ui.iq=el.value; renderItemTable(); };
 A.itemCat=el=>{ ui.icat=el.dataset.v; render(); };
 const findItem=n=>(S.settings.itemCatalog||[]).find(x=>x.name.toLowerCase()===normName(n).toLowerCase());
@@ -2678,7 +2797,7 @@ document.addEventListener('toggle',e=>{
    - 화면(S)은 그대로 쓰고, 바뀐 문서만 골라 올리고(diff), 다른 사람의 변경은 실시간으로 받아옵니다.
    ===================================================================== */
 const CLOUD_ROOT=['r2guild','main'], FB_VER='10.12.2';
-const TYPE_OF={members:'member',ledger:'ledger',raids:'raid',distributions:'distribution',stock:'stock',stockSales:'stockSale',cash:'cash',draws:'draw',notices:'notice'};
+const TYPE_OF={members:'member',ledger:'ledger',raids:'raid',distributions:'distribution',stock:'stock',stockSales:'stockSale',cash:'cash',draws:'draw',notices:'notice',siege:'siege'};
 const stable=v=>{ if(Array.isArray(v)) return '['+v.map(stable).join(',')+']'; if(v&&typeof v==='object') return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}'; return JSON.stringify(v===undefined?null:v); };
 const clean=o=>JSON.parse(JSON.stringify(o));
 const safeId=id=>String(id==null?'':id).replace(/[^A-Za-z0-9_-]/g,'_').slice(0,64)||'x';
@@ -2709,6 +2828,7 @@ function lintRules(src){
   const hasDocs=guild.some(p=>goodDocs.test(p)), hasLogs=guild.some(p=>goodLogs.test(p));
   if(!hasDocs) add('error','올바른 위치의 "match /r2guild/main/docs/{id}" 규칙이 없습니다.');
   if(!hasLogs) add('error','올바른 위치의 "match /r2guild/main/logs/{lid}" 규칙이 없습니다.');
+  if(hasDocs&&!/'siege'/.test(t)) add('error','허용 종류 목록에 \'siege\'(공성전 출석)가 없습니다. 출석 저장이 거부되니 d.type in [...] 목록에 \'siege\'를 추가하세요.');
   const defs={}; (t.match(/function\s+\w+\s*\(/g)||[]).forEach(x=>{ const n=x.replace(/function\s+|\s*\($/g,''); defs[n]=(defs[n]||0)+1; });
   Object.keys(defs).forEach(n=>{ if(defs[n]>1) add('error','함수 "'+n+'" 가 '+defs[n]+'번 정의되어 있습니다(중복).'); });
   ['docOk','logOk','typeOk'].forEach(n=>{ if(new RegExp('\\b'+n+'\\s*\\(').test(t)&&!defs[n]) add('error','함수 "'+n+'" 를 사용하지만 정의가 없습니다.'); });
@@ -2778,7 +2898,7 @@ function cloudCfg(){
 }
 const Cloud={cfg:null,enabled:false,state:'local',err:'',m:null,db:null,
   docs:new Map(),base:new Map(),ord:new Map(),nextOrd:0,first:false,serverSeen:false,hadDocs:false,empty:false,
-  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null,synced:false,uploading:false,allowMass:false};
+  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null,synced:false,uploading:false,allowMass:false,seen:new Set()};
 function ctrace(msg){ const d=new Date(); Cloud.trace.push(pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+' '+msg); if(Cloud.trace.length>40) Cloud.trace.shift(); }
 const waitMs=ms=>new Promise(r=>setTimeout(r,ms));
 function cloudErr(e){ const c=(e&&(e.code||'')).replace('firestore/',''); return c==='permission-denied'?'권한 없음 (관리자만 저장할 수 있습니다)':c==='unavailable'?'네트워크 연결 없음':(e&&e.message)||String(e); }
@@ -2828,7 +2948,8 @@ function cloudFlush(){      // 받아둔 변경을 화면에 반영 (입력/모�
   if(first){ if(document.querySelector('#drawRoot > *')) return; }          // 첫 동기화: 이 기기의 예전 데이터보다 클라우드가 항상 우선
   else if(Cloud.localDirty||Cloud.pushing||cloudBusy()) return;
   Cloud.needRebuild=false; if(first) Cloud.localDirty=false;
-  S=normalize(cloudBuildState()); Repo.save(S);
+  try{ logFlush(); }catch(e){}
+  S=normalize(cloudBuildState()); Repo.save(S); logResetBase(); Cloud.seen=new Set(collectDocs(S).keys());      // 다른 기기에서 온 변경은 기록하지 않음 (그 기기가 기록함)
   if(first){ Cloud.synced=true; ctrace('클라우드 데이터를 화면에 반영 (문서 '+Cloud.docs.size+'개) — 이제 저장 가능'); }
   render();
 }
@@ -2869,7 +2990,7 @@ async function cloudPush(){
       Cloud.pushAgain=false;
       const cur=collectDocs(S), ops=[];
       cur.forEach((rec,id)=>{ const str=stable(rec.payload); if(Cloud.base.get(id)!==str) ops.push({k:'set',id,rec,str,isNew:!Cloud.base.has(id)}); });
-      Cloud.base.forEach((_,id)=>{ if(!cur.has(id)) ops.push({k:'del',id}); });
+      Cloud.base.forEach((_,id)=>{ if(!cur.has(id)&&Cloud.seen.has(id)) ops.push({k:'del',id}); });   // 다른 기기가 방금 추가해 아직 화면에 없는 문서는 지우지 않음
       if(!ops.length) break;
       const dels=ops.filter(o=>o.k==='del').length;
       if(dels>=5&&dels>Cloud.base.size*0.3&&!Cloud.allowMass){      // 안전장치: 한 번에 많이 지우는 저장은 막음 (초기화·예시·JSON 불러오기만 허용)
@@ -2882,11 +3003,8 @@ async function cloudPush(){
           const ref=m.doc(db,...CLOUD_ROOT,'docs',op.id);
           if(op.k==='set') b.set(ref,{type:op.rec.type,payload:op.rec.payload,ord:ordFor(op.id),updatedAt:m.serverTimestamp(),updatedBy:by}); else b.delete(ref);
         });
-        const add=ch.filter(o=>o.k==='set'&&o.isNew).length, mod=ch.filter(o=>o.k==='set'&&!o.isNew).length, del=ch.filter(o=>o.k==='del').length;
-        const kinds=Array.from(new Set(ch.map(o=>o.id.split('__')[0]))).join('·');
-        b.set(m.doc(m.collection(db,...CLOUD_ROOT,'logs')),{at:m.serverTimestamp(),by,text:('추가 '+add+' · 수정 '+mod+' · 삭제 '+del+' ('+kinds+')').slice(0,100)});
         await b.commit();
-        ch.forEach(op=>{ if(op.k==='set') Cloud.base.set(op.id,op.str); else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); } });
+        ch.forEach(op=>{ if(op.k==='set'){ Cloud.base.set(op.id,op.str); Cloud.seen.add(op.id); } else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); Cloud.seen.delete(op.id); } });
       }
     }while(Cloud.pushAgain);
     Cloud.state='online'; Cloud.err=''; Cloud.lastSync=new Date(); Cloud.allowMass=false;
@@ -2927,17 +3045,217 @@ async function cloudLogs(){
 const fmtTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d)?'':d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }catch(e){ return ''; } };
 
 /* =====================================================================
+   10-3. 변경 기록(로그) — 관리자 모드에서의 모든 변경을 한 줄씩 남김
+   - 저장할 때마다 이전 상태와 비교해 "무엇을 어떻게" 바꿨는지 문장으로 만듦 (같은 항목 연속 수정은 3초 모아서 1줄)
+   - 클라우드: r2guild/main/logs (추가만 가능, 수정·삭제 불가) / 로컬: 이 브라우저에 최근 2,000건
+   ===================================================================== */
+const LOG={base:null,pend:new Map(),timer:0,LKEY:'r2_guild_logs'};
+function deviceLabel(){
+  const ua=(typeof navigator!=='undefined'&&navigator.userAgent)||'', mob=/Mobi|Android|iPhone|iPad/i.test(ua);
+  const br=/KAKAOTALK/i.test(ua)?'카카오톡':/SamsungBrowser/.test(ua)?'삼성인터넷':/Edg\//.test(ua)?'Edge':/Chrome\//.test(ua)?'Chrome':/Firefox\//.test(ua)?'Firefox':/Safari\//.test(ua)?'Safari':'브라우저';
+  return (mob?'휴대폰':'PC')+'·'+br;
+}
+function logSnapshot(){ const m=new Map(); collectDocs(S).forEach((v,k)=>m.set(k,{type:v.type,payload:v.payload,str:stable(v.payload)})); return m; }
+function logResetBase(){ LOG.pend.clear(); clearTimeout(LOG.timer); LOG.base=S?logSnapshot():null; }
+// 저장할 때마다: 바뀐 문서를 모아 둠 (관리자 모드일 때만)
+function logTrack(){
+  if(!S) return; if(!LOG.base){ logResetBase(); return; }
+  const cur=logSnapshot();
+  if(ui.admin){
+    cur.forEach((v,k)=>{ const b=LOG.base.get(k); if(!b||b.str!==v.str){ const p=LOG.pend.get(k); if(p) p.after=v; else LOG.pend.set(k,{type:v.type,before:b||null,after:v}); } });
+    LOG.base.forEach((b,k)=>{ if(!cur.has(k)){ const p=LOG.pend.get(k); if(p) p.after=null; else LOG.pend.set(k,{type:b.type,before:b,after:null}); } });
+    if(LOG.pend.size){ clearTimeout(LOG.timer); LOG.timer=setTimeout(logFlush,3000); }
+  }
+  LOG.base=cur;
+}
+const lq=v=>'"'+String(v==null?'':v).slice(0,24)+'"';
+const lmd=d=>String(d||'').slice(5);
+const memName=id=>{ const m=S.members.find(x=>x.id===id); return m?m.name:'(삭제된 길드원)'; };
+const lbuy=l=>(l.buyers||[]).map(b=>b.name).join(',');
+const arrow=(a,b)=>a+'→'+b;
+// 한 문서의 변경 → 기록 문장들
+function logDescribe(p){
+  let b=p.before&&p.before.payload; const a=p.after&&p.after.payload, out=[], L=(k,t)=>out.push('['+k+'] '+t);
+  const diff=(fields)=>fields.filter(f=>stable(b[f[0]])!==stable(a[f[0]])).map(f=>f[1]+' '+arrow(f[2]?f[2](b[f[0]]):(b[f[0]]==null||b[f[0]]===''?'없음':b[f[0]]),f[2]?f[2](a[f[0]]):(a[f[0]]==null||a[f[0]]===''?'없음':a[f[0]])));
+  switch(p.type){
+    case 'ledger': { const x=a||b; if(x.ref) break;   // 레이드·분배·재고 판매가 자동으로 만든 내역은 해당 작업 기록으로 대신
+      const t=e=>lmd(e.date)+' '+(e.type==='income'?'수입':'지출')+' '+e.category+' '+(e.type==='income'?'+':'-')+fmtM(e.amount)+(e.memo?' · '+e.memo:'');
+      if(!b) L('입출금','추가 · '+t(a)); else if(!a) L('입출금','삭제 · '+t(b));
+      else { const c=diff([['date','날짜'],['type','구분',v=>v==='income'?'수입':'지출'],['category','항목'],['amount','금액',fmtM],['memo','메모']]); if(c.length) L('입출금','수정 · '+b.category+' '+fmtM(b.amount)+' · '+c.join(', ')); } break; }
+    case 'cash': { const t=e=>lmd(e.date)+' '+(e.type==='in'?'입금 +':'출금 -')+fmtWon(e.amount)+(e.memo?' · '+e.memo:'');
+      if(!b) L('현금','추가 · '+t(a)); else if(!a) L('현금','삭제 · '+t(b));
+      else { const c=diff([['date','날짜'],['type','구분',v=>v==='in'?'입금':'출금'],['amount','금액',fmtWon],['memo','메모']]); if(c.length) L('현금','수정 · '+c.join(', ')); } break; }
+    case 'member': {
+      if(!b) L('길드원','추가 · '+a.name+(a.cls?' ('+a.cls+')':'')); else if(!a) L('길드원','삭제 · '+b.name);
+      else { const c=diff([['name','닉네임'],['cls','클래스',v=>v||'미지정'],['status','상태',v=>v==='left'?'비활동':'활동'],['memo','메모']]); if(c.length) L('길드원',b.name+' · '+c.join(', ')); } break; }
+    case 'raid': {
+      if(!a){ L('레이드','삭제 · '+lq(b.title)+' ('+b.date+')'); break; }
+      if(!b){ L('레이드','추가 · '+lq(a.title)+' ('+a.date+')'); b={title:a.title,date:a.date,status:'draft',lots:[],expenses:[]}; }   // 만든 직후의 등록·판매도 이어서 기록
+      const t=lq(a.title), c=diff([['title','이름'],['date','날짜']]); if(c.length) L('레이드',lq(b.title)+' 수정 · '+c.join(', '));
+      if(b.status!==a.status) L('레이드',a.status==='completed'?t+' 정산 완료 · 정산금 '+fmtM(raidTotals(a).net):t+' 완료 취소');
+      const bl=new Map((b.lots||[]).map(l=>[l.id,l])), al=new Map((a.lots||[]).map(l=>[l.id,l]));
+      const added=(a.lots||[]).filter(l=>!bl.has(l.id)), removed=(b.lots||[]).filter(l=>!al.has(l.id));
+      const nq=l=>l.name+(l.qty>1?'×'+l.qty:'');
+      if(added.length) L('레이드',t+' 아이템 등록 · '+added.map(l=>l.state==='sold'?nq(l)+' '+fmtM(lotTotal(l))+'→'+lbuy(l):nq(l)).join(', '));
+      if(removed.length) L('레이드',t+' 아이템 제거 · '+removed.map(nq).join(', '));
+      (a.lots||[]).forEach(l=>{ const o=bl.get(l.id); if(!o) return;
+        if(o.state!=='sold'&&l.state==='sold') L('레이드',t+' 판매 · '+nq(l)+' '+fmtM(lotTotal(l))+' → '+lbuy(l));
+        else if(o.state==='sold'&&l.state!=='sold') L('레이드',t+' 판매 취소 · '+nq(o));
+        else if(l.state==='sold'&&(o.price!==l.price||lbuy(o)!==lbuy(l))) L('레이드',t+' 판매 수정 · '+l.name+' '+fmtM(lotTotal(o))+'→'+fmtM(lotTotal(l))+(lbuy(o)!==lbuy(l)?' · '+lbuy(o)+'→'+lbuy(l):''));
+        else if(o.state!==l.state) L('레이드',t+' '+l.name+' 상태 '+arrow(o.state,l.state));
+        if(o.name!==l.name) L('레이드',t+' 아이템 이름 '+arrow(o.name,l.name));
+        if(o.qty!==l.qty&&o.state===l.state) L('레이드',t+' '+l.name+' 수량 '+arrow(o.qty,l.qty)); });
+      const be=new Map((b.expenses||[]).map(e=>[e.id,e])), ae=new Map((a.expenses||[]).map(e=>[e.id,e]));
+      (a.expenses||[]).filter(e=>!be.has(e.id)).forEach(e=>L('레이드',t+' 지출 추가 · '+e.name+' '+fmtM(e.price)));
+      (b.expenses||[]).filter(e=>!ae.has(e.id)).forEach(e=>L('레이드',t+' 지출 삭제 · '+e.name+' '+fmtM(e.price)));
+      break; }
+    case 'distribution': {
+      if(!b){ if(a.status==='completed'){ L('분배','완료 · '+lq(a.title)); break; }
+        b={status:'draft',title:'',poolAmount:a.poolAmount,rows:(a.rows||[]).map(r=>({memberId:r.memberId,join:true,count:0,bonus:{}}))}; }   // 초안 자동 생성 자체는 기록하지 않고, 입력한 내용만 기록
+      if(!a){ L('분배','삭제 · '+lq(b.title||'진행 중 분배')); break; }
+      const t=lq(a.title||'진행 중 분배');
+      if(b.status!==a.status){ if(a.status==='completed') L('분배','완료 · '+t+' 총 지급 '+fmtM((a.summary&&a.summary.totalPayout)||(a.results||[]).reduce((s,r)=>s+num(r.total),0))+' ('+(a.results||[]).length+'명)'); else L('분배','완료 취소 · '+t); }
+      if((b.title||'')!==(a.title||'')&&a.status===b.status) L('분배','제목 '+arrow(lq(b.title||''),lq(a.title||'')));
+      if(num(b.poolAmount)!==num(a.poolAmount)&&a.status==='draft') L('분배',t+' 분배 대상 금액 '+arrow(fmtM(b.poolAmount),fmtM(a.poolAmount)));
+      if(a.status==='draft'&&b.status==='draft'){
+        const br=new Map((b.rows||[]).map(r=>[r.memberId,r])), ch=[];
+        (a.rows||[]).forEach(r=>{ const o=br.get(r.memberId); if(!o) return; const n=memName(r.memberId);
+          if(!!o.join!==!!r.join) ch.push(n+(r.join?' 참여':' 참여 해제'));
+          if(num(o.count)!==num(r.count)) ch.push(n+' 횟수 '+arrow(num(o.count),num(r.count)));
+          const ob=Object.values(o.bonus||{}).reduce((s,v)=>s+num(v),0), nb=Object.values(r.bonus||{}).reduce((s,v)=>s+num(v),0);
+          if(ob!==nb) ch.push(n+' 포상 '+arrow(fmtM(ob),fmtM(nb))); });
+        if(ch.length) L('분배',t+' 입력 · '+ch.slice(0,6).join(', ')+(ch.length>6?' 외 '+(ch.length-6)+'건':''));
+      }
+      if(a.status==='completed'&&b.status==='completed'){
+        const br=new Map((b.results||[]).map(r=>[r.memberId,r])), on=[], off=[];
+        (a.results||[]).forEach(r=>{ const o=br.get(r.memberId); if(o&&!!o.paid!==!!r.paid) (r.paid?on:off).push(r.name||memName(r.memberId)); });
+        if(on.length) L('분배',t+' 지급 완료 표시 · '+on.join(', ')); if(off.length) L('분배',t+' 지급 표시 취소 · '+off.join(', '));
+      }
+      break; }
+    case 'stockSale': {
+      if(!b) L('재고판매',a.name+(a.qty>1?'×'+a.qty:'')+' '+fmtM(num(a.price)*(a.qty||1))+' → '+(a.buyers||[]).map(x=>x.name||x).join(','));
+      else if(!a) L('재고판매','되돌리기 · '+b.name+(b.qty>1?'×'+b.qty:'')); break; }
+    case 'draw': { if(!b) L('뽑기',a.item+' 당첨 · '+(a.winners||[]).map(x=>x.name).join(',')+' (입찰 '+(a.bidders||[]).length+'명)'); break; }
+    case 'notice': { const kind=x=>x.type==='meeting'?'회의록':'공지';
+      if(!b){ L('공지',kind(a)+' 작성 · '+lq(a.title)); break; } if(!a){ L('공지',kind(b)+' 삭제 · '+lq(b.title)); break; }
+      if(b.status!==a.status) L('공지',(a.status==='archived'?'History로 보냄 · ':'다시 게시 · ')+lq(a.title));
+      if(!!b.pinned!==!!a.pinned) L('공지',(a.pinned?'고정 · ':'고정 해제 · ')+lq(a.title));
+      const c=[['title','제목'],['date','날짜'],['body','내용'],['attendees','참석자'],['author','작성자'],['type','구분']].filter(f=>stable(b[f[0]])!==stable(a[f[0]])).map(f=>f[1]);
+      if(c.length) L('공지',kind(a)+' 수정 · '+lq(a.title)+' ('+c.join('·')+')'); break; }
+    case 'rule': {
+      const bc=new Map((b&&b.components||[]).map(c=>[c.id,c])), ac=new Map((a&&a.components||[]).map(c=>[c.id,c])), ch=[];
+      (a.components||[]).forEach(c=>{ const o=bc.get(c.id); if(!o){ ch.push('항목 추가 '+c.name); return; }
+        if(o.name!==c.name) ch.push('이름 '+arrow(o.name,c.name));
+        if(num(o.pct)!==num(c.pct)) ch.push(c.name+' '+arrow(num(o.pct),num(c.pct))+'%');
+        if(num(o.amount)!==num(c.amount)) ch.push(c.name+' 금액 '+arrow(fmtM(o.amount),fmtM(c.amount)));
+        if(o.type!==c.type) ch.push(c.name+' 방식 변경'); if(!!o.enabled!==!!c.enabled) ch.push(c.name+(c.enabled?' 사용':' 사용 안 함'));
+        if(stable(o.tiers)!==stable(c.tiers)) ch.push(c.name+' 순위 상금 변경'); });
+      (b.components||[]).forEach(c=>{ if(!ac.has(c.id)) ch.push('항목 삭제 '+c.name); });
+      if(stable((b.components||[]).map(c=>c.id))!==stable((a.components||[]).map(c=>c.id))&&!ch.length) ch.push('항목 순서 변경');
+      if(num(b.roundUnit)!==num(a.roundUnit)) ch.push('반올림 단위 '+arrow(b.roundUnit,a.roundUnit));
+      if(ch.length) L('분배 RULE',ch.slice(0,6).join(', ')+(ch.length>6?' 외 '+(ch.length-6)+'건':'')); break; }
+    case 'settings': {
+      const bs=(b&&b.settings)||{}, as=(a&&a.settings)||{};
+      if(num(bs.distThreshold)!==num(as.distThreshold)) L('설정','분배 기준 금액 '+arrow(fmtM(bs.distThreshold),fmtM(as.distThreshold)));
+      if((bs.hammerUrl||'')!==(as.hammerUrl||'')) L('설정','망치질 관리 링크 변경');
+      if(stable(bs.itemPresets&&bs.itemPresets.expense)!==stable(as.itemPresets&&as.itemPresets.expense)) L('설정','지출 품목 변경');
+      // 분류
+      const bk=new Map((bs.itemCats||[]).map(c=>[c.id,c])), ak=new Map((as.itemCats||[]).map(c=>[c.id,c]));
+      (as.itemCats||[]).forEach(c=>{ const o=bk.get(c.id); if(!o) L('분류','추가 · '+c.name); else { if(o.name!==c.name) L('분류','이름 '+arrow(o.name,c.name)); if(o.color!==c.color) L('분류','색상 변경 · '+c.name); } });
+      (bs.itemCats||[]).forEach(c=>{ if(!ak.has(c.id)) L('분류','삭제 · '+c.name); });
+      if(bk.size===ak.size&&[...ak.keys()].every(k=>bk.has(k))&&stable([...bk.keys()])!==stable([...ak.keys()])) L('분류','순서 변경 · '+(as.itemCats||[]).map(c=>c.name).join('>'));
+      // 판매 아이템 (사용 횟수·최근 판매 등 자동 값 변화는 제외)
+      const cn=id=>{ const c=(as.itemCats||bs.itemCats||[]).find(x=>x.id===id)||(bs.itemCats||[]).find(x=>x.id===id); return c?c.name:id; };
+      const bi=new Map((bs.itemCatalog||[]).map(x=>[x.id,x])), ai=new Map((as.itemCatalog||[]).map(x=>[x.id,x])), ch=[];
+      (as.itemCatalog||[]).forEach(x=>{ const o=bi.get(x.id);
+        if(!o){ ch.push((x.auto?'자동 추가 · ':'추가 · ')+x.name+' ('+cn(x.cat)+(x.price?', '+fmtM(x.price):'')+')'); return; }
+        if(o.name!==x.name) ch.push('이름 '+arrow(o.name,x.name));
+        if(o.cat!==x.cat) ch.push(x.name+' 분류 '+arrow(cn(o.cat),cn(x.cat)));
+        if(num(o.price)!==num(x.price)) ch.push(x.name+' 기본 가격 '+arrow(fmtM(o.price),fmtM(x.price))+(x.soldAt&&x.soldAt!==o.soldAt?' (판매가 반영)':'')); });
+      (bs.itemCatalog||[]).forEach(x=>{ if(!ai.has(x.id)) ch.push('삭제 · '+x.name); });
+      if(ch.length>8){ ch.slice(0,7).forEach(t=>L('판매아이템',t)); L('판매아이템','외 '+(ch.length-7)+'건 변경'); } else ch.forEach(t=>L('판매아이템',t));
+      break; }
+  }
+  return out;
+}
+// 모아 둔 변경을 기록으로 저장
+function logFlush(){
+  clearTimeout(LOG.timer); if(!LOG.pend.size) return;
+  const items=[...LOG.pend.values()].filter(p=>(p.before||p.after)&&!(p.before&&p.after&&p.before.str===p.after.str)); LOG.pend.clear();   // 추가 후 바로 삭제·원래대로 되돌린 변경은 제외
+  const lines=[], sAdd=new Map(), sDel=new Map();
+  items.forEach(p=>{
+    if(p.type==='stock'&&(!p.before||!p.after)){ const x=(p.after||p.before).payload, m=p.after?sAdd:sDel; m.set(x.name,(m.get(x.name)||0)+1); return; }
+    try{ lines.push(...logDescribe(p)); }catch(e){ lines.push('['+p.type+'] 변경 (요약 실패)'); }
+  });
+  sAdd.forEach((n,k)=>lines.push('[재고] 추가 · '+k+(n>1?' ×'+n:'')));
+  sDel.forEach((n,k)=>lines.push('[재고] 재고에서 빠짐 · '+k+(n>1?' ×'+n:'')));
+  logPush(lines);
+}
+function logEvent(text){ logFlush(); logPush([text]); }
+function logPush(lines){
+  lines=lines.filter(Boolean).map(t=>t.length>100?t.slice(0,99)+'…':t); if(!lines.length) return;
+  const by=deviceLabel().slice(0,30), now=new Date();
+  try{ const arr=JSON.parse(localStorage.getItem(LOG.LKEY)||'[]'); lines.forEach(t=>arr.push({at:now.toISOString(),by,text:t})); localStorage.setItem(LOG.LKEY,JSON.stringify(arr.slice(-2000))); }catch(e){}
+  if(Cloud.enabled&&Cloud.m&&Cloud.db){
+    try{ const m=Cloud.m; for(let i=0;i<lines.length;i+=400){ const bt=m.writeBatch(Cloud.db); lines.slice(i,i+400).forEach(t=>bt.set(m.doc(m.collection(Cloud.db,...CLOUD_ROOT,'logs')),{at:m.serverTimestamp(),by,text:t}));
+      Promise.resolve(bt.commit()).catch(e=>ctrace('변경 기록 저장 실패: '+((e&&e.code)||e))); } }catch(e){}
+  }
+  LOGV.fresh=lines.map(t=>({at:now,by,text:t})).reverse().concat(LOGV.fresh||[]);
+  if(ui.tab==='log') renderLogTable();
+}
+/* ---- 로그 탭 (관리자 전용) ---- */
+const LOG_KINDS=['공성전','입출금','현금','레이드','분배','분배 RULE','재고','재고판매','뽑기','공지','길드원','판매아이템','분류','설정','관리자','데이터','클라우드'];
+const LOGV={rows:[],fresh:[],cursor:null,done:false,loading:false,loaded:false,src:''};
+const logParse=t=>{ const m=String(t||'').match(/^\[([^\]]+)\]\s*(.*)$/); return m?{kind:m[1],msg:m[2]}:{kind:'기타',msg:String(t||'')}; };
+const logTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d)?'':d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }catch(e){ return ''; } };
+async function logLoad(reset){
+  if(LOGV.loading) return; LOGV.loading=true; if(reset){ LOGV.rows=[]; LOGV.fresh=[]; LOGV.cursor=null; LOGV.done=false; }
+  try{
+    if(Cloud.enabled&&Cloud.m&&Cloud.db){
+      const m=Cloud.m, cs=[m.orderBy('at','desc')]; if(LOGV.cursor&&m.startAfter) cs.push(m.startAfter(LOGV.cursor)); cs.push(m.limit(100));
+      const snap=await m.getDocs(m.query(m.collection(Cloud.db,...CLOUD_ROOT,'logs'),...cs));
+      const docs=snap.docs||[]; docs.forEach(d=>{ const x=d.data()||{}; LOGV.rows.push({at:x.at,by:x.by||'',text:x.text||''}); });
+      LOGV.cursor=docs.length?docs[docs.length-1]:LOGV.cursor; LOGV.done=docs.length<100; LOGV.src='클라우드';
+    } else {
+      const arr=JSON.parse(localStorage.getItem(LOG.LKEY)||'[]').reverse(); LOGV.rows=arr; LOGV.done=true; LOGV.src='이 브라우저';
+    }
+    LOGV.loaded=true;
+  }catch(e){ LOGV.err=diagHint(e,'read'); }
+  LOGV.loading=false; if(ui.tab==='log') renderLogTable();
+}
+function viewLog(){
+  if(!LOGV.loaded&&!LOGV.loading) setTimeout(()=>logLoad(true),0);
+  return card('purple','🔒 변경 기록 <span class="small muted" style="margin-left:6px">관리자 전용</span>','<button class="btn sm" data-act="logReload">⟳ 새로고침</button>',
+    '<p class="hint" style="margin-top:0">관리자 모드에서 한 <b>모든 입력·수정·삭제</b>가 한 줄씩 기록됩니다. 기록은 <b>지울 수 없고</b> 계속 남습니다. 같은 항목을 연달아 고치면 3초 동안 모아서 1줄로 남깁니다.</p>'+
+    '<div class="inl" style="gap:8px;flex-wrap:wrap;margin-bottom:12px"><select data-chg="logKind"><option value="">전체 종류</option>'+LOG_KINDS.map(k=>'<option'+(ui.logKind===k?' selected':'')+'>'+k+'</option>').join('')+'</select>'+
+    '<input type="search" data-inp="logq" placeholder="내용·기기 검색 (예: 와꾸, 롱쉴드)" value="'+esc(ui.logq||'')+'" style="width:260px"><span class="small muted" id="logInfo"></span></div><div id="logTable"><div class="small muted">불러오는 중…</div></div>');
+}
+function renderLogTable(){
+  const el=$('#logTable'); if(!el) return;
+  if(LOGV.err){ el.innerHTML='<div class="notice bad">기록을 불러오지 못했습니다: '+esc(LOGV.err)+'</div>'; LOGV.err=null; return; }
+  const seen=new Set(LOGV.rows.map(r=>r.text+'|'+r.by)), q=(ui.logq||'').trim().toLowerCase();
+  const all=(LOGV.fresh||[]).filter(r=>!seen.has(r.text+'|'+r.by)).concat(LOGV.rows);
+  const list=all.filter(r=>{ const p=logParse(r.text); return (!ui.logKind||p.kind===ui.logKind)&&(!q||(r.text+' '+r.by).toLowerCase().includes(q)); });
+  const info=$('#logInfo'); if(info) info.textContent=(LOGV.src?LOGV.src+' 기록 · ':'')+'불러온 '+all.length+'건 중 '+list.length+'건 표시';
+  if(!list.length){ el.innerHTML='<div class="empty">'+(LOGV.loaded?'표시할 기록이 없습니다.':'불러오는 중…')+'</div>'+(LOGV.done?'':'<div style="text-align:center;margin-top:10px"><button class="btn" data-act="logMore">더 오래된 기록 불러오기</button></div>'); return; }
+  el.innerHTML='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:160px"><col style="width:120px"><col style="width:110px"><col></colgroup><thead><tr><th>일시</th><th>기기</th><th>종류</th><th>내용</th></tr></thead><tbody>'+
+    list.slice(0,1000).map(r=>{ const p=logParse(r.text); return '<tr><td class="nowrap small">'+esc(logTs(r.at))+'</td><td class="small muted">'+esc(r.by||'')+'</td><td><span class="chip">'+esc(p.kind)+'</span></td><td class="wrap">'+esc(p.msg)+'</td></tr>'; }).join('')+'</tbody></table></div>'+
+    (LOGV.done?'<div class="small muted" style="text-align:center;margin-top:10px">— 기록의 처음입니다 —</div>':'<div style="text-align:center;margin-top:10px"><button class="btn" data-act="logMore">더 오래된 기록 불러오기</button></div>');
+}
+
+/* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   const viaLink=cloudCfgFromHash();
   S = d ? normalize(d) : defaultData();   // 먼저 이 브라우저의 저장본(캐시)으로 바로 표시, 클라우드가 연결되면 클라우드 데이터로 교체
   Repo.save(S);          // 이전 버전 데이터는 변환된 상태로 다시 저장
+  logResetBase();        // 변경 기록의 기준점
   render();
   cloudStart();          // Firebase 설정이 있으면 연결 (없으면 로컬 모드)
-  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible') return; if(ui.admin&&Date.now()>ui.adminUntil){ setAdmin(false); render(); toast('🔒 30분간 사용이 없어 관리자 인증이 해제되었습니다'); } updateCloudUI(); cloudFlush(); });
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState!=='visible'){ try{ logFlush(); }catch(e){} return; } if(ui.admin&&Date.now()>ui.adminUntil){ setAdmin(false); render(); toast('🔒 30분간 사용이 없어 관리자 인증이 해제되었습니다'); } updateCloudUI(); cloudFlush(); });
   if(viaLink) setTimeout(()=>toast('☁ 연결 링크로 클라우드 설정을 저장했습니다. 이제 이 브라우저에서는 자동으로 연결됩니다'),300);
 });
 })();
