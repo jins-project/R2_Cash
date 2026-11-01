@@ -469,7 +469,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.01-b';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.01-c';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -731,6 +731,8 @@ function normalize(d){
     o.rule.components=o.rule.components.filter(c=>c.type==='bonus').concat(makeComps(DEFAULT_RATIOS()));
   }
   o.rule.ratioInit=true;
+  { const pcComp=o.rule.components.find(c=>c.type==='perCount'&&c.enabled)||o.rule.components.find(c=>c.type==='perCount');
+    o.rule.components.forEach(c=>{ if(c.type==='bonus'&&c.from===undefined) c.from=pcComp?pcComp.id:'pool'; }); }   // 앞으로 포상은 '분배' 몫에서 차감 (지난 분배 기록은 그대로)
   ['members','ledger','raids','distributions','stock','stockSales','cash','draws','notices','siege'].forEach(k=>{ o[k]=Array.isArray(d[k])?d[k]:(d[k]===undefined&&k==='members'?D.members:[]); });
   o.members.forEach(m=>{ if(!CLASSES.includes(m.cls)) m.cls=''; delete m.joinedAt; });
   o.notices.forEach(n=>{ n.type=n.type==='meeting'?'meeting':'notice'; n.status=n.status==='archived'?'archived':'active'; n.title=n.title||''; n.body=n.body||''; n.date=n.date||today(); n.attendees=Array.isArray(n.attendees)?n.attendees:[]; if(!Array.isArray(n.attendeeNames)||n.attendeeNames.length!==n.attendees.length) n.attendeeNames=n.attendees.map(id=>{ const m=o.members.find(x=>x.id===id); return m?m.name:''; }); n.pinned=!!n.pinned; });
@@ -808,19 +810,26 @@ function calcDist(pool, rule, rows){
   const act = out.filter(o=>o.join), n = act.length;
   const errors=[], warns=[], info={};
   let baseTotal=0, bonusTotal=0;
+  // 포상 차감 위치: 'pool'=분배 대상 전체에서 먼저 / 비율 항목 id=그 항목의 몫에서 차감
+  const ratioComps=comps.filter(c=>!isAmt(c));
+  const fromOf=c=>{ let f=c.from; if(f===undefined){ const pc=ratioComps.find(x=>x.type==='perCount'); f=pc?pc.id:'pool'; }
+    if(f!=='pool'&&!ratioComps.some(x=>x.id===f)){ warns.push('"'+c.name+'"의 차감 위치 항목이 없어(사용 안 함/삭제) 분배 대상 전체에서 먼저 차감합니다.'); f='pool'; } return f; };
+  const bonusBy={}, bonusFrom={};
   comps.forEach(c=>{
     out.forEach(o=>{ o.parts[c.id]=0; });
     if(c.type==='base'){ const a=num(c.amount); act.forEach(o=>{ o.parts[c.id]=floorTo(a,unit); }); baseTotal+=a*n; }
-    else if(c.type==='bonus'){ out.forEach(o=>{ const v=Math.max(0,Math.round(num(o.bonus[c.id]))); o.parts[c.id]=v; bonusTotal+=v; }); }
+    else if(c.type==='bonus'){ let sum=0; out.forEach(o=>{ const v=Math.max(0,Math.round(num(o.bonus[c.id]))); o.parts[c.id]=v; sum+=v; }); bonusTotal+=sum; const f=fromOf(c); bonusFrom[c.id]=f; bonusBy[f]=(bonusBy[f]||0)+sum; }
   });
-  let R = pool - bonusTotal - baseTotal;
+  const bonusPool=bonusBy.pool||0;
+  let R = pool - bonusPool - baseTotal;
   if(R < -1e-9){
-    errors.push((bonusTotal?'포상('+fmtM(bonusTotal)+')과 고정 기본급('+fmtM(baseTotal)+') 합계가':'고정 기본급 합계('+fmtM(baseTotal)+')가')+' 분배 대상 금액('+fmtM(pool)+')보다 큽니다.'); R=0;
+    errors.push((bonusPool?'포상('+fmtM(bonusPool)+')과 고정 기본급('+fmtM(baseTotal)+') 합계가':'고정 기본급 합계('+fmtM(baseTotal)+')가')+' 분배 대상 금액('+fmtM(pool)+')보다 큽니다.'); R=0;
   }
   let pctSum=0, retained=0, ratioCnt=0;
   comps.filter(c=>!isAmt(c)).forEach(c=>{
     const pct=num(c.pct); pctSum+=pct; ratioCnt++;
-    const pc=R*pct/100; const inf={pool:pc}; info[c.id]=inf;
+    const gross=R*pct/100, ded=bonusBy[c.id]||0; let pc=gross-ded; const inf={pool:pc}; info[c.id]=inf;
+    if(ded){ inf.gross=gross; inf.bonusOut=ded; if(pc< -1e-9){ errors.push('포상 합계('+fmtM(ded)+')가 "'+c.name+'" 몫('+fmtM(gross)+')보다 큽니다.'); pc=0; inf.pool=0; } }
     if(c.type==='guild'){ inf.retained=pc; retained+=pc; }
     else if(c.type==='equal'){
       if(n>0){ const v=floorTo(pc/n,unit); act.forEach(o=>{ o.parts[c.id]=v; }); }
@@ -849,7 +858,7 @@ function calcDist(pool, rule, rows){
   const totalPayout = r6(out.reduce((a,o)=>a+o.total,0));
   return {persons:out,n,totalPayout,bonusTotal,retained:Math.round(retained),
     overage:Math.round(Math.max(0,totalPayout-pool)), leftover:Math.round(Math.max(0,pool-totalPayout)),
-    pctSum, baseTotal, remain:R, errors, warns, info, comps};
+    pctSum, baseTotal, remain:R, errors, warns, info, comps, bonusFrom, bonusBy};
 }
 
 /* =====================================================================
@@ -1215,7 +1224,7 @@ function ruleCardHtml(){
   b+='</tbody><tfoot><tr><td>합계</td><td></td><td class="num"><span id="ratioTotal" class="chip">-</span></td><td class="num" data-ramt="__sum">-</td><td></td></tr></tfoot></table></div>'+
     '<div class="toolbar"><select id="newRatioType">'+Object.keys(RATIO_LABEL).map(k=>'<option value="'+k+'">'+RATIO_LABEL[k]+'</option>').join('')+'</select>'+
     '<button class="btn primary" data-act="ratioAdd">비율 항목 추가</button><span class="small muted">새 항목에는 남은 비율이 자동으로 들어갑니다</span></div><div id="ruleSum" class="notice"></div>'+
-    '<h3 style="margin:22px 0 8px">금액 항목 <span class="small muted" style="font-weight:500">비율 계산 전에 먼저 차감됩니다</span></h3>'+
+    '<h3 style="margin:22px 0 8px">금액 항목 <span class="small muted" style="font-weight:500">고정 기본급은 비율 계산 전에 먼저 차감 · 포상은 아래에서 고른 위치에서 차감</span></h3>'+
     '<p class="hint">포상(수고비)은 분배 진행 표에서 받을 사람에게만 금액을 입력합니다. 고정 기본급은 참여자 1인당 정해진 금액을 줍니다.</p>';
   amts.forEach(c=>{ b+=compHtml(c); });
   b+='<div class="toolbar"><select id="newCompType"><option value="bonus">'+COMP_TYPES.bonus+'</option><option value="base">'+COMP_TYPES.base+'</option></select><button class="btn" data-act="compAdd">금액 항목 추가</button></div>';
@@ -1224,7 +1233,12 @@ function ruleCardHtml(){
 function compHtml(c){      // 금액 항목(포상/고정 기본급) 카드
   const id=esc(c.id); let b='';
   if(c.type==='base') b='참여자 1인당 '+moneyIn('data-inp="compNum" data-comp="'+id+'" data-k="amount"',c.amount)+' 만 실버 지급 (가장 먼저 차감)';
-  else b='분배 진행 표에서 <b>받을 사람을 골라 금액을 직접 입력</b>합니다. 전체 분배가 아니라 입력한 인원에게만 지급되며, 비율 계산보다 먼저 분배 대상 금액에서 차감됩니다.';
+  else { const ratio=S.rule.components.filter(x=>!isAmt(x)), pcC=ratio.find(x=>x.type==='perCount'), f=c.from===undefined?(pcC?pcC.id:'pool'):c.from;
+    b='분배 진행 표에서 <b>받을 사람을 골라 금액을 직접 입력</b>합니다. 전체 분배가 아니라 입력한 인원에게만 지급됩니다.'+
+      '<div class="inl" style="margin-top:10px;gap:8px;flex-wrap:wrap"><b class="small">포상 차감 위치</b><select data-chg="compFrom" data-comp="'+id+'">'+
+      ratio.map(x=>'<option value="'+esc(x.id)+'"'+(f===x.id?' selected':'')+'>"'+esc(x.name)+'" 몫('+r2(num(x.pct))+'%)에서 차감'+(x.type==='perCount'?' — 권장':'')+'</option>').join('')+
+      '<option value="pool"'+(f==='pool'?' selected':'')+'>분배 대상 전체에서 먼저 차감 (이전 방식)</option></select></div>'+
+      '<p class="hint" style="margin:8px 0 0">예) "분배" 몫에서 차감: 분배 대상 7억 7,683만 → 분배 50% = 3억 8,842만 중 포상을 먼저 주고, 나머지를 횟수대로 나눕니다. 길드자금·기본급 비율에는 영향이 없습니다.</p>'; }
   return '<div class="comp t-'+c.type+(c.enabled?'':' dis')+'"><div class="comp-h"><input type="checkbox" '+(c.enabled?'checked':'')+' data-chg="compEnable" data-comp="'+id+'" aria-label="사용">'+
     '<input type="text" value="'+esc(c.name)+'" data-chg="compName" data-comp="'+id+'" aria-label="항목 이름"><span class="chip">'+COMP_TYPES[c.type]+'</span>'+
     '<button class="btn ghost sm" style="margin-left:auto" data-act="compDel" data-comp="'+id+'">삭제</button></div><div class="comp-b">'+b+'</div></div>';
@@ -1258,7 +1272,8 @@ function sessionHtml(){
     '<div class="field"><label>현재 길자금 잔액</label><div class="ro'+negc(p.bal)+'" id="balShow">'+fmtM(p.bal)+'</div></div></div>'+
     '<div class="toolbar" style="margin:0 0 12px"><button class="btn sm" data-act="joinAll">전원 참여</button><button class="btn sm" data-act="joinNone">전원 제외</button><button class="btn sm" data-act="countReset">횟수 모두 0</button>'+
     '<button class="btn sm ghost" style="margin-left:auto" data-act="distReset">입력 초기화</button></div>';
-  if(comps.some(c=>c.type==='bonus')) b+='<p class="hint"><b>포상(수고비)</b> 칸에는 별도로 수고비를 줄 길드원에게만 금액을 입력하세요. 분배에 참여하지 않는 사람에게도 줄 수 있고, 금액은 분배 대상 금액에서 먼저 차감됩니다.</p>';
+  if(comps.some(c=>c.type==='bonus')){ const bc=comps.find(c=>c.type==='bonus'), ratio=S.rule.components.filter(x=>x.enabled&&!isAmt(x)), pcC=ratio.find(x=>x.type==='perCount'), f=bc.from===undefined?(pcC?pcC.id:'pool'):bc.from, tg=ratio.find(x=>x.id===f);
+    b+='<p class="hint"><b>포상(수고비)</b> 칸에는 별도로 수고비를 줄 길드원에게만 금액을 입력하세요. 분배에 참여하지 않는 사람에게도 줄 수 있고, 금액은 '+(tg?'<b>"'+esc(tg.name)+'" 몫('+r2(num(tg.pct))+'%)에서 차감</b>됩니다 (길드자금·기본급 비율은 그대로).':'<b>분배 대상 금액 전체에서 먼저 차감</b>됩니다.')+'</p>'; }
   if(!comps.length) b+='<div class="notice warn" style="margin:0 0 12px">사용 중인 분배 항목이 없습니다. 위 분배 RULE에서 항목을 켜 주세요.</div>';
   b+='<div class="tablewrap"><table class="tbl dist" style="min-width:'+cw.reduce((a,x)=>a+x,0)+'px"><colgroup>'+cw.map(w=>'<col style="width:'+w+'px">').join('')+'</colgroup>'+
     '<thead><tr><th>#</th><th>참여</th><th>길드원</th><th class="num">모니터링 횟수</th>'+comps.map(c=>'<th class="num">'+esc(c.name)+'</th>').join('')+'<th class="num">개인 정산금</th></tr></thead><tbody>';
@@ -1306,7 +1321,7 @@ function updateDistCalc(){
   if(res.retained>0) notes.push('길드자금 적립 '+fmtM(res.retained)+'은 지급하지 않고 길자금에 그대로 남습니다.');
   if(res.leftover-res.retained>0) notes.push('지급 단위로 내림하고 남는 금액 '+fmtM(res.leftover-res.retained)+'도 길자금에 남습니다.');
   if(res.overage>0) notes.push('동순위 전액 지급으로 분배 대상 금액을 '+fmtM(res.overage)+' 초과합니다. 초과분도 길자금에서 지급됩니다.');
-  res.comps.forEach(c=>{ const inf=res.info[c.id]; if(inf&&inf.per!==undefined) notes.push('"'+c.name+'" 횟차별 비용: '+fmtM(inf.per)+' (총 '+fmtN(inf.totalCount)+'회)'); });
+  res.comps.forEach(c=>{ const inf=res.info[c.id]; if(inf&&inf.bonusOut) notes.push('"'+c.name+'" 몫 '+fmtM(inf.gross)+'에서 포상 '+fmtM(inf.bonusOut)+' 차감 → '+fmtM(inf.pool)); if(inf&&inf.per!==undefined) notes.push('"'+c.name+'" 횟차별 비용: '+fmtM(inf.per)+' (총 '+fmtN(inf.totalCount)+'회)'); });
   const sum=$('#dSum');
   if(sum) sum.innerHTML='<div><span class="k">분배 대상 금액</span><span class="v">'+fmtM(pool)+'</span></div>'+
     (res.bonusTotal>0?'<div><span class="k">포상(수고비) 합계</span><span class="v" style="color:var(--purple)">'+fmtM(res.bonusTotal)+'</span></div>':'')+
@@ -1362,15 +1377,19 @@ function boardBody(done){
 }
 // 분배 항목별로 "어떻게 나눴는지" 한 줄 설명
 function compHow(c,d){
-  if(c.type==='guild') return '지급하지 않고 길자금에 적립 ('+r2(num(c.pct))+'%)';
+  const inf0=(d.compInfo||{})[c.id]||{}, cut=inf0.bonusOut?' · 몫 '+fmtM(inf0.gross)+'에서 포상 '+fmtM(inf0.bonusOut)+' 차감':'';
+  if(c.type==='bonus'){ const comps=d.compsSnap||[], f=c.from, tgt=comps.find(x=>x.id===f);
+    const who=d.results.filter(r=>num(r.parts[c.id])>0).sort((a,b)=>num(b.parts[c.id])-num(a.parts[c.id])).map(r=>esc(r.name)+' '+fmtM(r.parts[c.id])).join(' · ');
+    return who+'<div class="small muted">'+(f===undefined?'이전 방식 · 분배 대상 전체에서 먼저 차감 (1회성 예외로 그대로 보존)':f==='pool'?'분배 대상 전체에서 먼저 차감':'"'+esc(tgt?tgt.name:'분배')+'" 몫에서 차감')+'</div>'; }
+  if(c.type==='guild') return '지급하지 않고 길자금에 적립 ('+r2(num(c.pct))+'%)'+cut;
   const rs=d.results.filter(r=>num(r.parts[c.id])>0);
   if(!rs.length) return '지급 없음';
   if(c.type==='base') return '참여자 1인당 '+fmtM(c.amount)+' × '+rs.length+'명';
-  if(c.type==='equal') return rs.length+'명 균등 · 1인당 '+fmtM(rs[0].parts[c.id])+' ('+r2(num(c.pct))+'%)';
+  if(c.type==='equal') return rs.length+'명 균등 · 1인당 '+fmtM(rs[0].parts[c.id])+' ('+r2(num(c.pct))+'%'+cut+')';
   if(c.type==='perCount'){
     const info=(d.compInfo||{})[c.id]; const tc=info&&info.totalCount!==undefined?info.totalCount:rs.reduce((a,r)=>a+num(r.count),0);
     const per=info&&info.per!==undefined?info.per:rs.reduce((a,r)=>a+num(r.parts[c.id]),0)/Math.max(1,tc);
-    return '횟차별 '+fmtM(per)+' × 총 '+fmtN(tc)+'회 ('+r2(num(c.pct))+'%)';
+    return '횟차별 '+fmtM(per)+' × 총 '+fmtN(tc)+'회 ('+r2(num(c.pct))+'%'+cut+')';
   }
   return rs.slice().sort((a,b)=>num(b.parts[c.id])-num(a.parts[c.id])).map(r=>esc(r.name)+' '+fmtM(r.parts[c.id])).join(' · ');
 }
@@ -1389,7 +1408,7 @@ function historyBody(){
       '<div><span class="k">총 지급액</span><span class="v neg">'+fmtM(d.summary.totalPayout)+'</span></div>'+
       '<div><span class="k">지급 인원</span><span class="v">'+d.results.length+'명</span></div>'+
       '<div><span class="k">길자금에 남은 금액</span><span class="v">'+fmtM(d.summary.leftover||0)+'</span></div></div>'+
-      '<h3 style="margin-bottom:8px">분배 비율과 방식</h3>'+
+      '<h3 style="margin-bottom:8px">분배 비율과 방식'+(comps.some(c=>c.type==='bonus'&&c.from===undefined)&&sums.some(x=>x.c.type==='bonus')?' <span class="chip coin" title="포상을 분배 대상 전체에서 먼저 뺀 뒤 비율로 나눈 이전 계산 방식입니다. 이미 지급된 금액이라 그대로 보존합니다.">이전 방식 (1회성 예외)</span>':'')+'</h3>'+
       '<div class="stack">'+sums.map(x=>'<i style="width:'+(x.sum/den*100)+'%;background:'+(COMP_COLOR[x.c.type]||'var(--muted)')+'" title="'+esc(x.c.name)+' '+fmtM(x.sum)+'"></i>').join('')+'</div>'+
       '<div class="tablewrap" style="margin-bottom:14px"><table class="tbl fixed"><colgroup><col style="width:190px"><col style="width:150px"><col style="width:70px"><col></colgroup><thead><tr><th>분배 항목</th><th class="num">금액</th><th class="num">비중</th><th>어떻게 나눴나</th></tr></thead><tbody>'+
       sums.map(x=>'<tr><td><span class="dot" style="background:'+(COMP_COLOR[x.c.type]||'var(--muted)')+'"></span><b>'+esc(x.c.name)+'</b></td><td class="num">'+fmtM(x.sum)+'</td><td class="num">'+Math.round(x.sum/den*100)+'%</td><td class="wrap">'+compHow(x.c,d)+'</td></tr>').join('')+
@@ -2170,8 +2189,10 @@ A.distDone=async()=>{
   if(!await confirmBox(msg,{ok:'분배 완료',title:'분배를 완료할까요?'})) return;
   const lid=uid(), nameOf=id=>(S.members.find(m=>m.id===id)||{}).name||'(삭제됨)';
   d.title=title; d.status='completed'; d.completedAt=new Date().toISOString(); d.ledgerId=lid; d.unitSnap=S.rule.roundUnit; d.poolAmount=pool;
-  d.compsSnap=S.rule.components.filter(c=>c.enabled).map(c=>JSON.parse(JSON.stringify(c)));
-  d.compInfo={}; res.comps.forEach(c=>{ const inf=res.info[c.id]; if(!inf) return; if(inf.per!==undefined) d.compInfo[c.id]={per:inf.per,totalCount:inf.totalCount}; if(inf.retained!==undefined) d.compInfo[c.id]={retained:Math.round(inf.retained)}; });
+  d.compsSnap=S.rule.components.filter(c=>c.enabled).map(c=>{ const x=JSON.parse(JSON.stringify(c)); if(x.type==='bonus') x.from=res.bonusFrom[c.id]||'pool'; return x; });
+  d.compInfo={}; res.comps.forEach(c=>{ const inf=res.info[c.id]; if(!inf) return; const o={};
+    if(inf.per!==undefined){ o.per=inf.per; o.totalCount=inf.totalCount; } if(inf.retained!==undefined) o.retained=Math.round(inf.retained);
+    if(inf.bonusOut){ o.bonusOut=Math.round(inf.bonusOut); o.gross=Math.round(inf.gross); } if(Object.keys(o).length) d.compInfo[c.id]=o; });
   d.summary={totalPayout:res.totalPayout,overage:res.overage,leftover:res.leftover,retained:res.retained,n:res.n};
   d.results=res.persons.filter(o=>o.join||o.total>0).map(o=>({memberId:o.memberId,name:nameOf(o.memberId),count:o.count,parts:o.parts,total:o.total,paid:false}));
   S.ledger.push({id:lid,date:d.date,type:'expense',category:title,amount:res.totalPayout,
@@ -2641,6 +2662,7 @@ C.sfilter=el=>{ ui.sf=el.value; render(); };
 I.lfq=el=>{ ui.lf.q=el.value; renderLedgerTable(); };
 C.roundUnit=el=>{ S.rule.roundUnit=Math.max(1,num(el.value)||1); quiet(); updateDistCalc(); };
 C.compType=el=>{ const c=compById(el.dataset.comp); if(!c) return; c.type=el.value; if(c.type==='rank'){ if(!Array.isArray(c.tiers)) c.tiers=[50,30,20]; if(!c.tie) c.tie='split'; } commit(); };
+C.compFrom=el=>{ const c=compById(el.dataset.comp); if(c){ c.from=el.value; commit(); } };
 C.compEnable=el=>{ const c=compById(el.dataset.comp); if(c){ c.enabled=el.checked; commit(); } };
 C.compName=el=>{ const c=compById(el.dataset.comp); if(c){ c.name=el.value.trim()||COMP_TYPES[c.type]; el.value=c.name; quiet(); renderSession(); } };
 I.compNum=el=>{ const c=compById(el.dataset.comp); if(c){ c[el.dataset.k]=Math.max(0,num(el.value)); quiet(); updateDistCalc(); } };
@@ -3149,6 +3171,7 @@ function logDescribe(p){
         if(num(o.pct)!==num(c.pct)) ch.push(c.name+' '+arrow(num(o.pct),num(c.pct))+'%');
         if(num(o.amount)!==num(c.amount)) ch.push(c.name+' 금액 '+arrow(fmtM(o.amount),fmtM(c.amount)));
         if(o.type!==c.type) ch.push(c.name+' 방식 변경'); if(!!o.enabled!==!!c.enabled) ch.push(c.name+(c.enabled?' 사용':' 사용 안 함'));
+        if((o.from||'')!==(c.from||'')&&c.type==='bonus'){ const tc=(a.components||[]).find(x=>x.id===c.from); ch.push(c.name+' 차감 위치 → '+(c.from==='pool'?'전체에서 먼저':(tc?tc.name:'?')+' 몫')); }
         if(stable(o.tiers)!==stable(c.tiers)) ch.push(c.name+' 순위 상금 변경'); });
       (b.components||[]).forEach(c=>{ if(!ac.has(c.id)) ch.push('항목 삭제 '+c.name); });
       if(stable((b.components||[]).map(c=>c.id))!==stable((a.components||[]).map(c=>c.id))&&!ch.length) ch.push('항목 순서 변경');
@@ -3246,7 +3269,7 @@ function renderLogTable(){
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ calcDist, siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   const viaLink=cloudCfgFromHash();
