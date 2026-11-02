@@ -300,7 +300,15 @@ details.hist .inner{padding:14px}
 .dr-sub{margin:8px 0;color:var(--muted)}
 .dr-bidders{display:flex;gap:6px;flex-wrap:wrap;max-height:84px;overflow:auto;margin-bottom:8px}
 .dr-stage{position:relative;border:1px solid #80612d66;border-radius:14px;background:radial-gradient(ellipse at 50% 20%,#2e2848,#10131b 75%);padding:34px 10px 16px;overflow:hidden;margin:10px 0}
-.dr-chests{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:relative;z-index:2}
+.dr-chests{display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:10px;row-gap:36px;position:relative;z-index:2}   /* 줄 사이: 열린 상자의 💎가 윗줄 이름을 가리지 않게 */
+.dr-chests.mid .dr-loot{font-size:34px} .dr-chests.mid .dr-who{font-size:13px}
+.dr-chests.small{gap:6px;row-gap:30px} .dr-chests.small .dr-loot{font-size:26px} .dr-chests.small .dr-who{font-size:12px;margin-top:4px} .dr-chests.small .dr-lock{width:14px;height:14px;top:-7px}
+.dr-chest.lose{filter:grayscale(.85) brightness(.6);transition:filter .5s}
+.dr-chest.lose .dr-glow{opacity:0}
+.dr-who.lose{color:#8a8f99;text-decoration:line-through;text-decoration-color:#ff6b6b99}
+.dr-who .tag{display:block;font-size:11px;font-weight:700;margin-top:2px}
+.dr-who.win .tag{color:var(--coin)} .dr-who.lose .tag{color:#ff8a8a;text-decoration:none}
+.dr-bidders .chip.win{border-color:var(--coin);color:var(--coin)} .dr-bidders .chip.lose{opacity:.5}
 .dr-cw{text-align:center;min-width:0}
 .dr-chest{position:relative;width:100%;max-width:170px;aspect-ratio:1/1;margin:0 auto;perspective:700px}
 .dr-glow{position:absolute;left:50%;top:50%;width:90%;height:90%;transform:translate(-50%,-50%) scale(.8);border-radius:50%;background:radial-gradient(circle,#f4c76baa 0,#f4c76b33 45%,transparent 70%);animation:drPulse 2.2s ease-in-out infinite}
@@ -332,6 +340,15 @@ details.hist .inner{padding:14px}
 .dr-wchip.show{animation:drWin .7s cubic-bezier(.2,1.6,.4,1) forwards}
 .dr-wchip.cur{box-shadow:0 0 30px #f4c76bcc;border-color:#fff0b8;background:#5a4720}
 .dr-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+/* 룰렛 */
+.rl-stage{position:relative;display:flex;justify-content:center;align-items:center;padding:30px 10px 18px;margin:10px 0;border:1px solid #80612d66;border-radius:14px;background:radial-gradient(ellipse at 50% 30%,#2e2848,#10131b 75%)}
+.rl-wrap{position:relative;width:min(340px,78vw);aspect-ratio:1/1}
+.rl-wheel{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 0 0 6px #d9a441,0 0 40px #f4c76b55;transform:rotate(0deg)}
+.rl-wheel.spin{transition:transform 5.4s cubic-bezier(.12,.72,.08,1)}
+.rl-pointer{position:absolute;left:50%;top:-18px;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:30px solid #fff0b8;filter:drop-shadow(0 0 8px #f4c76b);z-index:3}
+.rl-hub{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff0b8,#d9a441);border:3px solid #7a5a18;display:flex;align-items:center;justify-content:center;font-size:26px;z-index:2;box-shadow:0 0 18px #0008}
+.rl-seg.win path{stroke:#fff;stroke-width:2.5;filter:drop-shadow(0 0 6px #fff6)}
+@media (prefers-reduced-motion:reduce){.rl-wheel.spin{transition-duration:.8s}}
 .dr-foot [hidden]{display:none}
 @keyframes drPulse{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(.8)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
 @keyframes drShake{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-3px,1px) rotate(-3deg)}40%{transform:translate(4px,-2px) rotate(3deg)}60%{transform:translate(-4px,0) rotate(-4deg)}80%{transform:translate(3px,2px) rotate(4deg)}}
@@ -446,6 +463,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
     <button class="tab" data-act="tab" data-tab="dist">길자금 분배</button>
     <button class="tab" data-act="tab" data-tab="raid">레이드 정산</button>
     <button class="tab" data-act="tab" data-tab="stock">미판매 재고템<span class="cnt" id="stockCnt"></span></button>
+    <button class="tab" data-act="tab" data-tab="owned">길드 귀속템<span class="cnt" id="ownedCnt"></span></button>
     <button class="tab" data-act="tab" data-tab="items">판매 아이템 등록</button>
     <button class="tab" data-act="tab" data-tab="member">길드원 관리</button>
     <button class="tab" data-act="tab" data-tab="siege">공성전 참여 현황<span class="cnt live" id="siegeCnt"></span></button>
@@ -469,7 +487,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.01-c';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.01-e';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -959,7 +977,7 @@ function render(){
   const fk = ui.focusFk || (act && act.dataset ? act.dataset.fk : null); ui.focusFk=null;
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===ui.tab));
   if(ui.tab==='log'&&!ui.admin) ui.tab='notice';
-  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,items:viewItems,member:viewMember,siege:viewSiege,log:viewLog})[ui.tab]();
+  $('#view').innerHTML = lockBar()+cloudBar()+({notice:viewNotice,ledger:viewLedger,dist:viewDist,raid:viewRaid,stock:viewStock,owned:viewOwned,items:viewItems,member:viewMember,siege:viewSiege,log:viewLog})[ui.tab]();
   if(ui.tab==='dist') updateDistCalc();
   if(ui.tab==='ledger') renderLedgerTable();
   if(ui.tab==='member') renderMemberTable();
@@ -987,7 +1005,7 @@ function updateHeader(){
   $$('.tools [data-act]').forEach(b=>{ const w=!READ_ACT.has(b.dataset.act); b.classList.toggle('lockd',w&&!ui.admin); });
   const ht=$('#hammerTab'); if(ht&&S){ ht.href=S.settings.hammerUrl||'#'; }
   const hg=$('#hammerGear'); if(hg) hg.hidden=!ui.admin;
-  const sc=$('#stockCnt'); if(sc) sc.textContent=S.stock.length?String(S.stock.length):'';
+  const sc=$('#stockCnt'); if(sc){ const n=stockAvail().length; sc.textContent=n?String(n):''; } const oc=$('#ownedCnt'); if(oc){ const n=ownedItems().length; oc.textContent=n?String(n):''; }
   const b=$('#bkInfo'), last=S.settings.lastExportAt;
   const hasData=S.ledger.length||S.raids.length||S.distributions.length;
   if(!last){ b.textContent=hasData?'백업 기록 없음':''; b.className='bk'+(hasData?' warn':''); }
@@ -1439,7 +1457,7 @@ function viewRaid(){
 }
 function raidList(){
   const list=S.raids.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
-  const right='<span class="chip coin link" data-act="goStock">미판매 재고 '+S.stock.length+'개 →</span><button class="btn sm" data-act="tab" data-tab="items">판매 아이템 관리</button><button class="btn sm" data-act="presetsEdit">지출 품목 설정</button><button class="btn primary" data-act="raidNew">새 레이드 정산</button>';
+  const right='<span class="chip coin link" data-act="goStock">미판매 재고 '+stockAvail().length+'개 →</span><button class="btn sm" data-act="tab" data-tab="items">판매 아이템 관리</button><button class="btn sm" data-act="presetsEdit">지출 품목 설정</button><button class="btn primary" data-act="raidNew">새 레이드 정산</button>';
   if(!list.length) return card('green','레이드 정산 목록',right,'<div class="empty">아직 정산한 레이드가 없습니다. "새 레이드 정산"으로 시작하세요.<br><span class="small">판매 아이템을 등록하고 입찰자를 체크해 판매를 입력한 뒤, 마지막에 <b>판매 완료 → 길자금 수입</b>을 누르면 길자금에 반영됩니다.</span></div>');
   let b='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:130px"><col><col style="width:130px"><col style="width:120px"><col style="width:130px"><col style="width:130px"><col style="width:140px"></colgroup>'+
     '<thead><tr><th>날짜</th><th>레이드</th><th class="num">판매 수입</th><th class="num">지출</th><th class="num">정산금</th><th>상태</th><th></th></tr></thead><tbody>';
@@ -1533,7 +1551,7 @@ function raidDetail(r){
   const t=raidTotals(r), done=r.status==='completed', edit=!done, wait=r.lots.filter(l=>!lotSold(l));
   const head=card('green',edit?'<input style="width:240px;font-weight:700" value="'+esc(r.title)+'" placeholder="레이드 이름 (예: 메테 3마리)" data-chg="raidTitle"> <input type="date" value="'+esc(r.date)+'" data-chg="raidDate">':
       esc(r.title||'(제목 없음)')+' <span class="small muted" style="font-weight:500">'+fmtDate(r.date)+'</span> <span class="chip in" style="margin-left:8px">길자금 반영 완료</span>',
-    '<button class="btn sm" data-act="raidBack">← 목록</button><button class="btn sm" data-act="goStock">미판매 재고템 '+S.stock.length+'개 →</button>'+(edit?'<button class="btn sm" data-act="raidPaste">빠른 입력(붙여넣기)</button>':'<button class="btn sm" data-act="goLedger">입출금 내역 보기</button><button class="btn ghost sm" data-act="raidUncomplete">완료 취소</button>'),
+    '<button class="btn sm" data-act="raidBack">← 목록</button><button class="btn sm" data-act="goStock">미판매 재고템 '+stockAvail().length+'개 →</button>'+(edit?'<button class="btn sm" data-act="raidPaste">빠른 입력(붙여넣기)</button>':'<button class="btn sm" data-act="goLedger">입출금 내역 보기</button><button class="btn ghost sm" data-act="raidUncomplete">완료 취소</button>'),
     edit?'<p class="hint" style="margin:0">① 판매할 아이템을 <b>등록</b> → ② <b>판매 입력</b>에서 판매가와 입찰 참여자를 체크 (입찰자가 수량보다 많으면 <b>뽑기</b>) → ③ 정리가 끝나면 <b>판매 완료 → 길자금 수입</b>. 판매되지 않은 아이템은 "미판매"를 눌러 <b>미판매 재고템 탭</b>으로 이월하세요.</p>':
       '<p class="hint" style="margin:0">'+fmtDate(r.snap&&r.snap.date)+'에 정산금 <b>'+fmtM(t.net)+'</b>이(가) 길자금 현황에 1건으로 기록되었습니다. 수정하려면 "완료 취소"를 누르세요.</p>');
   const summary=card('teal','정산 요약','',
@@ -1595,8 +1613,8 @@ function openSaleModal(r,lot){
         else if(N<=K) h='<div class="notice ok">입찰 '+N+'명 ≤ 수량 '+K+'개 → 뽑기 없이 입찰자 전원이 낙찰됩니다.</div>';
         else{
           h='<div class="notice warn">입찰 '+N+'명 &gt; 수량 '+K+'개 → 뽑기로 '+K+'명을 정합니다.</div>'+
-            (st.draw?'<div class="drawres">🏆 당첨: '+st.draw.winners.map(w=>esc(w.name)).join(', ')+'</div><button type="button" class="btn" data-draw="1">🎲 다시 뽑기 (이전 결과도 기록에 남습니다)</button>':
-              '<div class="toolbar" style="margin:10px 0 0"><button type="button" class="btn gold lg" data-draw="1">🎁 뽑기 실행 (보물상자)</button></div>');
+            (st.draw?'<div class="drawres">🏆 당첨: '+st.draw.winners.map(w=>esc(w.name)).join(', ')+'</div><button type="button" class="btn" data-draw="1">'+(K===1?'🎡 다시 돌리기':'🎲 다시 뽑기')+' (이전 결과도 기록에 남습니다)</button>':
+              '<div class="toolbar" style="margin:10px 0 0"><button type="button" class="btn gold lg" data-draw="1">'+(K===1?'🎡 룰렛 돌리기 (수량 1개)':'🎁 뽑기 실행 (보물상자)')+'</button></div>');
         }
         state.innerHTML=h;
       };
@@ -1612,7 +1630,7 @@ function openSaleModal(r,lot){
         if(q){ st.checked=new Set(q.dataset.q==='all'?pool.map(p=>p.id):[]); root.querySelectorAll('[data-bid]').forEach(cb=>{ cb.checked=st.checked.has(cb.dataset.bid); });
           if(st.draw){ st.draw=null; lot.drawId=null; } update(); return; }
         if(e.target.closest('[data-draw]')){
-          const rec=await runDraw({raidId:r.id,lotId:lot.id,raidTitle:r.title,item:lot.name,k:K,bidders:checkedList().map(p=>({id:p.id,name:p.name}))});
+          const rec=await (K===1?runRoulette:runDraw)({raidId:r.id,lotId:lot.id,raidTitle:r.title,item:lot.name,k:K,bidders:checkedList().map(p=>({id:p.id,name:p.name}))});   // 수량 1개는 항상 룰렛
           if(rec){ st.draw=rec; lot.drawId=rec.id; lot.bidders=Array.from(st.checked); quiet(); }
           update();
         }
@@ -1638,21 +1656,72 @@ function randInt(n){
   catch(e){ return Math.floor(Math.random()*n); }
 }
 function secureShuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=randInt(i+1); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+// 판매 수량 1개: 룰렛 (당첨자는 시작 순간 보안 난수로 확정·기록, 원판은 그 칸에 멈춤)
+function runRoulette(o){
+  return new Promise(resolve=>{
+    const root=$('#drawRoot'), B=o.bidders, n=B.length, seg=360/n; const timers=[]; let rec=null, started=false;
+    const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
+    const pal=['#f4c76b','#5aa9ff','#c9a0ff','#5ad19a','#ff9f7a','#4fd1c5','#ff6b8a','#b8c1ce'];
+    const R0=100, fs=n<=6?11:n<=10?9:n<=16?7.5:6, maxc=n<=10?7:5;
+    const pt=a=>{ const r=a*Math.PI/180; return [ (R0*Math.sin(r)).toFixed(2), (-R0*Math.cos(r)).toFixed(2) ]; };
+    const segs=B.map((b,i)=>{ const a1=i*seg, a2=(i+1)*seg, p1=pt(a1), p2=pt(a2), mid=a1+seg/2, col=pal[i%pal.length]+(i%2?'cc':'ee'), nm=b.name.length>maxc?b.name.slice(0,maxc)+'…':b.name;
+      const d=n===1?'M0,-100 A100,100 0 1 1 -0.01,-100 Z':'M0,0 L'+p1[0]+','+p1[1]+' A100,100 0 '+(seg>180?1:0)+' 1 '+p2[0]+','+p2[1]+' Z';
+      return '<g class="rl-seg" data-i="'+i+'"><path d="'+d+'" fill="'+col+'" stroke="#1c2231" stroke-width="1"/>'+(mid<=180?'<g transform="rotate('+(mid-90).toFixed(2)+')"><text x="'+(n>12?40:34)+'" y="0" dominant-baseline="middle" font-size="'+fs+'" font-weight="800" fill="#1a1406">'+esc(nm)+'</text></g>'
+        :'<g transform="rotate('+(mid+90).toFixed(2)+')"><text x="-'+(n>12?40:34)+'" y="0" text-anchor="end" dominant-baseline="middle" font-size="'+fs+'" font-weight="800" fill="#1a1406">'+esc(nm)+'</text></g>')+'</g>'; }).join('');   // 왼쪽 절반은 글자를 뒤집어 바로 읽히게
+    root.innerHTML='<div class="dr-overlay"><div class="dr-box" role="dialog" aria-modal="true" aria-label="룰렛 뽑기">'+
+      '<div class="dr-head"><div><div class="dr-eyebrow">GUILD ROULETTE</div><h3>🎡 '+esc(o.item)+' 룰렛</h3></div><button class="btn sm ghost" data-dr="close">닫기</button></div>'+
+      '<p class="dr-sub">'+esc(o.raidTitle||'레이드')+' · 입찰 '+n+'명 중 1명 당첨 · 판매 수량 1개라 룰렛으로 뽑습니다</p>'+
+      '<div class="dr-bidders">'+B.map((b,i)=>'<span class="chip" data-bi="'+i+'">'+esc(b.name)+'</span>').join('')+'</div>'+
+      '<div class="rl-stage"><div class="rl-wrap"><div class="rl-pointer"></div><svg class="rl-wheel" id="rlWheel" viewBox="-104 -104 208 208">'+segs+'</svg><div class="rl-hub">🎡</div></div></div>'+
+      '<div class="dr-status" id="drStatus" aria-live="polite">준비 완료 — 룰렛을 돌려 주세요</div><div class="dr-winners" id="drWinners"></div>'+
+      '<div class="dr-foot"><button class="btn gold lg" data-dr="start">🎡 룰렛 돌리기</button><button class="btn" data-dr="copy" hidden>당첨 결과 복사</button><button class="btn" data-dr="close" id="drClose2">닫기</button></div></div></div>';
+    const q=sel=>root.querySelector(sel), wheel=q('#rlWheel'), stat=q('#drStatus'), winEl=q('#drWinners'), startBtn=q('[data-dr=start]'), copyBtn=q('[data-dr=copy]');
+    function done(w){
+      const g=root.querySelector('.rl-seg[data-i="'+w+'"]'); if(g) g.classList.add('win');
+      root.querySelectorAll('.dr-bidders .chip').forEach(c=>c.classList.add(+c.dataset.bi===w?'win':'lose'));
+      winEl.innerHTML='<div class="dr-wchip show cur"><small>당첨자</small><strong>👑 '+esc(B[w].name)+'</strong></div>';
+      stat.textContent='🎉 당첨: '+B[w].name+' (결과가 기록되었습니다)';
+      copyBtn.hidden=false; startBtn.hidden=true; const c2=q('#drClose2'); c2.className='btn gold lg'; c2.textContent='확인';
+    }
+    function start(){
+      if(started) return; started=true; startBtn.disabled=true;
+      const w=secureShuffle(B.map((_,i)=>i))[0], jit=(randInt(1000)/1000-0.5)*seg*0.7;
+      rec={id:uid(),raidId:o.raidId,lotId:o.lotId,raidTitle:o.raidTitle||'',item:o.item,qty:1,mode:'roulette',
+        bidders:B.map(b=>b.name),bidderIds:B.map(b=>b.id),winners:[{id:B[w].id,name:B[w].name}],at:new Date().toISOString()};
+      S.draws.push(rec); quiet();
+      const target=360*7-(w*seg+seg/2+jit);         // 위쪽 화살표에 당첨 칸이 오도록
+      stat.textContent='🎡 돌아갑니다…'; wheel.classList.add('spin'); void wheel.getBoundingClientRect(); wheel.style.transform='rotate('+target.toFixed(2)+'deg)';
+      const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      later(()=>done(w),reduce?900:5500);
+    }
+    const onKey=e=>{ if(e.key==='Escape'){ e.stopImmediatePropagation(); e.preventDefault(); close(); } };
+    function close(){ timers.forEach(clearTimeout); window.removeEventListener('keydown',onKey,true); root.innerHTML=''; resolve(rec); }
+    window.addEventListener('keydown',onKey,true);
+    q('.dr-overlay').addEventListener('click',e=>{ const b=e.target.closest('[data-dr]'); if(!b) return;
+      if(b.dataset.dr==='start') start(); else if(b.dataset.dr==='close') close();
+      else if(b.dataset.dr==='copy'){ const t='['+(o.raidTitle||'레이드')+'] '+o.item+' 룰렛 당첨: '+rec.winners[0].name+' (입찰 '+n+'명)';
+        (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('당첨 결과를 복사했습니다')).catch(()=>toast(t)); } });
+    startBtn.focus();
+  });
+}
 function runDraw(o){
+  // 입찰자 수만큼 보물상자(각자 이름) → 무작위 순서로 하나씩 열어 💎 당첨 / 💨 꽝 공개
   return new Promise(resolve=>{
     const root=$('#drawRoot'), T=DRAW_T;
     const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const k=Math.max(1,Math.min(o.k,o.bidders.length));
-    let rec=null, started=false, raf=0, parts=[], chestOf=[]; const timers=[];
+    const B=o.bidders, n=B.length, k=Math.max(1,Math.min(o.k,n));
+    let rec=null, started=false, raf=0, parts=[], wins=0; const timers=[];
     const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
+    const narrow=(window.innerWidth||800)<560;
+    const cols=Math.min(n<=4?n:n<=6?(narrow?3:n):n<=8?4:n<=12?6:8, narrow?4:8), size=n<=4?'':n<=8?'mid':'small';
     root.innerHTML='<div class="dr-overlay"><div class="dr-box" role="dialog" aria-modal="true" aria-label="보물상자 뽑기">'+
       '<div class="dr-head"><div><div class="dr-eyebrow">GUILD TREASURE DRAW</div><h3>🏴‍☠️ '+esc(o.item)+' 뽑기</h3></div><button class="btn sm ghost" data-dr="close">닫기</button></div>'+
-      '<p class="dr-sub">'+esc(o.raidTitle||'레이드')+' · 당첨 '+k+'명 · 입찰 '+o.bidders.length+'명 (중복 없이 추첨)</p>'+
-      '<div class="dr-bidders">'+o.bidders.map(b=>'<span class="chip">'+esc(b.name)+'</span>').join('')+'</div>'+
-      '<div class="dr-stage" id="drStage"><canvas id="drCanvas"></canvas><div class="dr-flash"></div><div class="dr-chests">'+
-      [0,1,2].map(i=>'<div class="dr-cw"><div class="dr-chest charge" data-i="'+i+'"><div class="dr-glow"></div><div class="dr-lid"></div><div class="dr-body"><i class="dr-lock"></i></div><div class="dr-loot"></div></div><div class="dr-who">보물상자 '+(i+1)+'</div></div>').join('')+
+      '<p class="dr-sub">'+esc(o.raidTitle||'레이드')+' · 입찰 '+n+'명 중 당첨 '+k+'명 · 상자 '+n+'개 중 <b style="color:var(--coin)">💎 '+k+'개</b> / 💨 '+(n-k)+'개 (중복 없이 추첨)</p>'+
+      '<div class="dr-bidders">'+B.map((b,i)=>'<span class="chip" data-bi="'+i+'">'+esc(b.name)+'</span>').join('')+'</div>'+
+      '<div class="dr-stage" id="drStage"><canvas id="drCanvas"></canvas><div class="dr-flash"></div><div class="dr-chests '+size+'" style="--cols:'+cols+'">'+
+      B.map((b,i)=>'<div class="dr-cw"><div class="dr-chest charge" data-i="'+i+'"><div class="dr-glow"></div><div class="dr-lid"></div><div class="dr-body"><i class="dr-lock"></i></div><div class="dr-loot"></div></div><div class="dr-who">'+esc(b.name)+'</div></div>').join('')+
       '</div><div class="dr-count" id="drCount" aria-live="assertive"></div></div>'+
-      '<div class="dr-status" id="drStatus" aria-live="polite">준비 완료 — 보물상자를 열어 당첨자를 확인하세요</div>'+
+      '<div class="dr-status" id="drStatus" aria-live="polite">준비 완료 — 상자 '+n+'개 중 '+k+'개에 💎가 들어 있습니다. 보물상자를 열어 주세요</div>'+
       '<div class="dr-winners" id="drWinners"></div>'+
       '<div class="dr-foot"><button class="btn gold lg" data-dr="start">🔓 보물상자 열기</button><button class="btn" data-dr="copy" hidden>당첨 결과 복사</button><button class="btn" data-dr="close" id="drClose2">닫기</button></div></div></div>';
     const q=sel=>root.querySelector(sel);
@@ -1670,51 +1739,62 @@ function runDraw(o){
       ctx.globalAlpha=1; ctx.shadowBlur=0;
       raf=parts.length?requestAnimationFrame(loop):0;
     }
-    function emit(el,n,spd){   // 해당 요소 중심에서 황금빛 입자 폭발
+    function emit(el,cnt0,spd){   // 해당 요소 중심에서 황금빛 입자 폭발
       if(!ctx||reduce||!stage.getBoundingClientRect) return;
       const sr=stage.getBoundingClientRect(), er=el.getBoundingClientRect(), x=er.left-sr.left+er.width/2, y=er.top-sr.top+er.height/2;
-      const cols=['#fff6d5','#ffe6a3','#f4c76b','#ffd35a'];
-      for(let i=0;i<n;i++){ const a=Math.random()*6.2832, v=(0.35+Math.random())*spd/10;
-        parts.push({x,y,vx:Math.cos(a)*v*1.6,vy:Math.sin(a)*v*1.6-spd/18,l:0,life:40+Math.random()*50,r:1.6+Math.random()*3.4,c:cols[Math.floor(Math.random()*cols.length)]}); }
+      const cols2=['#fff6d5','#ffe6a3','#f4c76b','#ffd35a'];
+      for(let i=0;i<cnt0;i++){ const a=Math.random()*6.2832, v=(0.35+Math.random())*spd/10;
+        parts.push({x,y,vx:Math.cos(a)*v*1.6,vy:Math.sin(a)*v*1.6-spd/18,l:0,life:40+Math.random()*50,r:1.6+Math.random()*3.4,c:cols2[Math.floor(Math.random()*cols2.length)]}); }
       if(!raf) raf=requestAnimationFrame(loop);
     }
-    const showCount=n=>{ cnt.innerHTML='<span>'+n+'</span>'; stat.textContent='곧 열립니다… '+n; };
-    function openAll(){
+    const showCount=c=>{ cnt.innerHTML='<span>'+c+'</span>'; stat.textContent='곧 열립니다… '+c; };
+    let winSet=new Set(), order=[], opened=0;
+    function openOne(i){
+      const c=chests[i], win=winSet.has(i); opened++;
+      c.classList.remove('shake','hard','charge'); c.classList.add('open',win?'win':'lose');
+      c.querySelector('.dr-loot').textContent=win?'💎':'💨';
+      const bc=root.querySelector('.dr-bidders [data-bi="'+i+'"]');
+      if(win){ wins++;
+        whos[i].classList.add('win'); whos[i].innerHTML=esc(B[i].name)+'<span class="tag">👑 '+wins+'번째 당첨</span>';
+        winEl.querySelectorAll('.dr-wchip').forEach(x=>x.classList.remove('cur'));
+        const chip=document.createElement('div'); chip.className='dr-wchip show cur'; chip.innerHTML='<small>'+wins+'번째 당첨자</small><strong>👑 '+esc(B[i].name)+'</strong>'; winEl.appendChild(chip);
+        emit(c,60,72); if(bc) bc.classList.add('win');
+      } else { whos[i].classList.add('lose'); whos[i].innerHTML=esc(B[i].name)+'<span class="tag">💨 꽝</span>'; if(bc) bc.classList.add('lose'); }
+      stat.textContent='상자 '+opened+' / '+n+' 열림 · 💎 당첨 '+wins+' / '+k+(wins===k&&opened<n?' — 당첨자가 모두 나왔습니다!':'');
+    }
+    function openSeq(){
       cnt.innerHTML='';
-      chests.forEach((c,i)=>{ c.classList.remove('shake','hard','charge'); c.classList.add('open'); c.querySelector('.dr-loot').textContent=chestOf.includes(i)?'💎':'💨'; if(!chestOf.includes(i)) whos[i].textContent='빈 상자'; });
       stage.insertAdjacentHTML('beforeend','<div class="dr-burst"></div>');
       const fl=q('.dr-flash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
-      chests.forEach(c=>emit(c,70,80));
-      stat.textContent='✨ 보물상자 3개가 동시에 열렸습니다!';
-      rec.winners.forEach((w,i)=>later(()=>reveal(i),T.open+i*T.reveal));
-      later(finish,T.open+(rec.winners.length-1)*T.reveal+Math.round(T.reveal*0.8));
-    }
-    function reveal(i){
-      const w=rec.winners[i];
-      winEl.querySelectorAll('.dr-wchip').forEach(x=>x.classList.remove('cur'));
-      const chip=document.createElement('div'); chip.className='dr-wchip show cur';
-      chip.innerHTML='<small>'+(i+1)+'번째 당첨자</small><strong>👑 '+esc(w.name)+'</strong>'; winEl.appendChild(chip);
-      const ci=chestOf[i];
-      if(ci>=0){ chests[ci].classList.add('win'); whos[ci].textContent=w.name; whos[ci].classList.add('win'); emit(chests[ci],55,70); }
-      else emit(chests[1],55,70);
-      stat.textContent=(i+1)+' / '+rec.winners.length+'번째 당첨자 공개!';
+      chests.forEach(c=>c.classList.remove('hard'));
+      // 상자를 하나씩 엽니다 (인원이 많으면 간격을 줄여 전체 9초 이내). 당첨자가 모두 나오면 남은 상자는 한꺼번에 열림
+      const step=reduce?120:Math.max(450,Math.min(1100,Math.round(7000/n)));
+      let t=Math.round(T.open*0.4), seen=0;
+      for(let j=0;j<order.length;j++){
+        const i=order[j]; if(winSet.has(i)) seen++;
+        later(()=>openOne(i),t);
+        if(seen===k&&j<order.length-1){ const rest=order.slice(j+1); t+=Math.max(step,700); later(()=>{ rest.forEach(x=>openOne(x)); stat.textContent='💨 남은 '+rest.length+'개는 모두 꽝 — 당첨 '+k+'명 확정!'; },t); break; }
+        t+=step;
+      }
+      later(finish,t+Math.round(T.reveal*0.6));
     }
     function finish(){
-      stat.textContent='🎊 추첨 완료 — 당첨 결과가 기록되었습니다: '+rec.winners.map(w=>w.name).join(', ');
+      stat.textContent='🎊 추첨 완료 — 당첨: '+rec.winners.map(w=>w.name).join(', ')+' (결과가 기록되었습니다)';
       copyBtn.hidden=false; startBtn.hidden=true; const c2=q('#drClose2'); c2.className='btn gold lg'; c2.textContent='확인';
     }
     function start(){
       if(started) return; started=true; startBtn.disabled=true;
-      const winners=secureShuffle(o.bidders).slice(0,k);      // 결과는 시작 즉시 확정·기록 (닫아도 바뀌지 않음)
+      // 당첨자와 상자 여는 순서를 보안 난수로 정하고, 결과는 시작 즉시 확정·기록 (닫아도 바뀌지 않음)
+      const idx=B.map((_,i)=>i), winIdx=secureShuffle(idx).slice(0,k); winSet=new Set(winIdx); order=secureShuffle(idx);
+      const winners=order.filter(i=>winSet.has(i)).map(i=>B[i]);    // 공개되는 순서 = 당첨 순서
       rec={id:uid(),raidId:o.raidId,lotId:o.lotId,raidTitle:o.raidTitle||'',item:o.item,qty:k,
-        bidders:o.bidders.map(b=>b.name),bidderIds:o.bidders.map(b=>b.id),winners:winners.map(w=>({id:w.id,name:w.name})),at:new Date().toISOString()};
+        bidders:B.map(b=>b.name),bidderIds:B.map(b=>b.id),winners:winners.map(w=>({id:w.id,name:w.name})),at:new Date().toISOString()};
       S.draws.push(rec); quiet();
-      if(rec.winners.length<=3){ const pos=secureShuffle([0,1,2]); chestOf=rec.winners.map((_,i)=>pos[i]); } else chestOf=rec.winners.map((_,i)=>i<3?i:-1);
       if(!reduce) chests.forEach(c=>c.classList.add('shake'));
       showCount(3);
       later(()=>{ showCount(2); },T.count);
       later(()=>{ showCount(1); if(!reduce) chests.forEach(c=>c.classList.add('hard')); },T.count*2);
-      later(openAll,T.count*3);
+      later(openSeq,T.count*3);
     }
     const onKey=e=>{ if(e.key==='Escape'){ e.stopImmediatePropagation(); e.preventDefault(); close(); } };
     function close(){ timers.forEach(clearTimeout); if(raf) cancelAnimationFrame(raf); window.removeEventListener('keydown',onKey,true); root.innerHTML=''; resolve(rec); }
@@ -1724,7 +1804,7 @@ function runDraw(o){
       if(b.dataset.dr==='start') start();
       else if(b.dataset.dr==='close') close();
       else if(b.dataset.dr==='copy'){
-        const t='['+(o.raidTitle||'레이드')+'] '+o.item+' 당첨자: '+rec.winners.map(w=>w.name).join(', ');
+        const t='['+(o.raidTitle||'레이드')+'] '+o.item+' 당첨자: '+rec.winners.map(w=>w.name).join(', ')+' (입찰 '+n+'명)';
         (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('당첨 결과를 복사했습니다')).catch(()=>toast(t));
       }
     });
@@ -1738,10 +1818,12 @@ function runDraw(o){
    - 여기서 판매하면 길자금에 수입이 자동으로 기록되고, 출처 레이드가 내역에 남는다
    ===================================================================== */
 const stockKey=x=>x.name+'|'+(x.from||'')+'|'+(x.from?'':(x.date||''));
+// 재고 상태: own 없음=미판매 재고 · 'owned'=길드 귀속(보유) · 'used'=귀속템 사용 완료
+const stockAvail=()=>S.stock.filter(x=>!x.own), ownedItems=()=>S.stock.filter(x=>x.own==='owned'), usedItems=()=>S.stock.filter(x=>x.own==='used');
 const stockSrc=x=>(x.from||x.fromTitle)?((x.fromTitle||'(제목 없음)')+(x.date?' · '+x.date:'')):'직접 추가';
 function stockGroups(){
   const m=new Map();
-  S.stock.forEach(x=>{ const k=stockKey(x), g=m.get(k)||{key:k,name:x.name,from:x.from||'',fromTitle:x.fromTitle||'',date:x.date||'',at:x.at||x.date||'',items:[]}; g.items.push(x); m.set(k,g); });
+  stockAvail().forEach(x=>{ const k=stockKey(x), g=m.get(k)||{key:k,name:x.name,from:x.from||'',fromTitle:x.fromTitle||'',date:x.date||'',at:x.at||x.date||'',items:[]}; g.items.push(x); m.set(k,g); });
   return Array.from(m.values()).sort((a,b)=>(a.date<b.date?1:a.date>b.date?-1:(a.name<b.name?-1:1)));
 }
 function viewStock(){
@@ -1749,34 +1831,62 @@ function viewStock(){
   const origins=[]; all.forEach(g=>{ if(!origins.some(o=>o.id===(g.from||'__none'))) origins.push({id:g.from||'__none',label:g.from?(g.fromTitle||'(제목 없음)')+' · '+g.date:'직접 추가'}); });
   const groups=all.filter(g=>!ui.sf||(ui.sf==='__none'?!g.from:g.from===ui.sf));
   let t;
-  if(!groups.length) t='<div class="empty">'+(S.stock.length?'선택한 출처의 재고템이 없습니다.':'미판매 재고템이 없습니다.<br><span class="small">레이드 정산에서 판매되지 않은 아이템에 "미판매"를 누르면 이곳으로 이월됩니다.</span>')+'</div>';
+  if(!groups.length) t='<div class="empty">'+(stockAvail().length?'선택한 출처의 재고템이 없습니다.':'미판매 재고템이 없습니다.<br><span class="small">레이드 정산에서 판매되지 않은 아이템에 "미판매"를 누르면 이곳으로 이월됩니다.</span>')+'</div>';
   else{
-    t='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:190px"><col style="width:80px"><col><col style="width:120px"><col style="width:190px"></colgroup>'+
+    t='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:190px"><col style="width:80px"><col><col style="width:120px"><col style="width:270px"></colgroup>'+
       '<thead><tr><th>아이템</th><th class="num">수량</th><th>출처 레이드 (이월된 곳)</th><th>이월일</th><th></th></tr></thead><tbody>';
     groups.forEach(g=>{
       const k=esc(g.key);
       t+='<tr><td><b>'+esc(g.name)+'</b></td><td class="num">'+g.items.length+'개</td><td class="wrap">'+(g.from||g.fromTitle?'<span class="chip blue">'+esc(g.fromTitle||'(제목 없음)')+'</span> <span class="small muted">'+esc(g.date)+'</span>':'<span class="muted">직접 추가</span>')+'</td>'+
-        '<td class="nowrap">'+esc(g.at)+'</td><td class="act"><button class="btn sm gold" data-act="stockSell" data-key="'+k+'">판매 입력</button><button class="btn ghost sm" data-act="stockDel" data-key="'+k+'">삭제</button></td></tr>';
+        '<td class="nowrap">'+esc(g.at)+'</td><td class="act"><button class="btn sm gold" data-act="stockSell" data-key="'+k+'">판매 입력</button><button class="btn sm" data-act="stockOwn" data-key="'+k+'" title="판매하지 않고 길드 소유로 보관 (길자금 변동 없음)">길드 귀속</button><button class="btn ghost sm" data-act="stockDel" data-key="'+k+'">삭제</button></td></tr>';
     });
     t+='</tbody><tfoot><tr><td>미판매 재고 합계</td><td class="num">'+groups.reduce((a,g)=>a+g.items.length,0)+'개</td><td></td><td></td><td></td></tr></tfoot></table></div>';
   }
-  const head=card('coin','미판매 재고템 <span class="chip coin" style="margin-left:8px">'+S.stock.length+'개</span>',
+  const head=card('coin','미판매 재고템 <span class="chip coin" style="margin-left:8px">'+stockAvail().length+'개</span>',
     '<select data-chg="sfilter" aria-label="출처 레이드"><option value="">모든 출처</option>'+origins.map(o=>'<option value="'+esc(o.id)+'"'+(ui.sf===o.id?' selected':'')+'>'+esc(o.label)+'</option>').join('')+'</select>',
-    '<p class="hint">레이드에서 팔리지 않은 아이템이 이월되는 곳입니다. <b>판매 입력</b>에서 입찰자를 체크하고(필요하면 뽑기) 판매하면 <b>길자금에 수입이 자동으로 기록</b>되며, 어느 레이드에서 남았던 아이템인지 내역에 함께 남습니다.</p>'+t+
+    '<p class="hint">레이드에서 팔리지 않은 아이템이 이월되는 곳입니다. <b>판매 입력</b>에서 입찰자를 체크하고(필요하면 뽑기) 판매하면 <b>길자금에 수입이 자동으로 기록</b>되며, 어느 레이드에서 남았던 아이템인지 내역에 함께 남습니다. 팔지 않고 길드가 보관할 아이템은 <b>길드 귀속</b>을 누르세요 (길자금 변동 없음 · <span class="link" data-act="tab" data-tab="owned">길드 귀속템</span> 탭에서 관리).</p>'+t+
     '<div class="stockadd" style="margin-top:14px;flex-wrap:wrap"><input class="sn" list="dl_income" placeholder="재고템 직접 추가 (아이템 이름)" data-enter="stockAdd"><input class="sq" type="number" min="1" max="50" value="1" title="수량">'+
     '<select class="ss" aria-label="출처 레이드" style="max-width:220px"><option value="">출처: 직접 추가</option>'+S.raids.slice().sort((a,b)=>a.date<b.date?1:-1).map(r=>'<option value="'+esc(r.id)+'">'+esc((r.title||'(제목 없음)')+' · '+r.date)+'</option>').join('')+'</select><button class="btn" data-act="stockAdd">추가</button></div>');
   const sales=S.stockSales.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   let sb;
   if(!sales.length) sb='<div class="empty" style="padding:18px">아직 판매한 재고템이 없습니다.</div>';
-  else sb='<div class="tablewrap"><table class="tbl fixed" style="min-width:820px"><colgroup><col style="width:118px"><col style="width:170px"><col><col style="width:150px"><col style="width:150px"><col style="width:90px"></colgroup>'+
+  else sb='<div class="tablewrap"><table class="tbl fixed" style="min-width:820px"><colgroup><col style="width:118px"><col style="width:170px"><col><col style="width:150px"><col style="width:150px"><col style="width:180px"></colgroup>'+
     '<thead><tr><th>판매일</th><th>아이템</th><th>출처 레이드</th><th>구매자</th><th class="num">판매가</th><th></th></tr></thead><tbody>'+
     sales.map(x=>'<tr><td class="nowrap">'+esc(x.date)+'</td><td><b>'+esc(x.name)+'</b>'+(x.qty>1?'<span class="chip sm2">×'+x.qty+'</span>':'')+(x.drawId?'<span class="chip sm2 blue">뽑기</span>':'')+'</td>'+
       '<td class="wrap">'+(x.fromRaid&&S.raids.some(r=>r.id===x.fromRaid)?'<span class="chip link blue" data-act="openRaidFrom" data-id="'+esc(x.fromRaid)+'">'+esc(x.fromTitle||'(제목 없음)')+'</span>':esc(x.fromTitle||'직접 추가'))+' <span class="small muted">'+esc(x.fromDate||'')+'</span></td>'+
       '<td class="wrap">'+esc(x.buyers.map(b=>b.name).join(', '))+'</td><td class="num pos"><b>+'+fmtM(x.price*x.buyers.length)+'</b>'+(x.buyers.length>1?'<div class="small muted">개당 '+fmtM(x.price)+'</div>':'')+'</td>'+
-      '<td class="act"><button class="btn ghost sm" data-act="stockSaleUndo" data-id="'+esc(x.id)+'" title="판매를 취소하고 재고로 되돌립니다">되돌리기</button></td></tr>').join('')+
+      '<td class="act"><button class="btn ghost sm" data-act="stockSaleUndo" data-id="'+esc(x.id)+'" title="판매를 취소하고 재고로 되돌립니다">되돌리기</button><button class="btn ghost sm" data-act="stockSaleToOwn" data-id="'+esc(x.id)+'" title="판매를 취소(길자금 수입 취소)하고 길드 귀속템으로 옮깁니다">귀속 전환</button></td></tr>').join('')+
     '</tbody></table></div>';
   return head+card('green','재고템 판매 내역','<span class="small muted">판매 즉시 길자금 수입으로 자동 기록</span>',sb)+
     '<datalist id="dl_income">'+catalogSorted('all').map(x=>'<option value="'+esc(x.name)+'">').join('')+'</datalist>';
+}
+
+/* ---- 길드 귀속템: 보유 현황 + 사용 기록 ---- */
+const resChip=r=>'<span class="chip '+(r==='성공'?'in':r==='실패'?'coin':r==='파괴'?'out':'')+'">'+esc(r||'-')+'</span>';
+function viewOwned(){
+  const own=ownedItems(), used=usedItems();
+  const groups=new Map(); own.forEach(x=>{ const g=groups.get(x.name)||{name:x.name,items:[],src:new Map(),last:''}; g.items.push(x); const sk=x.from||x.fromTitle?(x.fromTitle||'(제목 없음)'):'직접 추가'; g.src.set(sk,(g.src.get(sk)||0)+1); if((x.ownedAt||'')>g.last) g.last=x.ownedAt||''; groups.set(x.name,g); });
+  const cat=n=>{ const it=(S.settings.itemCatalog||[]).find(v=>v.name===n); return it?catChip(it.cat):''; };
+  const cnt=r=>used.filter(x=>x.use&&x.use.result===r).length;
+  let t;
+  if(!groups.size) t='<div class="empty">보유 중인 길드 귀속템이 없습니다.<br><span class="small">미판매 재고템에서 <b>길드 귀속</b>을 누르거나, 재고템 판매 내역에서 <b>귀속 전환</b>을 누르면 이곳으로 옮겨집니다.</span></div>';
+  else t='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:200px"><col style="width:90px"><col style="width:80px"><col><col style="width:110px"><col style="width:190px"></colgroup>'+
+    '<thead><tr><th>아이템</th><th>분류</th><th class="num">보유</th><th>출처</th><th>최근 귀속일</th><th></th></tr></thead><tbody>'+
+    Array.from(groups.values()).sort((a,b)=>a.name.localeCompare(b.name,'ko')).map(g=>'<tr><td><b>'+esc(g.name)+'</b></td><td>'+cat(g.name)+'</td><td class="num"><b>'+g.items.length+'개</b></td>'+
+      '<td class="wrap small">'+Array.from(g.src.entries()).map(([k,v])=>'<span class="chip blue sm2">'+esc(k)+(v>1?' ×'+v:'')+'</span>').join(' ')+'</td><td class="nowrap">'+esc(g.last)+'</td>'+
+      '<td class="act"><button class="btn sm gold" data-act="ownUse" data-name="'+esc(g.name)+'">사용 기록</button><button class="btn ghost sm" data-act="ownBack" data-name="'+esc(g.name)+'">귀속 취소</button></td></tr>').join('')+
+    '</tbody><tfoot><tr><td>보유 합계</td><td></td><td class="num">'+own.length+'개</td><td colspan="3"></td></tr></tfoot></table></div>';
+  const top=card('purple','🏰 길드 귀속템 <span class="chip purple" style="margin-left:8px">보유 '+own.length+'개</span>',
+    '<span class="chip">사용 '+used.length+'개</span> <span class="chip in">성공 '+cnt('성공')+'</span> <span class="chip coin">실패 '+cnt('실패')+'</span> <span class="chip out">파괴 '+cnt('파괴')+'</span>',
+    '<p class="hint" style="margin-top:0">팔지 않고 <b>길드가 보유</b>하는 아이템입니다 (길자금 변동 없음). 강화 시도 등으로 쓰면 <b>사용 기록</b>을 남기세요 — 보유 목록에서 빠지고 아래 기록에 계속 남습니다.</p>'+t);
+  const ug=new Map(); used.forEach(x=>{ const k=x.useId||x.id, g=ug.get(k)||{id:k,name:x.name,use:x.use||{},n:0}; g.n++; ug.set(k,g); });
+  const rows=Array.from(ug.values()).sort((a,b)=>(a.use.date||'')<(b.use.date||'')?1:-1);
+  const hist=rows.length?'<div class="tablewrap"><table class="tbl fixed" style="min-width:860px"><colgroup><col style="width:110px"><col style="width:170px"><col style="width:60px"><col style="width:100px"><col style="width:90px"><col style="width:120px"><col><col style="width:100px"></colgroup>'+
+    '<thead><tr><th>사용일</th><th>아이템</th><th class="num">수량</th><th>용도</th><th>결과</th><th>사용한 길드원</th><th>메모</th><th></th></tr></thead><tbody>'+
+    rows.map(g=>'<tr><td class="nowrap">'+esc(g.use.date||'')+'</td><td><b>'+esc(g.name)+'</b></td><td class="num">'+g.n+'</td><td>'+esc(g.use.kind||'')+'</td><td>'+resChip(g.use.result)+'</td><td>'+esc(g.use.memberName||'길드 공용')+'</td><td class="wrap">'+esc(g.use.memo||'')+'</td>'+
+      '<td class="act"><button class="btn ghost sm" data-act="ownUseUndo" data-uid="'+esc(g.id)+'">사용 취소</button></td></tr>').join('')+'</tbody></table></div>'
+    :'<div class="empty" style="padding:18px">아직 사용 기록이 없습니다.</div>';
+  return top+card('blue','귀속템 사용 기록','<span class="small muted">강화 시도·제작 재료 등 사용 내역</span>',hist);
 }
 
 /* =====================================================================
@@ -2020,7 +2130,7 @@ function viewNotice(){
     '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>실버 길자금</span><span>→</span></div><div class="v'+negc(p.bal)+'">'+fmtM(p.bal)+'</div></div>'+
     '<div class="nstat" data-act="goLedger" role="button" tabindex="0"><div class="k"><span>현금 보유</span><span>→</span></div><div class="v'+negc(c.bal)+'">'+fmtWon(c.bal)+'</div></div>'+
     '<div class="nstat" data-act="goDist" role="button" tabindex="0"><div class="k"><span>분배</span><span>→</span></div><div class="v '+(ready?'pos':'coin')+'">'+(ready?'잔액 충분':(th>0?'잔액 부족':'-'))+'</div></div>'+
-    '<div class="nstat" data-act="goStock" role="button" tabindex="0"><div class="k"><span>미판매 재고템</span><span>→</span></div><div class="v">'+S.stock.length+'개</div></div></div>';
+    '<div class="nstat" data-act="goStock" role="button" tabindex="0"><div class="k"><span>미판매 재고템</span><span>→</span></div><div class="v">'+stockAvail().length+'개</div></div></div>';
   const nav='<div class="seg nav"><button type="button" data-act="noticeView" data-v="now" class="'+(ui.nView==='now'?'on':'')+'">📌 현재 공지 ('+act.length+')</button><button type="button" data-act="noticeView" data-v="history" class="'+(ui.nView==='history'?'on':'')+'">📚 History ('+arc.length+')</button></div>';
   if(ui.nView==='history') return hero+strip+nav+noticeHistoryCard(arc);
   let b=hero+strip+nav;
@@ -2338,7 +2448,8 @@ A.raidUncomplete=async()=>{
   if(!await confirmBox('완료를 취소하면 길자금에 기록된 정산금 내역이 삭제되고 다시 수정할 수 있게 됩니다.\n이월했던 재고템은 판매 대기로 되돌아옵니다.'+(bal<0?'\n\n⚠ 취소하면 길자금이 '+fmtM(bal)+'(마이너스)가 됩니다.':''),{ok:'완료 취소',danger:true})) return;
   S.ledger=rest;
   const back=new Map();
-  (r.carried||[]).forEach(id=>{ const i=S.stock.findIndex(x=>x.id===id); if(i>=0){ const x=S.stock.splice(i,1)[0]; back.set(x.name,(back.get(x.name)||0)+1); } });
+  (r.carried||[]).forEach(id=>{ const i=S.stock.findIndex(x=>x.id===id&&!x.own); if(i>=0){   // 길드 귀속·사용한 아이템은 되돌리지 않음
+ const x=S.stock.splice(i,1)[0]; back.set(x.name,(back.get(x.name)||0)+1); } });
   back.forEach((q,name)=>r.lots.push(newLot(name,q)));
   r.carried=[]; r.status='draft'; delete r.snap; delete r.ledgerId; commit();
 };
@@ -2512,12 +2623,12 @@ A.stockAdd=el=>{
   commit(); toast(normName(name)+' '+q+'개를 재고에 추가했습니다'+(isNew?' · 판매 아이템 목록에 "잡템"으로 추가':''));
 };
 A.stockDel=async el=>{
-  const items=S.stock.filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
+  const items=stockAvail().filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
   if(!await confirmBox('"'+items[0].name+'" '+items.length+'개를 미판매 재고템에서 삭제할까요?',{ok:'삭제',danger:true})) return;
-  S.stock=S.stock.filter(x=>stockKey(x)!==el.dataset.key); commit();
+  const ids=new Set(items.map(x=>x.id)); S.stock=S.stock.filter(x=>!ids.has(x.id)); commit();
 };
 A.stockSell=async el=>{
-  const items=S.stock.filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
+  const items=stockAvail().filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
   const first=items[0];
   const pr={id:first.from||'',title:first.fromTitle||'직접 추가'};
   const lot={id:uid(),name:first.name,qty:items.length,price:0,buyers:[],bidders:[],drawId:null};
@@ -2536,6 +2647,56 @@ A.stockSaleUndo=async el=>{
   const rest=S.ledger.filter(e=>e.id!==x.ledgerId); let bal=0; rest.forEach(e=>{ bal+=e.type==='income'?num(e.amount):-num(e.amount); });
   if(!await confirmBox('"'+x.name+'" 판매를 취소하고 재고로 되돌립니다.\n길자금 수입 내역도 함께 삭제됩니다.'+(bal<0?'\n\n⚠ 되돌리면 길자금이 '+fmtM(bal)+'(마이너스)가 됩니다.':''),{ok:'되돌리기',danger:true})) return;
   S.ledger=rest; (x.items||[]).forEach(it=>S.stock.push(it)); S.stockSales=S.stockSales.filter(v=>v!==x); commit(); toast('재고로 되돌렸습니다');
+};
+
+/* --- 길드 귀속템 --- */
+const qtyModal=async(title,body,max,ok)=>{ const r=await modal({title,ok:ok||'확인',body:body+'<div class="field"><label>수량 (최대 '+max+'개)</label><input id="qN" type="number" min="1" max="'+max+'" value="'+max+'"></div>',
+  onOk(root){ const v=Math.round(num(root.querySelector('#qN').value)); if(!(v>=1&&v<=max)){ toast('1 ~ '+max+' 사이로 입력하세요'); return false; } return {n:v}; }}); return r&&r!==true?r.n:0; };
+A.stockOwn=async el=>{
+  const items=stockAvail().filter(x=>stockKey(x)===el.dataset.key); if(!items.length) return;
+  const n=await qtyModal('길드 귀속 — '+items[0].name,'<p class="hint" style="margin-top:0">판매하지 않고 <b>길드 소유</b>로 보관합니다. 판매가 아니므로 <b>길자금은 변하지 않습니다.</b> 나중에 길드 귀속템 탭에서 강화 시도 등 사용 기록을 남길 수 있습니다.</p>',items.length,'길드 귀속');
+  if(!n) return; const d=today(); items.slice(0,n).forEach(x=>{ x.own='owned'; x.ownedAt=d; x.ownedFrom='stock'; });
+  commit(); toast(items[0].name+' '+n+'개를 길드 귀속템으로 옮겼습니다 (길자금 변동 없음)');
+};
+A.stockSaleToOwn=async el=>{
+  const x=S.stockSales.find(v=>v.id===el.dataset.id); if(!x) return;
+  const amt=num(x.price)*(x.buyers||[]).length||num(x.price)*(x.qty||1);
+  if(!await confirmBox('"'+x.name+'"'+(x.qty>1?' ×'+x.qty:'')+' 판매를 취소하고 길드 귀속템으로 옮깁니다.\n\n· 길자금 수입 +'+fmtM(amt)+' 내역이 삭제됩니다\n· 아이템은 길드 귀속템(보유)으로 이동합니다',{ok:'귀속으로 전환'})) return;
+  const d=today(); let items=(x.items||[]).map(it=>Object.assign({},it));
+  if(!items.length) for(let i=0;i<(x.qty||1);i++) items.push({id:uid(),name:x.name,from:x.fromRaid||'',fromTitle:x.fromTitle||'',date:x.fromDate||'',at:x.date||''});
+  items.forEach(it=>{ it.own='owned'; it.ownedAt=d; it.ownedFrom='sale'; S.stock.push(it); });
+  S.ledger=S.ledger.filter(e=>e.id!==x.ledgerId); S.stockSales=S.stockSales.filter(v=>v!==x);
+  commit(); toast(x.name+' 판매를 취소(수입 -'+fmtM(amt)+')하고 길드 귀속템 '+items.length+'개로 옮겼습니다');
+};
+const USE_KINDS=['강화 시도','제작 재료','기타'], USE_RESULTS=['성공','실패','파괴','해당 없음'];
+A.ownUse=async el=>{
+  const list=ownedItems().filter(x=>x.name===el.dataset.name).sort((a,b)=>(a.ownedAt||'')<(b.ownedAt||'')?-1:1); if(!list.length) return;
+  const res=await modal({title:'귀속템 사용 기록 — '+list[0].name,ok:'사용 기록 저장',wide:true,body:
+    '<p class="hint" style="margin-top:0">사용한 귀속템은 보유 목록에서 빠지고 <b>사용 기록으로 계속 남습니다.</b> 잘못 입력하면 사용 기록에서 "사용 취소"로 되돌릴 수 있습니다.</p>'+
+    '<div class="form-grid"><div class="field"><label>수량 (보유 '+list.length+'개)</label><input id="uN" type="number" min="1" max="'+list.length+'" value="1"></div>'+
+    '<div class="field"><label>사용 날짜</label><input id="uD" type="date" value="'+today()+'"></div>'+
+    '<div class="field"><label>용도</label><select id="uK">'+USE_KINDS.map(k=>'<option>'+k+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>결과</label><select id="uR">'+USE_RESULTS.map(k=>'<option>'+k+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>사용한 길드원</label><select id="uM"><option value="">길드 공용 (특정인 없음)</option>'+activeMembers().map(m=>'<option value="'+esc(m.id)+'">'+esc(m.name)+'</option>').join('')+'</select></div>'+
+    '<div class="field" style="grid-column:1/-1"><label>메모</label><input id="uMemo" maxlength="100" placeholder="예) +7 → +8 강화 시도, 무기 이름 등"></div></div>',
+    onOk(root){ const n=Math.round(num(root.querySelector('#uN').value)), d=root.querySelector('#uD').value;
+      if(!(n>=1&&n<=list.length)){ toast('수량은 1 ~ '+list.length+'개'); return false; } if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('날짜를 선택하세요'); return false; }
+      const mid=root.querySelector('#uM').value, m=S.members.find(x=>x.id===mid);
+      return {n,date:d,kind:root.querySelector('#uK').value,result:root.querySelector('#uR').value,memberId:mid,memberName:m?m.name:'',memo:root.querySelector('#uMemo').value.trim()}; }});
+  if(!res||res===true) return;
+  const useId=uid(); list.slice(0,res.n).forEach(x=>{ x.own='used'; x.useId=useId; x.use={date:res.date,kind:res.kind,result:res.result,memberId:res.memberId,memberName:res.memberName,memo:res.memo}; });
+  commit(); toast(list[0].name+' '+res.n+'개 사용 기록 · '+res.kind+' '+res.result);
+};
+A.ownBack=async el=>{
+  const list=ownedItems().filter(x=>x.name===el.dataset.name); if(!list.length) return;
+  const n=await qtyModal('귀속 취소 — '+list[0].name,'<p class="hint" style="margin-top:0">길드 귀속을 취소하고 <b>미판매 재고템</b>으로 되돌립니다 (다시 판매할 수 있음).</p>',list.length,'재고로 되돌리기');
+  if(!n) return; list.slice(0,n).forEach(x=>{ delete x.own; delete x.ownedAt; delete x.ownedFrom; });
+  commit(); toast(list[0].name+' '+n+'개를 미판매 재고로 되돌렸습니다');
+};
+A.ownUseUndo=async el=>{
+  const list=usedItems().filter(x=>x.useId===el.dataset.uid); if(!list.length) return;
+  if(!await confirmBox('"'+list[0].name+'" '+list.length+'개의 사용 기록을 취소하고 보유 상태로 되돌릴까요?',{ok:'사용 취소'})) return;
+  list.forEach(x=>{ x.own='owned'; delete x.use; delete x.useId; }); commit(); toast('보유 상태로 되돌렸습니다');
 };
 
 /* --- 현금 (입금/출금만) --- */
@@ -3206,10 +3367,22 @@ function logFlush(){
   clearTimeout(LOG.timer); if(!LOG.pend.size) return;
   const items=[...LOG.pend.values()].filter(p=>(p.before||p.after)&&!(p.before&&p.after&&p.before.str===p.after.str)); LOG.pend.clear();   // 추가 후 바로 삭제·원래대로 되돌린 변경은 제외
   const lines=[], sAdd=new Map(), sDel=new Map();
+  const own=new Map(), addOwn=t=>own.set(t,(own.get(t)||0)+1);
   items.forEach(p=>{
-    if(p.type==='stock'&&(!p.before||!p.after)){ const x=(p.after||p.before).payload, m=p.after?sAdd:sDel; m.set(x.name,(m.get(x.name)||0)+1); return; }
+    if(p.type==='stock'){
+      const b=p.before&&p.before.payload, a=p.after&&p.after.payload;
+      if(!b&&a&&a.own==='owned'){ addOwn(a.ownedFrom==='sale'?'[귀속템] 판매 취소 후 길드 귀속 · '+a.name:'[귀속템] 길드 귀속 · '+a.name); return; }
+      if(b&&a){
+        if(!b.own&&a.own==='owned') addOwn(a.ownedFrom==='sale'?'[귀속템] 판매 취소 후 길드 귀속 · '+a.name:'[귀속템] 길드 귀속 · '+a.name);
+        else if(b.own==='owned'&&a.own==='used'){ const u=a.use||{}; addOwn('[귀속템] 사용 · '+a.name+' · '+(u.kind||'')+' '+(u.result||'')+(u.memberName?' · '+u.memberName:'')+(u.memo?' · '+u.memo:'')); }
+        else if(b.own==='owned'&&!a.own) addOwn('[귀속템] 귀속 취소 → 미판매 재고 · '+a.name);
+        else if(b.own==='used'&&a.own==='owned') addOwn('[귀속템] 사용 취소 · '+a.name);
+        return; }
+      if(b&&b.own&&!a){ addOwn('[귀속템] 삭제 · '+b.name); return; }
+      const x=(a||b), m=a?sAdd:sDel; m.set(x.name,(m.get(x.name)||0)+1); return; }
     try{ lines.push(...logDescribe(p)); }catch(e){ lines.push('['+p.type+'] 변경 (요약 실패)'); }
   });
+  own.forEach((n,t)=>lines.push(t+(n>1?' ×'+n:'')));
   sAdd.forEach((n,k)=>lines.push('[재고] 추가 · '+k+(n>1?' ×'+n:'')));
   sDel.forEach((n,k)=>lines.push('[재고] 재고에서 빠짐 · '+k+(n>1?' ×'+n:'')));
   logPush(lines);
@@ -3227,7 +3400,7 @@ function logPush(lines){
   if(ui.tab==='log') renderLogTable();
 }
 /* ---- 로그 탭 (관리자 전용) ---- */
-const LOG_KINDS=['공성전','입출금','현금','레이드','분배','분배 RULE','재고','재고판매','뽑기','공지','길드원','판매아이템','분류','설정','관리자','데이터','클라우드'];
+const LOG_KINDS=['공성전','귀속템','입출금','현금','레이드','분배','분배 RULE','재고','재고판매','뽑기','공지','길드원','판매아이템','분류','설정','관리자','데이터','클라우드'];
 const LOGV={rows:[],fresh:[],cursor:null,done:false,loading:false,loaded:false,src:''};
 const logParse=t=>{ const m=String(t||'').match(/^\[([^\]]+)\]\s*(.*)$/); return m?{kind:m[1],msg:m[2]}:{kind:'기타',msg:String(t||'')}; };
 const logTs=t=>{ try{ const d=t&&t.toDate?t.toDate():new Date(t); return isNaN(d)?'':d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }catch(e){ return ''; } };
@@ -3269,7 +3442,7 @@ function renderLogTable(){
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ calcDist, siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ stockAvail, ownedItems, usedItems, calcDist, siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   const viaLink=cloudCfgFromHash();
