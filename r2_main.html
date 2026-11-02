@@ -257,6 +257,23 @@ details.hist .inner{padding:14px}
 .catchip{font-size:12px}
 /* 공성전 출석 */
 .tab .cnt.live{background:#ff6b6b;color:#fff}
+/* 강조 입력칸 (노란 테두리) */
+input.hl-input{width:100%;font-size:18px;font-weight:700;padding:12px 14px;border:2px solid var(--coin);border-radius:10px;background:var(--field);box-shadow:0 0 0 3px rgba(244,199,107,.12)}
+input.hl-input:focus{outline:none;box-shadow:0 0 0 4px rgba(244,199,107,.30)}
+input.hl-input.empty{animation:hlpulse 2.4s ease-in-out infinite}
+input.hl-input::placeholder{font-weight:500;color:#8a8f99}
+@keyframes hlpulse{0%,100%{box-shadow:0 0 0 3px rgba(244,199,107,.12)}50%{box-shadow:0 0 0 6px rgba(244,199,107,.28)}}
+@media (prefers-reduced-motion:reduce){input.hl-input.empty{animation:none}}
+.field.dtitle>label{font-size:14px;font-weight:800;color:var(--coin)}
+/* 분배 현황: 큰 탭 */
+.seg.big{display:flex;width:100%;gap:10px;background:transparent;border:0;padding:0}
+.seg.big button{flex:1 1 0;padding:14px 16px;font-size:16px;font-weight:800;border:2px solid var(--line2);border-radius:12px;background:var(--panel2)}
+.seg.big button.on{border-color:var(--teal);color:var(--teal);background:var(--teal-soft);box-shadow:0 0 0 3px rgba(79,209,197,.15)}
+.seg.big button .sub{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:4px;border:0;background:none;padding:0;box-shadow:none}
+/* 미판매 재고: 체크해도 줄 높이·칸 너비 그대로 */
+.stocktbl td{height:52px}
+.stocktbl .qbox{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;height:30px;min-width:96px}
+.stocktbl input.bq{width:52px;height:30px;padding:2px 4px;text-align:center}
 /* 묶음 판매 */
 .bundlebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin:0 0 10px;border:1px dashed var(--line2);border-radius:10px;color:var(--muted)}
 .bundlebar.on{border:1px solid var(--coin);background:rgba(244,199,107,.10);color:var(--text);position:sticky;top:108px;z-index:5}
@@ -493,7 +510,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.01-f';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.02-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -1047,10 +1064,10 @@ function viewLedger(){
     card('blue','입출금 직접 입력','',
       '<p class="hint">금액은 <b>만 실버</b> 단위입니다. (1억 = 10,000) 레이드는 레이드 정산 탭에서 <b>판매 완료 → 길자금 수입</b>을 누르면 정산금이 1건으로 기록되고, 분배는 분배 탭에서 완료하면 자동으로 지출 처리됩니다.</p>'+
       ledgerFormHtml(null)+'<div class="toolbar"><button class="btn primary lg" data-act="ledAdd">내역 추가</button></div>')+
-    flowCard(ms)+
     card('teal','입출금 내역 <span class="chip '+(p.bal<0?'out':'coin')+'" style="margin-left:10px">잔액 '+fmtM(p.bal)+'</span>',
       '<select data-chg="lfm" aria-label="기간 선택"><option value="">전체 기간</option>'+ms.slice().reverse().map(o=>'<option value="'+o.m+'"'+(ui.lf.month===o.m?' selected':'')+'>'+o.m.replace('-','년 ')+'월</option>').join('')+'</select>'+
-      '<input type="search" placeholder="항목/메모 검색" data-inp="lfq" value="'+esc(ui.lf.q)+'" style="width:170px">','<div id="ledgerTable"></div>',' id="ledDetail"');
+      '<input type="search" placeholder="항목/메모 검색" data-inp="lfq" value="'+esc(ui.lf.q)+'" style="width:170px">','<div id="ledgerTable"></div>',' id="ledDetail"')+
+    flowCard(ms);      // 전체 자금 흐름은 맨 아래
 }
 /* ---- 현금: 입금/출금만 관리 ---- */
 function cashFormHtml(e){
@@ -1120,36 +1137,37 @@ function readLedgerForm(root){
   if(amount<=0){ toast('금액을 입력하세요'); return null; }
   return {date,type,amount,category:g('lCat').value.trim()||(type==='income'?'기타 수입':'기타 지출'),memo:g('lMemo').value.trim()};
 }
-// 전체 자금 흐름: 월별 수입·지출 막대 + 월말 잔액 선
+// 전체 자금 흐름: 월별 수입·지출·월말 잔액 꺾은선 (하나의 축 · 마이너스도 표시)
 function flowChart(ms){
-  const W=920,H=300,L=74,R=74,T=18,B=40,iw=W-L-R,ih=H-T-B,n=ms.length;
-  const maxF=niceMax(Math.max(1,...ms.map(m=>Math.max(m.inc,m.exp))));
-  const bals=ms.map(m=>m.bal), mx=Math.max(0,...bals), mn=Math.min(0,...bals);
-  const hiB=mx>0?niceMax(mx):1, loB=mn<0?-niceMax(-mn):0;
-  const yF=v=>T+ih-(v/maxF)*ih, yB=v=>T+ih-((v-loB)/(hiB-loB))*ih;
+  const n=ms.length, W=Math.max(920,n*70), H=340, L=74, R=30, T=26, B=62, iw=W-L-R, ih=H-T-B, PAD=56;   // 양 끝 점·금액이 잘리지 않게 여백
+  const all=ms.flatMap(m=>[m.inc,m.exp,m.bal]), hi0=Math.max(0,...all), lo0=Math.min(0,...all);
+  // 0을 포함하는 깔끔한 눈금 (1·2·2.5·5 단위)
+  const niceStep=v=>{ const p=Math.pow(10,Math.floor(Math.log10(v))), m=v/p; return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*p; };
+  const step=niceStep(Math.max(1,(hi0-lo0))/5), lo=Math.floor(lo0/step)*step, hi=Math.max(step,Math.ceil(hi0/step)*step);
+  const y=v=>T+ih-((v-lo)/(hi-lo))*ih, x=i=>n===1?L+iw/2:L+PAD+(iw-2*PAD)*i/(n-1);
   let g='';
-  for(let i=0;i<=4;i++){
-    const y=T+ih-ih*i/4;
-    g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" style="stroke:var(--line)"/>'+
-      '<text x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end" style="fill:var(--muted);font-size:11px">'+fmtAxis(maxF*i/4)+'</text>'+
-      '<text x="'+(W-R+8)+'" y="'+(y+4)+'" style="fill:var(--teal);font-size:11px">'+fmtAxis(loB+(hiB-loB)*i/4)+'</text>';
-  }
-  const step=iw/n, bw=Math.min(26,step*0.3); let bars='',pts=[],dots='',xl='';
+  for(let v=lo;v<=hi+step/2;v+=step){ const yy=y(v), zero=Math.abs(v)<step/1000;
+    g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'" style="stroke:'+(zero?'var(--muted)':'var(--line)')+';stroke-width:'+(zero?1.4:1)+'"/>'+
+      '<text x="'+(L-8)+'" y="'+(yy+4)+'" text-anchor="end" style="fill:'+(zero?'var(--text)':'var(--muted)')+';font-size:11px">'+(zero?'0':fmtAxis(v))+'</text>'; }
+  const line=(key,col,w)=>{ const pts=ms.map((m,i)=>x(i)+','+y(m[key])).join(' ');
+    return (n>1?'<polyline points="'+pts+'" style="fill:none;stroke:'+col+';stroke-width:'+w+';stroke-linejoin:round;stroke-linecap:round"/>':''); };
+  // 잔액 아래 영역(은은하게)
+  const area=n>1?'<polygon points="'+x(0)+','+y(Math.max(lo,0))+' '+ms.map((m,i)=>x(i)+','+y(m.bal)).join(' ')+' '+x(n-1)+','+y(Math.max(lo,0))+'" style="fill:var(--teal);opacity:.10"/>':'';
+  const lab=key=>n<=12;
+  let dots='', xl='';
   ms.forEach((m,i)=>{
-    const cx=L+step*(i+.5);
-    bars+='<rect x="'+(cx-bw-1)+'" y="'+yF(m.inc)+'" width="'+bw+'" height="'+Math.max(0,T+ih-yF(m.inc))+'" rx="2" style="fill:var(--green)"><title>'+m.m+' 수입 '+fmtM(m.inc)+'</title></rect>'+
-      '<rect x="'+(cx+1)+'" y="'+yF(m.exp)+'" width="'+bw+'" height="'+Math.max(0,T+ih-yF(m.exp))+'" rx="2" style="fill:var(--red)"><title>'+m.m+' 지출 '+fmtM(m.exp)+'</title></rect>';
-    pts.push(cx+','+yB(m.bal));
-    dots+='<circle cx="'+cx+'" cy="'+yB(m.bal)+'" r="3.5" style="fill:var(--teal)"><title>'+m.m+' 월말 잔액 '+fmtM(m.bal)+'</title></circle>';
-    if(n<=14||i%2===0) xl+='<text x="'+cx+'" y="'+(H-14)+'" text-anchor="middle" style="fill:var(--muted);font-size:11px">'+m.m.slice(2)+'</text>';
+    [['inc','var(--green)','수입',3.5],['exp','var(--red)','지출',3.5],['bal','var(--teal)','월말 잔액',5]].forEach(([k,c,nm,r])=>{
+      dots+='<circle cx="'+x(i)+'" cy="'+y(m[k])+'" r="'+r+'" style="fill:'+c+';stroke:var(--bg);stroke-width:1.5"><title>'+m.m+' '+nm+' '+fmtM(m[k])+'</title></circle>'; });
+    if(lab()) dots+='<text x="'+x(i)+'" y="'+(m.bal<0?y(m.bal)+20:y(m.bal)-11)+'" text-anchor="middle" style="fill:var(--teal);font-size:12px;font-weight:800;paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round">'+fmtM(m.bal)+'</text>';   // 글씨 테두리로 선과 겹쳐도 읽히게
+    if(n<=16||i%2===0) xl+='<text x="'+x(i)+'" y="'+(H-14)+'" text-anchor="middle" style="fill:var(--muted);font-size:11px">'+m.m.slice(2)+'</text>';
   });
-  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="월별 수입, 지출, 월말 잔액 추이" style="width:100%;height:auto;min-width:'+Math.max(640,n*52)+'px">'+g+bars+
-    '<polyline points="'+pts.join(' ')+'" style="fill:none;stroke:var(--teal);stroke-width:2.5"/>'+dots+xl+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="월별 수입, 지출, 월말 잔액 추이" style="width:100%;height:auto;min-width:'+Math.max(640,n*60)+'px">'+g+area+
+    line('inc','var(--green)',2.2)+line('exp','var(--red)',2.2)+line('bal','var(--teal)',3.4)+dots+xl+'</svg>';
 }
 function flowCard(ms){
   if(!ms.length) return card('green','전체 자금 흐름','','<div class="empty">입출금 내역이 쌓이면 월별 수입·지출과 잔액 추이가 여기에 나타납니다.</div>');
   const shown=ms.slice(-24);
-  const legend='<div class="chips" style="margin-bottom:10px"><span class="chip in">수입</span><span class="chip out">지출</span><span class="chip" style="color:var(--teal);border-color:var(--teal)">월말 잔액 (오른쪽 축)</span>'+(ms.length>shown.length?'<span class="small muted" style="align-self:center">최근 24개월만 그래프에 표시</span>':'')+'</div>';
+  const legend='<div class="chips" style="margin-bottom:10px"><span class="chip in">수입</span><span class="chip out">지출</span><span class="chip" style="color:var(--teal);border-color:var(--teal)">월말 잔액</span>'+(ms.length>shown.length?'<span class="small muted" style="align-self:center">최근 24개월만 그래프에 표시</span>':'')+'</div>';
   let t='<p class="small muted" style="margin:14px 0 8px">달을 누르면 아래 입출금 내역이 그 달만 보입니다. 다시 누르면 전체 기간으로 돌아갑니다.</p>'+
     '<div class="tablewrap"><table class="tbl fixed"><colgroup><col style="width:120px"><col><col><col><col></colgroup><thead><tr><th>월</th><th class="num">수입</th><th class="num">지출</th><th class="num">증감</th><th class="num">월말 잔액</th></tr></thead><tbody>';
   ms.slice().reverse().forEach(o=>{
@@ -1217,10 +1235,10 @@ function ensureDraft(){   // 분배 탭을 열면 활동 중 전체 길드원 �
 const draftBlank=d=>d.rows.every(r=>!num(r.count)&&!Object.values(r.bonus||{}).some(v=>num(v)>0));
 function viewDist(){
   ensureDraft();
-  return ruleCardHtml()+
+  return statusCardHtml()+ruleCardHtml()+
     card('coin','분배 기준 대비 잔액','<span class="chip th-chip">-</span>','<span class="th-text" style="font-size:15px;font-weight:700"></span><div class="prog"><i class="th-fill"></i></div>'+
       '<p class="hint" style="margin:12px 0 0">길자금 잔액이 분배 기준 금액보다 적어도 분배할 수 있습니다. 이 경우 분배 후 길자금이 <b class="neg">마이너스</b>가 되며, 이후 레이드 정산 등 수입으로 채워집니다.</p>')+
-    '<div id="sessionWrap">'+sessionHtml()+'</div>'+statusCardHtml();
+    '<div id="sessionWrap">'+sessionHtml()+'</div>';
 }
 const ratioSum=()=>S.rule.components.filter(c=>c.enabled&&!isAmt(c)).reduce((a,c)=>a+num(c.pct),0);
 function ruleCardHtml(){
@@ -1282,8 +1300,8 @@ function updateRuleSum(){
 }
 function distTitleHtml(d){
   const recent=S.raids.slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,4).filter(r=>r.title);
-  return '<div class="field" style="margin-bottom:14px"><label>분배 제목 <span class="coin">필수</span> · 길자금 지출 내역에 그대로 표시됩니다</label>'+
-    '<input type="text" id="dTitleIn" maxlength="60" value="'+esc(d.title||'')+'" placeholder="예: 이프 3마리 레이드 정산" data-chg="dTitle">'+
+  return '<div class="field dtitle" style="margin-bottom:16px"><label>📝 분배 제목 <span class="chip coin sm2">필수</span> <span class="small muted">· 길자금 지출 내역에 그대로 표시됩니다</span></label>'+
+    '<input type="text" id="dTitleIn" class="hl-input'+(d.title?'':' empty')+'" maxlength="60" value="'+esc(d.title||'')+'" placeholder="예: 이프 3마리 레이드 정산" data-chg="dTitle">'+
     (recent.length?'<div class="chips" style="margin-top:6px"><span class="small muted" style="align-self:center">최근 레이드:</span>'+recent.map(r=>'<span class="chip link" data-act="titlePick" data-v="'+esc(r.title+' 정산')+'">'+esc(r.title+' 정산')+'</span>').join('')+'</div>':'')+'</div>';
 }
 function sessionHtml(){
@@ -1366,15 +1384,15 @@ function statusCardHtml(){
     '<div><span class="k">누적 지급액</span><span class="v">'+fmtM(total)+'</span></div><div><span class="k">지급 완료</span><span class="v pos">'+fmtM(paid)+'</span></div>'+
     '<div><span class="k">미지급</span><span class="v '+(total-paid>0?'neg':'')+'">'+fmtM(total-paid)+'</span></div>'+
     '<div><span class="k">최근 분배</span><span class="v" style="font-size:14px">'+esc(done[done.length-1].title||'')+'<br><span class="small muted" style="font-weight:500">'+fmtDate(done[done.length-1].date)+'</span></span></div></div>':'';
-  const tabs='<div class="seg nav" role="tablist" style="margin:0 0 14px">'+
-    '<button type="button" role="tab" aria-selected="'+(ui.distView==='matrix')+'" data-act="distView" data-v="matrix" class="'+(ui.distView==='matrix'?'on':'')+'">길드원별 지급 현황</button>'+
-    '<button type="button" role="tab" aria-selected="'+(ui.distView==='history')+'" data-act="distView" data-v="history" class="'+(ui.distView==='history'?'on':'')+'">날짜별 분배 정리 ('+done.length+')</button></div>';
+  const tabs='<div class="seg nav big" role="tablist" style="margin:0 0 14px">'+
+    '<button type="button" role="tab" aria-selected="'+(ui.distView==='matrix')+'" data-act="distView" data-v="matrix" class="'+(ui.distView==='matrix'?'on':'')+'">👥 길드원별 지급 현황<span class="sub">누가 얼마 받았고, 지급했는지</span></button>'+
+    '<button type="button" role="tab" aria-selected="'+(ui.distView==='history')+'" data-act="distView" data-v="history" class="'+(ui.distView==='history'?'on':'')+'">📅 날짜별 분배 정리 ('+done.length+')<span class="sub">분배마다 어떻게 나눴는지</span></button></div>';
   let body=stats+tabs;
   if(!done.length) body+='<div class="empty">아직 완료된 분배가 없습니다. 분배를 완료하면 이곳에 쌓입니다.</div>';
   else if(ui.distView==='matrix') body+=boardBody(done);
   else if(ui.distView==='history') body+=historyBody();
   else body+='<p class="hint" style="margin:0">위 탭을 누르면 전체 분배 내역이 표시됩니다. (다시 누르면 접힙니다)</p>';
-  return card('green','분배 현황','<span class="small muted">탭을 눌렀을 때만 내역이 표시됩니다</span>',body);
+  return card('green','📊 분배금 현황','<span class="small muted">아래 버튼을 누르면 내역이 펼쳐집니다 (다시 누르면 접힘)</span>',body);
 }
 // 길드원별 × 날짜별 지급 현황 (칸을 누르면 지급 완료/미지급 전환)
 function boardBody(done){
@@ -1845,11 +1863,11 @@ function viewStock(){
     const sel=bundleSel(), selN=Object.values(sel).reduce((a,v)=>a+v,0), selK=Object.keys(sel).length;
     t='<div class="bundlebar'+(selN?' on':'')+'"><span>📦 <b>'+selK+'종 · '+selN+'개</b> 선택</span><span class="small muted">'+(selN?'체크한 재고템을 하나의 가격으로 한 사람에게 판매합니다':'여러 재고템을 체크하면 한 번에 묶어서 판매할 수 있습니다')+'</span><span style="flex:1"></span>'+
       (selN?'<button class="btn ghost sm" data-act="bClear">선택 해제</button><button class="btn gold" data-act="bundleSell">📦 묶음 판매</button>':'')+'</div>'+
-      '<div class="tablewrap"><table class="tbl fixed" style="min-width:840px"><colgroup><col style="width:46px"><col style="width:190px"><col style="width:130px"><col><col style="width:110px"><col style="width:270px"></colgroup>'+
+      '<div class="tablewrap"><table class="tbl fixed stocktbl" style="min-width:840px"><colgroup><col style="width:46px"><col style="width:190px"><col style="width:130px"><col><col style="width:110px"><col style="width:270px"></colgroup>'+
       '<thead><tr><th class="ck"><input type="checkbox" data-chg="bAll" title="전체 선택"'+(groups.length&&groups.every(g=>sel[g.key])?' checked':'')+'></th><th>아이템</th><th class="num" title="체크하면 묶음에 넣을 개수를 고를 수 있습니다">수량</th><th>출처 레이드 (이월된 곳)</th><th>이월일</th><th></th></tr></thead><tbody>';
     groups.forEach(g=>{
       const k=esc(g.key), on=!!sel[g.key];
-      t+='<tr class="'+(on?'bsel':'')+'"><td class="ck"><input type="checkbox" data-chg="bSel" data-key="'+k+'"'+(on?' checked':'')+'></td><td><b>'+esc(g.name)+'</b></td><td class="num">'+(on&&g.items.length>1?'<input type="number" class="bq" data-chg="bQty" data-key="'+k+'" min="1" max="'+g.items.length+'" value="'+sel[g.key]+'"> / '+g.items.length+'개':g.items.length+'개')+'</td><td class="wrap">'+(g.from||g.fromTitle?'<span class="chip blue">'+esc(g.fromTitle||'(제목 없음)')+'</span> <span class="small muted">'+esc(g.date)+'</span>':'<span class="muted">직접 추가</span>')+'</td>'+
+      t+='<tr class="'+(on?'bsel':'')+'"><td class="ck"><input type="checkbox" data-chg="bSel" data-key="'+k+'"'+(on?' checked':'')+'></td><td><b>'+esc(g.name)+'</b></td><td class="num"><span class="qbox">'+(on&&g.items.length>1?'<input type="number" class="bq" data-chg="bQty" data-key="'+k+'" min="1" max="'+g.items.length+'" value="'+sel[g.key]+'"> / '+g.items.length+'개':g.items.length+'개')+'</span></td><td class="wrap">'+(g.from||g.fromTitle?'<span class="chip blue">'+esc(g.fromTitle||'(제목 없음)')+'</span> <span class="small muted">'+esc(g.date)+'</span>':'<span class="muted">직접 추가</span>')+'</td>'+
         '<td class="nowrap">'+esc(g.at)+'</td><td class="act"><button class="btn sm gold" data-act="stockSell" data-key="'+k+'">판매 입력</button><button class="btn sm" data-act="stockOwn" data-key="'+k+'" title="판매하지 않고 길드 소유로 보관 (길자금 변동 없음)">길드 귀속</button><button class="btn ghost sm" data-act="stockDel" data-key="'+k+'">삭제</button></td></tr>';
     });
     t+='</tbody><tfoot><tr><td></td><td>미판매 재고 합계</td><td class="num">'+groups.reduce((a,g)=>a+g.items.length,0)+'개</td><td></td><td></td><td></td></tr></tfoot></table></div>';
@@ -2864,7 +2882,7 @@ C.compName=el=>{ const c=compById(el.dataset.comp); if(c){ c.name=el.value.trim(
 I.compNum=el=>{ const c=compById(el.dataset.comp); if(c){ c[el.dataset.k]=Math.max(0,num(el.value)); quiet(); updateDistCalc(); } };
 C.compTiers=el=>{ const c=compById(el.dataset.comp); if(c){ c.tiers=el.value.split(/[,\s]+/).filter(Boolean).map(num).filter(x=>x>=0); el.value=c.tiers.join(','); quiet(); updateDistCalc(); } };
 C.compTie=el=>{ const c=compById(el.dataset.comp); if(c){ c.tie=el.value; quiet(); updateDistCalc(); } };
-C.dTitle=el=>{ const d=draftDist(); if(d){ d.title=el.value.trim(); quiet(); } };
+C.dTitle=el=>{ el.classList.toggle('empty',!el.value.trim()); const d=draftDist(); if(d){ d.title=el.value.trim(); quiet(); } };
 A.titlePick=el=>{ const d=draftDist(); if(!d) return; d.title=el.dataset.v; const i=$('#dTitleIn'); if(i) i.value=d.title; quiet(); };
 C.dDate=el=>{ const d=draftDist(); if(d&&el.value){ d.date=el.value; quiet(); } };
 C.dJoin=el=>{ const d=draftDist(), r=d&&d.rows.find(x=>x.memberId===el.dataset.m); if(r){ r.join=el.checked; quiet(); updateDistCalc(); } };
