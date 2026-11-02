@@ -257,6 +257,12 @@ details.hist .inner{padding:14px}
 .catchip{font-size:12px}
 /* 공성전 출석 */
 .tab .cnt.live{background:#ff6b6b;color:#fff}
+/* 묶음 판매 */
+.bundlebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin:0 0 10px;border:1px dashed var(--line2);border-radius:10px;color:var(--muted)}
+.bundlebar.on{border:1px solid var(--coin);background:rgba(244,199,107,.10);color:var(--text);position:sticky;top:108px;z-index:5}
+tr.bsel td{background:rgba(244,199,107,.07)}
+input.bq{width:60px;text-align:center}
+.tbl td.ck,.tbl th.ck{text-overflow:clip;padding-left:12px;padding-right:4px}
 .sg-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .sg-head .when{font-size:18px;font-weight:800}
 .sg-btn{min-width:78px}
@@ -487,7 +493,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.01-e';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.01-f';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -598,7 +604,7 @@ function guessCat(n){
 function saleHistory(o){
   const h=new Map(), put=(n,price,date)=>{ n=normName(n).toLowerCase(); price=Math.round(num(price)); if(!n||!(price>0)) return; const c=h.get(n); if(!c||(date||'')>=(c.date||'')) h.set(n,{price,date:date||''}); };
   (o.raids||[]).forEach(r=>(r.lots||[]).forEach(l=>{ if(l.state==='sold') put(l.name,l.price,l.soldDate||r.date); }));
-  (o.stockSales||[]).forEach(x=>put(x.name,x.price,x.date));
+  (o.stockSales||[]).forEach(x=>{ if(!x.bundle) put(x.name,x.price,x.date); });   // 묶음 가격은 개별 시세가 아님
   return h;
 }
 function seedCatalog(o){
@@ -608,7 +614,7 @@ function seedCatalog(o){
     if(date!==undefined){ it.uses++; if(date&&date>it.last) it.last=date; } };
   (((o.settings||{}).itemPresets||{}).income||[]).forEach(n=>add(n));
   (o.raids||[]).forEach(r=>(r.lots||[]).forEach(l=>add(l.name,r.date||'')));
-  (o.stock||[]).forEach(x=>add(x.name)); (o.stockSales||[]).forEach(x=>add(x.name));
+  (o.stock||[]).forEach(x=>add(x.name)); (o.stockSales||[]).forEach(x=>{ if(x.bundle) (x.lines||[]).forEach(l=>add(l.name)); else add(x.name); });
   const hist=saleHistory(o);
   map.forEach((it,k)=>{ const sh=hist.get(k); it.price=sh?sh.price:0; it.soldPrice=sh?sh.price:0; it.soldAt=sh?sh.date:''; it.prevPrice=0; });
   return Array.from(map.values());
@@ -776,7 +782,7 @@ function normalize(d){
   { const have=new Set(o.settings.itemCatalog.map(x=>x.name.toLowerCase())), hid=new Set(o.settings.itemHidden), hist=saleHistory(o);
     const fill=n=>{ n=normName(n); const k=n.toLowerCase(); if(!n||have.has(k)||hid.has(k)) return; have.add(k); const sh=hist.get(k);
       o.settings.itemCatalog.push({id:uid(),name:n,cat:'misc',uses:0,last:'',price:sh?sh.price:0,soldPrice:sh?sh.price:0,soldAt:sh?sh.date:'',prevPrice:0,auto:true}); };
-    o.raids.forEach(r=>(r.lots||[]).forEach(l=>fill(l.name))); o.stock.forEach(x=>fill(x.name)); o.stockSales.forEach(x=>fill(x.name)); }
+    o.raids.forEach(r=>(r.lots||[]).forEach(l=>fill(l.name))); o.stock.forEach(x=>fill(x.name)); o.stockSales.forEach(x=>{ if(x.bundle) (x.lines||[]).forEach(l=>fill(l.name)); else fill(x.name); }); }
   return o;
 }
 
@@ -1596,25 +1602,28 @@ function openSaleModal(r,lot){
   const K=lot.qty;
   const st={checked:new Set(lot.bidders&&lot.bidders.length?lot.bidders:(lot.buyers||[]).map(b=>b.id)),
     draw:lot.drawId?(S.draws.find(x=>x.id===lot.drawId)||null):null};
-  const body='<p class="hint">'+(r&&r.title?'출처 레이드: <b>'+esc(r.title)+'</b> · ':'')+'<b>'+esc(lot.name)+'</b> × '+K+'개 — 입찰에 참여한 사람만 체크하세요. 입찰자가 수량보다 많으면 보물상자 뽑기로 낙찰자를 정합니다.</p>'+
-    '<div class="field"><label>판매가 — 1개당 (만 실버)'+(!lot.price&&catPrice(lot.name)?' <span class="small muted">· 기본 가격 '+fmtM(catPrice(lot.name))+'으로 채움 (고쳐도 됩니다)</span>':'')+'</label>'+moneyIn('id="sP" placeholder="0"',lot.price||catPrice(lot.name)||'','big')+'</div>'+
+  const bd=lot.bundle;   // 묶음 판매: 여러 재고템을 한 사람에게 합계 가격으로
+  const body=(bd?'<div class="notice" style="margin-top:0">📦 <b>묶음 판매</b> — '+bd.lines.map(l=>'<b>'+esc(l.name)+'</b>'+(l.qty>1?' ×'+l.qty:'')).join(', ')+' (총 '+bd.total+'개)<br><span class="small">묶음 전체를 <b>한 사람</b>에게 판매합니다. 입찰자가 여러 명이면 룰렛으로 1명을 뽑습니다. 판매 아이템 기본 가격은 바뀌지 않습니다.</span></div>'
+      :'<p class="hint">'+(r&&r.title?'출처 레이드: <b>'+esc(r.title)+'</b> · ':'')+'<b>'+esc(lot.name)+'</b> × '+K+'개 — 입찰에 참여한 사람만 체크하세요. 입찰자가 수량보다 많으면 보물상자 뽑기로 낙찰자를 정합니다.</p>')+
+    (bd?'<div class="field"><label>묶음 판매가 — 합계 (만 실버)'+(bd.suggest?' <span class="small muted">· 참고: 기본 가격 합계 '+fmtM(bd.suggest)+'</span>':'')+'</label>'+moneyIn('id="sP" placeholder="0"','','big')+'</div>'
+      :'<div class="field"><label>판매가 — 1개당 (만 실버)'+(!lot.price&&catPrice(lot.name)?' <span class="small muted">· 기본 가격 '+fmtM(catPrice(lot.name))+'으로 채움 (고쳐도 됩니다)</span>':'')+'</label>'+moneyIn('id="sP" placeholder="0"',lot.price||catPrice(lot.name)||'','big')+'</div>')+
     '<div class="field"><label>입찰 참여자 <span id="bdCnt" class="coin"></span></label>'+
     '<div class="bdtools"><button type="button" class="btn sm" data-q="all">전체 선택</button><button type="button" class="btn sm" data-q="none">전체 해제</button></div>'+
     '<div class="biddergrid">'+pool.map(p=>'<label class="bd"><input type="checkbox" data-bid="'+esc(p.id)+'"'+(st.checked.has(p.id)?' checked':'')+'><span>'+esc(p.name)+'</span>'+(p.cls?classChip(p.cls,true):'')+'</label>').join('')+'</div></div>'+
     '<div id="bdState"></div>';
-  return modal({title:'판매 입력 — '+lot.name,wide:true,ok:'판매 확정',body,
+  return modal({title:bd?'📦 묶음 판매 — '+bd.total+'개':'판매 입력 — '+lot.name,wide:true,ok:'판매 확정',body,
     onOpen(root){
       const cnt=root.querySelector('#bdCnt'), state=root.querySelector('#bdState');
       const checkedList=()=>pool.filter(p=>st.checked.has(p.id));
       const update=()=>{
-        const N=st.checked.size; cnt.textContent='('+N+'명 입찰 · 수량 '+K+'개)';
+        const N=st.checked.size; cnt.textContent=bd?'('+N+'명 입찰 · 묶음 1개 → 1명 낙찰)':'('+N+'명 입찰 · 수량 '+K+'개)';
         let h='';
         if(N===0) h='<div class="notice warn">입찰에 참여한 사람을 체크하세요.</div>';
-        else if(N<=K) h='<div class="notice ok">입찰 '+N+'명 ≤ 수량 '+K+'개 → 뽑기 없이 입찰자 전원이 낙찰됩니다.</div>';
+        else if(N<=K) h='<div class="notice ok">'+(bd?'입찰 1명 → 뽑기 없이 묶음 전체를 낙찰합니다.':'입찰 '+N+'명 ≤ 수량 '+K+'개 → 뽑기 없이 입찰자 전원이 낙찰됩니다.')+'</div>';
         else{
-          h='<div class="notice warn">입찰 '+N+'명 &gt; 수량 '+K+'개 → 뽑기로 '+K+'명을 정합니다.</div>'+
+          h='<div class="notice warn">'+(bd?'입찰 '+N+'명 → 묶음을 가져갈 1명을 룰렛으로 정합니다.':'입찰 '+N+'명 &gt; 수량 '+K+'개 → 뽑기로 '+K+'명을 정합니다.')+'</div>'+
             (st.draw?'<div class="drawres">🏆 당첨: '+st.draw.winners.map(w=>esc(w.name)).join(', ')+'</div><button type="button" class="btn" data-draw="1">'+(K===1?'🎡 다시 돌리기':'🎲 다시 뽑기')+' (이전 결과도 기록에 남습니다)</button>':
-              '<div class="toolbar" style="margin:10px 0 0"><button type="button" class="btn gold lg" data-draw="1">'+(K===1?'🎡 룰렛 돌리기 (수량 1개)':'🎁 뽑기 실행 (보물상자)')+'</button></div>');
+              '<div class="toolbar" style="margin:10px 0 0"><button type="button" class="btn gold lg" data-draw="1">'+(K===1?'🎡 룰렛 돌리기 ('+(bd?'묶음 1명':'수량 1개')+')':'🎁 뽑기 실행 (보물상자)')+'</button></div>');
         }
         state.innerHTML=h;
       };
@@ -1833,14 +1842,17 @@ function viewStock(){
   let t;
   if(!groups.length) t='<div class="empty">'+(stockAvail().length?'선택한 출처의 재고템이 없습니다.':'미판매 재고템이 없습니다.<br><span class="small">레이드 정산에서 판매되지 않은 아이템에 "미판매"를 누르면 이곳으로 이월됩니다.</span>')+'</div>';
   else{
-    t='<div class="tablewrap"><table class="tbl fixed" style="min-width:760px"><colgroup><col style="width:190px"><col style="width:80px"><col><col style="width:120px"><col style="width:270px"></colgroup>'+
-      '<thead><tr><th>아이템</th><th class="num">수량</th><th>출처 레이드 (이월된 곳)</th><th>이월일</th><th></th></tr></thead><tbody>';
+    const sel=bundleSel(), selN=Object.values(sel).reduce((a,v)=>a+v,0), selK=Object.keys(sel).length;
+    t='<div class="bundlebar'+(selN?' on':'')+'"><span>📦 <b>'+selK+'종 · '+selN+'개</b> 선택</span><span class="small muted">'+(selN?'체크한 재고템을 하나의 가격으로 한 사람에게 판매합니다':'여러 재고템을 체크하면 한 번에 묶어서 판매할 수 있습니다')+'</span><span style="flex:1"></span>'+
+      (selN?'<button class="btn ghost sm" data-act="bClear">선택 해제</button><button class="btn gold" data-act="bundleSell">📦 묶음 판매</button>':'')+'</div>'+
+      '<div class="tablewrap"><table class="tbl fixed" style="min-width:840px"><colgroup><col style="width:46px"><col style="width:190px"><col style="width:130px"><col><col style="width:110px"><col style="width:270px"></colgroup>'+
+      '<thead><tr><th class="ck"><input type="checkbox" data-chg="bAll" title="전체 선택"'+(groups.length&&groups.every(g=>sel[g.key])?' checked':'')+'></th><th>아이템</th><th class="num" title="체크하면 묶음에 넣을 개수를 고를 수 있습니다">수량</th><th>출처 레이드 (이월된 곳)</th><th>이월일</th><th></th></tr></thead><tbody>';
     groups.forEach(g=>{
-      const k=esc(g.key);
-      t+='<tr><td><b>'+esc(g.name)+'</b></td><td class="num">'+g.items.length+'개</td><td class="wrap">'+(g.from||g.fromTitle?'<span class="chip blue">'+esc(g.fromTitle||'(제목 없음)')+'</span> <span class="small muted">'+esc(g.date)+'</span>':'<span class="muted">직접 추가</span>')+'</td>'+
+      const k=esc(g.key), on=!!sel[g.key];
+      t+='<tr class="'+(on?'bsel':'')+'"><td class="ck"><input type="checkbox" data-chg="bSel" data-key="'+k+'"'+(on?' checked':'')+'></td><td><b>'+esc(g.name)+'</b></td><td class="num">'+(on&&g.items.length>1?'<input type="number" class="bq" data-chg="bQty" data-key="'+k+'" min="1" max="'+g.items.length+'" value="'+sel[g.key]+'"> / '+g.items.length+'개':g.items.length+'개')+'</td><td class="wrap">'+(g.from||g.fromTitle?'<span class="chip blue">'+esc(g.fromTitle||'(제목 없음)')+'</span> <span class="small muted">'+esc(g.date)+'</span>':'<span class="muted">직접 추가</span>')+'</td>'+
         '<td class="nowrap">'+esc(g.at)+'</td><td class="act"><button class="btn sm gold" data-act="stockSell" data-key="'+k+'">판매 입력</button><button class="btn sm" data-act="stockOwn" data-key="'+k+'" title="판매하지 않고 길드 소유로 보관 (길자금 변동 없음)">길드 귀속</button><button class="btn ghost sm" data-act="stockDel" data-key="'+k+'">삭제</button></td></tr>';
     });
-    t+='</tbody><tfoot><tr><td>미판매 재고 합계</td><td class="num">'+groups.reduce((a,g)=>a+g.items.length,0)+'개</td><td></td><td></td><td></td></tr></tfoot></table></div>';
+    t+='</tbody><tfoot><tr><td></td><td>미판매 재고 합계</td><td class="num">'+groups.reduce((a,g)=>a+g.items.length,0)+'개</td><td></td><td></td><td></td></tr></tfoot></table></div>';
   }
   const head=card('coin','미판매 재고템 <span class="chip coin" style="margin-left:8px">'+stockAvail().length+'개</span>',
     '<select data-chg="sfilter" aria-label="출처 레이드"><option value="">모든 출처</option>'+origins.map(o=>'<option value="'+esc(o.id)+'"'+(ui.sf===o.id?' selected':'')+'>'+esc(o.label)+'</option>').join('')+'</select>',
@@ -1852,9 +1864,9 @@ function viewStock(){
   if(!sales.length) sb='<div class="empty" style="padding:18px">아직 판매한 재고템이 없습니다.</div>';
   else sb='<div class="tablewrap"><table class="tbl fixed" style="min-width:820px"><colgroup><col style="width:118px"><col style="width:170px"><col><col style="width:150px"><col style="width:150px"><col style="width:180px"></colgroup>'+
     '<thead><tr><th>판매일</th><th>아이템</th><th>출처 레이드</th><th>구매자</th><th class="num">판매가</th><th></th></tr></thead><tbody>'+
-    sales.map(x=>'<tr><td class="nowrap">'+esc(x.date)+'</td><td><b>'+esc(x.name)+'</b>'+(x.qty>1?'<span class="chip sm2">×'+x.qty+'</span>':'')+(x.drawId?'<span class="chip sm2 blue">뽑기</span>':'')+'</td>'+
+    sales.map(x=>'<tr><td class="nowrap">'+esc(x.date)+'</td><td>'+(x.bundle?'<span class="chip coin sm2">📦 묶음 '+x.qty+'개</span><div class="small wrap" style="margin-top:3px">'+esc((x.lines||[]).map(l=>l.name+(l.qty>1?'×'+l.qty:'')).join(', '))+'</div>':'<b>'+esc(x.name)+'</b>'+(x.qty>1?'<span class="chip sm2">×'+x.qty+'</span>':''))+(x.drawId?'<span class="chip sm2 blue">뽑기</span>':'')+'</td>'+
       '<td class="wrap">'+(x.fromRaid&&S.raids.some(r=>r.id===x.fromRaid)?'<span class="chip link blue" data-act="openRaidFrom" data-id="'+esc(x.fromRaid)+'">'+esc(x.fromTitle||'(제목 없음)')+'</span>':esc(x.fromTitle||'직접 추가'))+' <span class="small muted">'+esc(x.fromDate||'')+'</span></td>'+
-      '<td class="wrap">'+esc(x.buyers.map(b=>b.name).join(', '))+'</td><td class="num pos"><b>+'+fmtM(x.price*x.buyers.length)+'</b>'+(x.buyers.length>1?'<div class="small muted">개당 '+fmtM(x.price)+'</div>':'')+'</td>'+
+      '<td class="wrap">'+esc(x.buyers.map(b=>b.name).join(', '))+'</td><td class="num pos"><b>+'+fmtM(x.price*x.buyers.length)+'</b>'+(x.bundle?'<div class="small muted">묶음 합계</div>':x.buyers.length>1?'<div class="small muted">개당 '+fmtM(x.price)+'</div>':'')+'</td>'+
       '<td class="act"><button class="btn ghost sm" data-act="stockSaleUndo" data-id="'+esc(x.id)+'" title="판매를 취소하고 재고로 되돌립니다">되돌리기</button><button class="btn ghost sm" data-act="stockSaleToOwn" data-id="'+esc(x.id)+'" title="판매를 취소(길자금 수입 취소)하고 길드 귀속템으로 옮깁니다">귀속 전환</button></td></tr>').join('')+
     '</tbody></table></div>';
   return head+card('green','재고템 판매 내역','<span class="small muted">판매 즉시 길자금 수입으로 자동 기록</span>',sb)+
@@ -2645,8 +2657,30 @@ A.stockSell=async el=>{
 A.stockSaleUndo=async el=>{
   const x=S.stockSales.find(v=>v.id===el.dataset.id); if(!x) return;
   const rest=S.ledger.filter(e=>e.id!==x.ledgerId); let bal=0; rest.forEach(e=>{ bal+=e.type==='income'?num(e.amount):-num(e.amount); });
-  if(!await confirmBox('"'+x.name+'" 판매를 취소하고 재고로 되돌립니다.\n길자금 수입 내역도 함께 삭제됩니다.'+(bal<0?'\n\n⚠ 되돌리면 길자금이 '+fmtM(bal)+'(마이너스)가 됩니다.':''),{ok:'되돌리기',danger:true})) return;
+  if(!await confirmBox('"'+(x.bundle?'묶음: '+(x.lines||[]).map(l=>l.name+(l.qty>1?'×'+l.qty:'')).join(', '):x.name)+'" 판매를 취소하고 재고로 되돌립니다.\n길자금 수입 내역도 함께 삭제됩니다.'+(bal<0?'\n\n⚠ 되돌리면 길자금이 '+fmtM(bal)+'(마이너스)가 됩니다.':''),{ok:'되돌리기',danger:true})) return;
   S.ledger=rest; (x.items||[]).forEach(it=>S.stock.push(it)); S.stockSales=S.stockSales.filter(v=>v!==x); commit(); toast('재고로 되돌렸습니다');
+};
+
+/* --- 묶음 판매 --- */
+// 선택: { 재고키: 수량 } (판매 가능한 재고만, 사라진 항목은 자동 정리)
+function bundleSel(){ const sel=ui.bsel||(ui.bsel={}); const avail=new Map(); stockAvail().forEach(x=>{ const k=stockKey(x); avail.set(k,(avail.get(k)||0)+1); });
+  Object.keys(sel).forEach(k=>{ const n=avail.get(k)||0; if(!n) delete sel[k]; else sel[k]=Math.max(1,Math.min(n,Math.round(sel[k])||1)); }); return sel; }
+A.bClear=()=>{ ui.bsel={}; render(); };
+A.bundleSell=async()=>{
+  const sel=bundleSel(), keys=Object.keys(sel); if(!keys.length) return toast('묶음에 넣을 재고템을 체크하세요');
+  const picked=[], lines=[], srcs=new Set();
+  keys.forEach(k=>{ const items=stockAvail().filter(x=>stockKey(x)===k).slice(0,sel[k]); if(!items.length) return; picked.push(...items); srcs.add(stockSrc(items[0]));
+    const ln=lines.find(l=>l.name===items[0].name); if(ln) ln.qty+=items.length; else lines.push({name:items[0].name,qty:items.length}); });
+  if(!picked.length) return;
+  const total=picked.length, suggest=lines.reduce((a,l)=>a+catPrice(l.name)*l.qty,0), label=lines.map(l=>l.name+(l.qty>1?'×'+l.qty:'')).join(', ');
+  const lot={id:uid(),name:'묶음 ('+total+'개)',qty:1,price:0,buyers:[],bidders:[],drawId:null,bundle:{lines,total,suggest}};
+  const res=await openSaleModal({id:'',title:'재고템 묶음'},lot); if(!res||res===true) return;
+  const ids=new Set(picked.map(x=>x.id)); S.stock=S.stock.filter(x=>!ids.has(x.id));
+  const sid=uid(), lid=uid(), date=today(), src=Array.from(srcs).join(' / ');
+  S.ledger.push({id:lid,date,type:'income',category:'재고템 판매',amount:res.price,
+    memo:'묶음: '+label+' → '+res.buyers.map(b=>b.name).join(', ')+' · 출처: '+src,ref:{kind:'stock',raidId:'',saleId:sid}});
+  S.stockSales.push({id:sid,date,name:'묶음 ('+total+'개)',bundle:true,lines,qty:total,price:res.price,buyers:res.buyers,drawId:res.drawId,fromRaid:'',fromTitle:src,fromDate:'',ledgerId:lid,items:picked});
+  ui.bsel={}; commit(); toast('📦 묶음 판매 완료 ('+label+') · 길자금 수입 +'+fmtM(res.price)+' → '+res.buyers.map(b=>b.name).join(', '));
 };
 
 /* --- 길드 귀속템 --- */
@@ -2661,8 +2695,9 @@ A.stockOwn=async el=>{
 A.stockSaleToOwn=async el=>{
   const x=S.stockSales.find(v=>v.id===el.dataset.id); if(!x) return;
   const amt=num(x.price)*(x.buyers||[]).length||num(x.price)*(x.qty||1);
-  if(!await confirmBox('"'+x.name+'"'+(x.qty>1?' ×'+x.qty:'')+' 판매를 취소하고 길드 귀속템으로 옮깁니다.\n\n· 길자금 수입 +'+fmtM(amt)+' 내역이 삭제됩니다\n· 아이템은 길드 귀속템(보유)으로 이동합니다',{ok:'귀속으로 전환'})) return;
+  if(!await confirmBox('"'+(x.bundle?'묶음: '+(x.lines||[]).map(l=>l.name+(l.qty>1?'×'+l.qty:'')).join(', '):x.name)+'"'+(!x.bundle&&x.qty>1?' ×'+x.qty:'')+' 판매를 취소하고 길드 귀속템으로 옮깁니다.\n\n· 길자금 수입 +'+fmtM(amt)+' 내역이 삭제됩니다\n· 아이템은 길드 귀속템(보유)으로 이동합니다',{ok:'귀속으로 전환'})) return;
   const d=today(); let items=(x.items||[]).map(it=>Object.assign({},it));
+  if(!items.length&&x.bundle) (x.lines||[]).forEach(l=>{ for(let i=0;i<l.qty;i++) items.push({id:uid(),name:l.name,from:'',fromTitle:x.fromTitle||'',date:'',at:x.date||''}); });
   if(!items.length) for(let i=0;i<(x.qty||1);i++) items.push({id:uid(),name:x.name,from:x.fromRaid||'',fromTitle:x.fromTitle||'',date:x.fromDate||'',at:x.date||''});
   items.forEach(it=>{ it.own='owned'; it.ownedAt=d; it.ownedFrom='sale'; S.stock.push(it); });
   S.ledger=S.ledger.filter(e=>e.id!==x.ledgerId); S.stockSales=S.stockSales.filter(v=>v!==x);
@@ -2841,6 +2876,10 @@ C.paid=el=>{
 };
 C.raidTitle=el=>{ const r=curRaid(); if(r){ r.title=el.value.trim(); quiet(); } };
 C.raidDate=el=>{ const r=curRaid(); if(r&&el.value){ r.date=el.value; quiet(); } };
+/* 묶음 판매 선택 */
+C.bSel=el=>{ const sel=bundleSel(), k=el.dataset.key; if(el.checked) sel[k]=stockAvail().filter(x=>stockKey(x)===k).length; else delete sel[k]; render(); };
+C.bQty=el=>{ const sel=bundleSel(); if(sel[el.dataset.key]!==undefined){ sel[el.dataset.key]=Math.round(num(el.value))||1; render(); } };
+C.bAll=el=>{ const sel=bundleSel(); if(el.checked) stockGroups().filter(g=>!ui.sf||(ui.sf==='__none'?!g.from:g.from===ui.sf)).forEach(g=>{ sel[g.key]=g.items.length; }); else Object.keys(sel).forEach(k=>delete sel[k]); render(); };
 C.ms=el=>{ ui.ms=el.value; renderMemberTable(); };
 C.mcls=el=>{ ui.mc=el.value; renderMemberTable(); };
 I.mq=el=>{ ui.mq=el.value; renderMemberTable(); };
@@ -3316,8 +3355,9 @@ function logDescribe(p){
       }
       break; }
     case 'stockSale': {
-      if(!b) L('재고판매',a.name+(a.qty>1?'×'+a.qty:'')+' '+fmtM(num(a.price)*(a.qty||1))+' → '+(a.buyers||[]).map(x=>x.name||x).join(','));
-      else if(!a) L('재고판매','되돌리기 · '+b.name+(b.qty>1?'×'+b.qty:'')); break; }
+      const bl=x=>(x.lines||[]).map(l=>l.name+(l.qty>1?'×'+l.qty:'')).join(', ');
+      if(!b) L('재고판매',a.bundle?'묶음 판매 · '+bl(a)+' '+fmtM(a.price)+' → '+(a.buyers||[]).map(x=>x.name||x).join(','):a.name+(a.qty>1?'×'+a.qty:'')+' '+fmtM(num(a.price)*(a.qty||1))+' → '+(a.buyers||[]).map(x=>x.name||x).join(','));
+      else if(!a) L('재고판매','되돌리기 · '+(b.bundle?'묶음 '+bl(b):b.name+(b.qty>1?'×'+b.qty:''))); break; }
     case 'draw': { if(!b) L('뽑기',a.item+' 당첨 · '+(a.winners||[]).map(x=>x.name).join(',')+' (입찰 '+(a.bidders||[]).length+'명)'); break; }
     case 'notice': { const kind=x=>x.type==='meeting'?'회의록':'공지';
       if(!b){ L('공지',kind(a)+' 작성 · '+lq(a.title)); break; } if(!a){ L('공지',kind(b)+' 삭제 · '+lq(b.title)); break; }
