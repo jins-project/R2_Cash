@@ -249,6 +249,13 @@ body.is-admin details.admin-only{display:block !important}
   font-size:11.5px;color:var(--muted);opacity:.55;pointer-events:none;
 }
 .uin:focus-within::before{opacity:.9;color:var(--gold)}
+.srow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px}
+.srow select,.srow input{width:auto !important}
+.srow input[type=number]{width:64px !important;text-align:right}
+.sign{width:96px !important;font-weight:700}
+.sign.minus{color:var(--ember)}
+.sched-status{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px;margin-top:10px}
+.sched-status b{color:var(--gold)}
 .acc-head{display:flex;align-items:center;gap:8px;margin:12px 0 2px;font-size:12.5px;color:var(--chaos)}
 .acc-head .spacer{flex:1}
 
@@ -422,9 +429,12 @@ body.is-admin details.admin-only{display:block !important}
       <p class="hint" style="margin-top:0">관리자로 로그인되어 있습니다. 상단에 <b>JSON 저장 / JSON 불러오기</b> 버튼이, 아래쪽에 <b>수정한 IP 목록</b>이 보입니다.
         (이 브라우저 창을 닫으면 자동으로 로그아웃됩니다)</p>
       <hr>
-      <h4>일괄 시간 증가 (서버 점검 보상 등)</h4>
+      <h4>일괄 시간 조정 — 지금 바로 (증가·감소)</h4>
       <div class="timein" style="border:0;grid-template-columns:1fr 64px 64px 64px">
-        <span class="lbl">증가량</span>
+        <select id="bSign" class="sign" title="증가 또는 감소">
+          <option value="1">＋ 증가</option>
+          <option value="-1">－ 감소</option>
+        </select>
         <span class="uin" data-unit="일"><input type="number" id="bD" min="0"></span>
         <span class="uin" data-unit="시"><input type="number" id="bH" min="0"></span>
         <span class="uin" data-unit="분"><input type="number" id="bM" min="0"></span>
@@ -439,9 +449,50 @@ body.is-admin details.admin-only{display:block !important}
         <input type="checkbox" id="bSkipExpired" checked> 이미 만료된 아이템은 제외
       </label>
       <p class="hint" id="bPreview"></p>
-      <p class="hint">일괄 증가는 연장 횟수에 포함되지 않습니다.</p>
+      <p class="hint">일괄 조정은 연장 횟수에 포함되지 않습니다. 자동 조정이 잘못 들어갔다면 <b>－ 감소</b>로 되돌리세요.</p>
       <div class="row" style="justify-content:flex-start">
         <button class="btn primary" id="bApply">일괄 적용</button>
+      </div>
+
+      <hr>
+      <h4>자동 시간 조정 — 매주 정해진 시각 (스케줄)</h4>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--text);margin-top:4px">
+        <input type="checkbox" id="sOn"> 자동 조정 사용
+      </label>
+      <div class="srow" style="margin-top:8px">
+        매주
+        <select id="sDow">
+          <option value="0">일요일</option><option value="1">월요일</option><option value="2">화요일</option>
+          <option value="3">수요일</option><option value="4">목요일</option><option value="5">금요일</option>
+          <option value="6">토요일</option>
+        </select>
+        <input type="number" id="sHour" min="0" max="23"> 시
+        <input type="number" id="sMin" min="0" max="59"> 분에
+      </div>
+      <div class="timein" style="border:0;grid-template-columns:1fr 64px 64px 64px;margin-top:6px">
+        <select id="sSign" class="sign">
+          <option value="1">＋ 증가</option>
+          <option value="-1">－ 감소</option>
+        </select>
+        <span class="uin" data-unit="일"><input type="number" id="sD" min="0"></span>
+        <span class="uin" data-unit="시"><input type="number" id="sH" min="0"></span>
+        <span class="uin" data-unit="분"><input type="number" id="sM" min="0"></span>
+      </div>
+      <label for="sTarget">적용 대상</label>
+      <select id="sTarget">
+        <option value="all">전체 아이템</option>
+        <option value="hammer">망치 아이템만 (목걸이·드라코·악세사리)</option>
+        <option value="rune">메테리얼만</option>
+      </select>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--text)">
+        <input type="checkbox" id="sSkip" checked> 이미 만료된 아이템은 제외
+      </label>
+      <div class="sched-status" id="sStatus"></div>
+      <p class="hint">페이지를 열어 둔 사람의 브라우저가 정해진 시각에 자동으로 적용합니다. 그 시각에 아무도 페이지를 열지 않았다면,
+        다음에 누군가 열 때 밀린 횟수만큼 한 번에 적용돼요(최대 8회분). 여러 명이 열어 두어도 한 번만 적용됩니다.
+        저장한 시점보다 이전 회차는 적용하지 않습니다.</p>
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn primary" id="sSave">스케줄 저장</button>
       </div>
       <hr>
       <details>
@@ -590,10 +641,22 @@ function slotsOf(c){
   ];
 }
 
+// 일괄/자동 조정 대상인지 판단 (target: all/hammer/rune)
+function slotMatches(slot, target, skipExpired){
+  if (!slot.item || !slot.item.expireAt) return false;
+  if (target === "hammer" && slot.def.rule !== "24h") return false;
+  if (target === "rune" && slot.def.rule !== "any") return false;
+  if (skipExpired && slot.item.expireAt <= now()) return false;
+  return true;
+}
+
 /* ===================== 1. 화면에서 쓰는 데이터 ===================== */
 let chars = {};           // { 캐릭터ID: {name, memo, items:{...}} }
 let logs = [];            // 최신 기록이 앞쪽
 let adminHash = null;     // 관리자 비밀번호(해시값)
+let schedule = null;      // 자동 시간 조정 설정 {on, dow, hour, min, deltaMin, target, skipExpired}
+let schedLast = 0;        // 자동 조정이 마지막으로 적용된 회차(예정 시각, ms)
+let dataLoaded = false;   // 캐릭터 데이터를 한 번이라도 받았는지
 let serverOffset = 0;     // Firebase 모드에서 서버 시계 보정
 let editingId = null;     // 수정 중인 캐릭터 ID (null 이면 새로 추가)
 let pendingImport = null; // 불러오기 확인 중인 데이터
@@ -741,7 +804,11 @@ function createLocalStore(){
   function publish(){ // 화면용 변수에 반영하고 다시 그리기
     chars = data.characters || {};
     adminHash = (data.settings || {}).adminHash || null;
+    schedule = (data.settings || {}).schedule || null;
+    schedLast = (data.settings || {}).schedLast || 0;
+    dataLoaded = true;
     updateAdminUI();
+    setTimeout(checkSchedule, 0);
     logs = (data.logs || []).slice();
     renderAll(); renderLogs();
   }
@@ -781,6 +848,22 @@ function createLocalStore(){
       log(logText); persist();
       return Promise.resolve();
     },
+    setSchedule(sched, last, logText){
+      data.settings.schedule = sched; data.settings.schedLast = last; log(logText); persist();
+      return Promise.resolve();
+    },
+    // 자동 조정 1회 실행 (occ = 이번 회차 예정 시각, count = 밀린 회수)
+    runSchedule(occ, count, sched, logFn){
+      if ((data.settings.schedLast || 0) >= occ) return Promise.resolve(null);
+      const delta = sched.deltaMin * MIN * count; let n = 0;
+      for (const c of Object.values(data.characters)){
+        for (const sl of slotsOf(c)){
+          if (slotMatches(sl, sched.target, sched.skipExpired)){ sl.item.expireAt += delta; n++; }
+        }
+      }
+      data.settings.schedLast = occ; log(logFn(n)); persist();
+      return Promise.resolve(n);
+    },
     setAdminHash(h, onlyIfEmpty, logText){
       if (onlyIfEmpty && data.settings.adminHash) return Promise.resolve(false);
       data.settings.adminHash = h; log(logText); persist();
@@ -797,7 +880,7 @@ function createLocalStore(){
 
 /* ---------- 3-2. Firebase 저장소 (Cloud Firestore) ----------
    Firestore 안의 저장 구조
-     r2rooms/r2-main-room                      ← 문서: { adminHash }
+     r2rooms/r2-main-room                      ← 문서: { adminHash, schedule, schedLast }
      r2rooms/r2-main-room/characters/{캐릭터ID} ← 문서: { name, memo, items, updatedBy, updatedAt }
      r2rooms/r2-main-room/logs/{자동ID}         ← 문서: { at, by, text }
 ------------------------------------------------------------- */
@@ -847,7 +930,7 @@ function createFirebaseStore(cfg, room){
       charCol.onSnapshot({ includeMetadataChanges: true }, snap => {
         const next = {};
         snap.forEach(d => { next[d.id] = d.data(); });
-        chars = next; renderAll();
+        chars = next; dataLoaded = true; renderAll();
         setConn(snap.metadata.fromCache ? "" : "on",
                 snap.metadata.fromCache ? "Firestore 연결 확인 중…" : "Firestore 실시간 연결됨");
       }, err => {
@@ -855,7 +938,14 @@ function createFirebaseStore(cfg, room){
         $("grid").innerHTML = `<div class="empty">데이터를 읽을 수 없습니다.<br>${esc(permHint(err))}</div>`;
       });
 
-      roomRef.onSnapshot(d => { adminHash = d.exists ? (d.data().adminHash || null) : null; updateAdminUI(); },
+      roomRef.onSnapshot(d => {
+        const v = d.exists ? d.data() : {};
+        adminHash = v.adminHash || null;
+        schedule = v.schedule || null;
+        schedLast = v.schedLast || 0;
+        updateAdminUI(); updateSchedStatus();
+        setTimeout(checkSchedule, 0);
+      },
                          err => console.warn(err));
 
       logCol.orderBy("at", "desc").limit(MAX_LOGS).onSnapshot(snap => {
@@ -912,11 +1002,40 @@ function createFirebaseStore(cfg, room){
       log(logText);
     },
 
+    setSchedule(sched, last, logText){
+      return roomRef.set({ schedule: sched, schedLast: last }, { merge: true })
+        .then(() => log(logText)).catch(e => { throw new Error(permHint(e)); });
+    },
+
+    // 자동 조정 1회 실행 — 한 번의 transaction 으로 "회차 확인 + 모든 캐릭터 수정 + 회차 기록"을 묶어서
+    // 여러 명이 동시에 페이지를 열어 두어도 딱 한 번만 적용됩니다.
+    runSchedule(occ, count, sched, logFn){
+      const ids = Object.keys(chars);
+      return db.runTransaction(async tx => {
+        const r = await tx.get(roomRef);
+        const v = r.exists ? r.data() : {};
+        if ((v.schedLast || 0) >= occ || !v.schedule || !v.schedule.on) return null;   // 이미 누가 적용함
+        const snaps = await Promise.all(ids.map(id => tx.get(charCol.doc(id))));
+        const delta = sched.deltaMin * MIN * count; let n = 0;
+        snaps.forEach(sn => {
+          if (!sn.exists) return;
+          const upd = {};
+          for (const sl of slotsOf(sn.data())){
+            if (slotMatches(sl, sched.target, sched.skipExpired)){ upd[`items.${sl.key}.expireAt`] = sl.item.expireAt + delta; n++; }
+          }
+          if (Object.keys(upd).length) tx.update(sn.ref, upd);
+        });
+        tx.set(roomRef, { schedLast: occ }, { merge: true });
+        return n;
+      }).then(n => { if (n !== null) log(logFn(n)); return n; })
+        .catch(e => { throw new Error(permHint(e)); });
+    },
+
     setAdminHash(h, onlyIfEmpty, logText){
       return db.runTransaction(async tx => {
         const snap = await tx.get(roomRef);
         if (onlyIfEmpty && snap.exists && snap.data().adminHash) return false;
-        tx.set(roomRef, { adminHash: h });
+        tx.set(roomRef, { adminHash: h }, { merge: true });   // merge: 스케줄 설정은 그대로 둠
         return true;
       }).then(ok => { if (ok) log(logText); return ok; })
         .catch(e => { throw new Error(permHint(e)); });
@@ -934,7 +1053,7 @@ function createFirebaseStore(cfg, room){
         ops.slice(i, i + 400).forEach(fn => fn(batch));
         await batch.commit().catch(e => { throw new Error(permHint(e)); });
       }
-      if (newHash !== undefined) await roomRef.set({ adminHash: newHash }).catch(e => { throw new Error(permHint(e)); });
+      if (newHash !== undefined) await roomRef.set({ adminHash: newHash }, { merge: true }).catch(e => { throw new Error(permHint(e)); });
       log(logText);
     },
   };
@@ -1536,6 +1655,7 @@ function openAdmin(){
   $("btnFbSetup").style.display = isLocal ? "" : "none";
   $("btnToLocal").style.display = isLocal || EMBEDDED_CONFIG ? "none" : "";
   updatePreview();
+  fillScheduleForm();
   showModal("mAdmin");
 }
 
@@ -1559,46 +1679,123 @@ function checkPw(){
   return true;
 }
 
-function bulkTargets(){
-  const target = $("bTarget").value, skip = $("bSkipExpired").checked;
+function bulkTargets(target = $("bTarget").value, skip = $("bSkipExpired").checked){
   const out = [];
   for (const [id, c] of Object.entries(chars)){
     for (const s of slotsOf(c)){
-      if (!s.item || !s.item.expireAt) continue;
-      if (target === "hammer" && s.def.rule !== "24h") continue;
-      if (target === "rune" && s.def.rule !== "any") continue;
-      if (skip && s.item.expireAt <= now()) continue;
-      out.push({ id, key: s.key, expireAt: s.item.expireAt });
+      if (slotMatches(s, target, skip)) out.push({ id, key: s.key, expireAt: s.item.expireAt });
     }
   }
   return out;
 }
-function bulkMs(){ return (+$("bD").value||0)*DAY + (+$("bH").value||0)*HOUR + (+$("bM").value||0)*MIN; }
-function fmtAdd(ms){
-  const d = Math.floor(ms/DAY), h = Math.floor(ms%DAY/HOUR), m = Math.floor(ms%HOUR/MIN);
-  return [d && d+"일", h && h+"시간", m && m+"분"].filter(Boolean).join(" ");
+// 입력값(일/시/분)을 ms 로 — 감소를 고르면 음수
+function bulkMs(){
+  const ms = (+$("bD").value||0)*DAY + (+$("bH").value||0)*HOUR + (+$("bM").value||0)*MIN;
+  return ms * Number($("bSign").value);
 }
+function fmtAdd(ms){
+  ms = Math.abs(ms);
+  const d = Math.floor(ms/DAY), h = Math.floor(ms%DAY/HOUR), m = Math.floor(ms%HOUR/MIN);
+  return [d && d+"일", h && h+"시간", m && m+"분"].filter(Boolean).join(" ") || "0분";
+}
+function fmtDelta(ms){ return (ms < 0 ? "－" : "＋") + fmtAdd(ms); }
 function updatePreview(){
-  const n = bulkTargets().length, ms = bulkMs();
-  $("bPreview").textContent = ms > 0
-    ? `대상 아이템 ${n}개에 ${fmtAdd(ms)}을(를) 더합니다.`
-    : `대상 아이템 ${n}개 · 더할 시간을 입력하세요.`;
+  const list = bulkTargets(), ms = bulkMs();
+  $("bSign").classList.toggle("minus", ms < 0 || $("bSign").value === "-1");
+  if (!ms){ $("bPreview").textContent = `대상 아이템 ${list.length}개 · 조정할 시간을 입력하세요.`; return; }
+  const dying = ms < 0 ? list.filter(t => t.expireAt + ms <= now()).length : 0;
+  $("bPreview").textContent = `대상 아이템 ${list.length}개에 ${josa(fmtAdd(ms),"을","를")} ${ms > 0 ? "더합니다" : "뺍니다"}.`
+    + (dying ? ` ※ 그중 ${dying}개는 감소 후 만료 상태가 됩니다.` : "");
 }
 
 function applyBulk(){
   if (!checkPw()) return;
   const ms = bulkMs();
-  if (ms <= 0){ $("adminErr").textContent = "더할 시간을 입력하세요."; return; }
+  if (!ms){ $("adminErr").textContent = "조정할 시간을 입력하세요."; return; }
   const list = bulkTargets();
   if (!list.length){ $("adminErr").textContent = "적용할 아이템이 없습니다."; return; }
-  if (!confirm(`아이템 ${list.length}개에 ${fmtAdd(ms)}을(를) 더합니다.\n되돌리려면 수정 화면에서 직접 고쳐야 하니 확인 후 눌러주세요.`)) return;
+  const dying = ms < 0 ? list.filter(t => t.expireAt + ms <= now()).length : 0;
+  if (!confirm(`아이템 ${list.length}개에 ${josa(fmtAdd(ms),"을","를")} ${ms > 0 ? "더합니다" : "뺍니다"}.`
+      + (dying ? `\n※ 그중 ${dying}개는 감소 후 만료 상태가 됩니다.` : "")
+      + `\n되돌리려면 반대 방향으로 같은 시간을 다시 적용하면 됩니다.`)) return;
 
   const tName = $("bTarget").selectedOptions[0].textContent;
-  Store.bulkAdd(list, ms, `[관리자] 일괄 시간 증가 ${fmtAdd(ms)} (${tName}, ${list.length}개)`).then(() => {
-    toast(`${list.length}개 아이템에 ${fmtAdd(ms)} 추가 완료`);
+  Store.bulkAdd(list, ms, `[관리자] 일괄 시간 ${ms > 0 ? "증가" : "감소"} ${fmtDelta(ms)} (${tName}, ${list.length}개)`).then(() => {
+    toast(`${list.length}개 아이템에 ${fmtDelta(ms)} 적용 완료`);
     $("bD").value = $("bH").value = $("bM").value = "";
     updatePreview();
   }).catch(e => { $("adminErr").textContent = "적용 실패: " + e.message; });
+}
+
+/* ===================== 자동 시간 조정 (스케줄) ===================== */
+const WEEK_MS = 7 * DAY;
+const DOW = ["일","월","화","수","목","금","토"];
+const TARGET_NAME = { all:"전체 아이템", hammer:"망치 아이템", rune:"메테리얼" };
+let schedRunning = false;
+
+// t 시각 기준 "가장 최근에 지나간 회차"의 예정 시각 (이 PC의 시간대 기준 = 한국 시간)
+function lastOccurrence(sc, t){
+  const d = new Date(t);
+  d.setHours(sc.hour, sc.min, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() - sc.dow + 7) % 7));
+  if (d.getTime() > t) d.setDate(d.getDate() - 7);
+  return d.getTime();
+}
+function schedText(sc){
+  return `매주 ${DOW[sc.dow]}요일 ${pad(sc.hour)}:${pad(sc.min)} ${fmtDelta(sc.deltaMin * MIN)} (${TARGET_NAME[sc.target] || sc.target})`;
+}
+
+// 1분마다(그리고 데이터가 바뀔 때마다) 적용할 회차가 있는지 확인
+function checkSchedule(){
+  if (!Store || !dataLoaded || schedRunning || !schedule || !schedule.on || !schedLast) return;
+  const occ = lastOccurrence(schedule, now());
+  if (schedLast >= occ) return;
+  let count = 0;
+  for (let t = occ; t > schedLast && count < 8; t -= WEEK_MS) count++;   // 밀린 회차 (최대 8회)
+  const sc = Object.assign({}, schedule);
+  schedRunning = true;
+  Store.runSchedule(occ, count, sc, n =>
+    `[자동] ${schedText(sc)} 적용 — ${n}개${count > 1 ? `, 밀린 ${count}회분` : ""}`
+  ).then(n => {
+    if (n !== null) toast(`자동 시간 조정 적용: ${fmtDelta(sc.deltaMin * MIN * count)} · 아이템 ${n}개`);
+  }).catch(e => console.warn("자동 조정 실패", e))
+    .finally(() => { schedRunning = false; updateSchedStatus(); });
+}
+
+// 관리자 화면: 스케줄 입력칸 채우기 / 상태 표시
+function fillScheduleForm(){
+  const sc = schedule || { on:false, dow:4, hour:11, min:0, deltaMin:120, target:"all", skipExpired:true };  // 기본: 매주 목 11:00 +2시간
+  $("sOn").checked = !!sc.on;
+  $("sDow").value = String(sc.dow); $("sHour").value = sc.hour; $("sMin").value = pad(sc.min);
+  const a = Math.abs(sc.deltaMin);
+  $("sSign").value = sc.deltaMin < 0 ? "-1" : "1";
+  $("sSign").classList.toggle("minus", sc.deltaMin < 0);
+  $("sD").value = Math.floor(a / 1440) || ""; $("sH").value = Math.floor(a % 1440 / 60) || ""; $("sM").value = a % 60 || "";
+  $("sTarget").value = sc.target; $("sSkip").checked = sc.skipExpired !== false;
+  updateSchedStatus();
+}
+function updateSchedStatus(){
+  const el = $("sStatus"); if (!el) return;
+  if (!schedule || !schedule.on){ el.innerHTML = "자동 조정이 <b>꺼져</b> 있습니다."; return; }
+  const occ = lastOccurrence(schedule, now());
+  el.innerHTML = `현재 설정: <b>${esc(schedText(schedule))}</b><br>
+    다음 적용 예정: <b>${fmtDate(occ + WEEK_MS)}</b>${schedLast ? ` · 마지막 적용(기준) 회차: ${fmtDate(schedLast)}` : ""}`;
+}
+function saveSchedule(){
+  if (!checkPw()) return;
+  const hour = toInt($("sHour").value, 0, 23), min = toInt($("sMin").value, 0, 59);
+  const deltaMin = Math.round(((+$("sD").value||0) * 1440 + (+$("sH").value||0) * 60 + (+$("sM").value||0)) * Number($("sSign").value));
+  const on = $("sOn").checked;
+  if (on && !deltaMin){ $("adminErr").textContent = "자동으로 조정할 시간을 입력하세요."; return; }
+  if (Math.abs(deltaMin) > 7 * 1440){ $("adminErr").textContent = "한 번에 7일 넘게 조정할 수 없습니다."; return; }
+  const sc = { on, dow: toInt($("sDow").value, 0, 6), hour, min, deltaMin, target: $("sTarget").value, skipExpired: $("sSkip").checked };
+  // 저장한 시점 기준으로 이미 지나간 회차는 적용하지 않도록 기준 회차를 기록
+  const last = lastOccurrence(sc, now());
+  Store.setSchedule(sc, last, on ? `[관리자] 자동 조정 설정: ${schedText(sc)}` : "[관리자] 자동 조정 끔").then(() => {
+    schedule = sc; schedLast = last; updateSchedStatus();
+    $("adminErr").textContent = "";
+    toast(on ? `저장했습니다. 다음 적용: ${fmtDate(last + WEEK_MS)}` : "자동 조정을 껐습니다.");
+  }).catch(e => { $("adminErr").textContent = "저장 실패: " + e.message; });
 }
 
 function changePw(){
@@ -1669,6 +1866,9 @@ $("bApply").onclick = applyBulk;
 $("chPwBtn").onclick = changePw;
 ["bD","bH","bM"].forEach(id => $(id).addEventListener("input", updatePreview));
 $("bTarget").addEventListener("change", updatePreview);
+$("bSign").addEventListener("change", updatePreview);
+$("sSign").addEventListener("change", () => $("sSign").classList.toggle("minus", $("sSign").value === "-1"));
+$("sSave").onclick = saveSchedule;
 $("bSkipExpired").addEventListener("change", updatePreview);
 ["filter","sort"].forEach(id => $(id).addEventListener("input", renderGrid));
 // 검색: 입력할 때마다 카드·알림 상자 모두 다시 그리고, 검색어는 기억해 둡니다
@@ -1720,6 +1920,7 @@ localStorage.removeItem("r2_nick"); localStorage.removeItem("r2_owner");   // �
   }
   setInterval(tick, 1000);        // 1초마다 남은 시간 숫자 갱신
   setInterval(renderAll, 30000);  // 30초마다 상태(강조·버튼) 다시 판정
+  setInterval(checkSchedule, 30000); // 30초마다 자동 시간 조정 회차 확인
 })();
 </script>
 </body>
