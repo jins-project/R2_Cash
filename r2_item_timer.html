@@ -334,8 +334,8 @@ body.is-admin details.admin-only{display:block !important}
     <div id="ipList"></div>
   </details>
 
-  <details class="log">
-    <summary>최근 기록 (누가 언제 연장했는지)</summary>
+  <details class="log admin-only" id="logBox">
+    <summary>최근 기록 (누가 언제 연장했는지) <small style="color:var(--muted);font-weight:400">· 관리자만 보임</small></summary>
     <ul id="logList"></ul>
   </details>
 </main>
@@ -1276,6 +1276,7 @@ function renderGrid(){
 // 최근 기록: IP는 관리자에게만 보여줍니다 (다른 사람의 IP가 모두에게 보이지 않도록)
 function renderLogs(){
   const admin = isAdmin();
+  if (!admin){ $("logList").innerHTML = ""; renderIpList(); return; }   // 관리자가 아니면 기록을 그리지 않음
   $("logList").innerHTML = logs.length
     ? logs.slice(0, 40).map(l => `<li><span class="num">${l.at ? fmtLogTime(l.at) : ""}</span> · ${admin ? `<b class="num">${esc(l.by)}</b> ` : ""}${esc(l.text)}</li>`).join("")
     : `<li>아직 기록이 없습니다.</li>`;
