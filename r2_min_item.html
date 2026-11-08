@@ -58,7 +58,11 @@ header .spacer{flex:1}
 .btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
 .btn.primary{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
 .btn.danger{color:var(--ember);border-color:#5a2f2a}
-.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn:disabled,.btn.blocked{opacity:.35;cursor:not-allowed}
+/* 확인 창 (브라우저 기본 확인창 대신 사용) */
+#mConfirm{z-index:40}
+#mConfirm .modal{max-width:440px}
+#cfMsg{white-space:pre-wrap;font-size:14.5px;line-height:1.6;margin:0}
 .btn.sm{padding:3px 7px;font-size:12px}
 /* JSON 저장 후 변경사항이 있으면 버튼에 점 표시 */
 .btn.dirty::after{
@@ -521,6 +525,20 @@ body.is-admin details.admin-only{display:block !important}
   </div>
 </div>
 
+<!-- ============ 확인 창 ============
+     브라우저 기본 확인창은 카카오톡 등 앱 안 브라우저에서 막히거나,
+     "이 페이지에서 추가 대화상자 차단"을 누르면 아무 반응이 없어지기 때문에 직접 만든 창을 씁니다. -->
+<div class="modal-bg" id="mConfirm">
+  <div class="modal">
+    <h3 id="cfTitle">확인</h3>
+    <p id="cfMsg"></p>
+    <div class="row">
+      <button class="btn" id="cfNo">취소</button>
+      <button class="btn primary" id="cfYes">확인</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -715,10 +733,35 @@ function blockReason(def, item){
 }
 function canExtend(def, item){ return blockReason(def, item) === ""; }
 
-function toast(msg){
+function toast(msg, ms = 2600){
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms);
 }
+// 직접 만든 확인 창 — 사용법: if (!(await askConfirm("내용"))) return;
+function askConfirm(msg, { title = "확인", ok = "확인", cancel = "취소", danger = false } = {}){
+  return new Promise(resolve => {
+    $("cfTitle").textContent = title; $("cfMsg").textContent = msg;
+    $("cfYes").textContent = ok; $("cfNo").textContent = cancel;
+    $("cfNo").style.display = cancel ? "" : "none";
+    $("cfYes").className = "btn " + (danger ? "danger" : "primary");
+    const done = v => {
+      $("mConfirm").classList.remove("show");
+      document.removeEventListener("keydown", onKey, true);
+      resolve(v);
+    };
+    const onKey = e => {
+      if (e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); done(false); }
+      else if (e.key === "Enter"){ e.preventDefault(); e.stopPropagation(); done(true); }
+    };
+    $("cfYes").onclick = () => done(true);
+    $("cfNo").onclick = () => done(false);
+    document.addEventListener("keydown", onKey, true);
+    $("mConfirm").classList.add("show");
+    setTimeout(() => $("cfYes").focus(), 30);
+  });
+}
+// 알림만 보여주는 창
+function showNotice(msg, title = "알림"){ return askConfirm(msg, { title, cancel: "" }); }
 /* 내 공인 IP 확인 — 브라우저는 자기 IP를 알 수 없어서 외부 서비스(ipify)에 물어봅니다.
    실패하면 "IP 미확인"으로 기록하고 프로그램은 그대로 동작합니다. */
 let myIP = "";
@@ -1150,7 +1193,7 @@ function itemHTML(id, slot){
       <div class="sub">${def.tool}${countHTML(def, item)}</div>
     </div>
     <div class="txt"><div class="rem num">${remTxt}</div><div class="exp num">${expTxt}</div></div>
-    <button class="btn" data-extend="${id}|${key}" ${reason ? "disabled" : ""} title="${tip}">${actLabel(def)}</button>
+    <button class="btn ${reason ? "blocked" : ""}" data-extend="${id}|${key}" aria-disabled="${!!reason}" title="${tip}">${actLabel(def)}</button>
   </div>`;
 }
 
@@ -1206,7 +1249,7 @@ function renderQueueBox(box, state, txt){
             <span class="nm">${esc(r.def.name)}<small>${r.def.max ? `${r.item.count || 0}/${r.def.max}` : r.def.tool}</small></span>
             <span><span class="rem num" data-exp="${r.item.expireAt}">${fmtRemain(r.rem)}</span>
               <span class="exp num">${fmtDate(r.item.expireAt)}</span></span>
-            <button class="btn sm" data-extend="${g.id}|${r.key}" ${reason ? "disabled" : ""} title="${reason || actDesc(r.def)}">${label}</button>
+            <button class="btn sm ${reason ? "blocked" : ""}" data-extend="${g.id}|${r.key}" aria-disabled="${!!reason}" title="${reason || actDesc(r.def)}">${label}</button>
           </div>`;
         }).join("")}
       </div>`).join("")}</div>`;
@@ -1325,12 +1368,12 @@ function tick(){
 }
 
 /* ===================== 5. 연장 (+7일 / 메테리얼 교환) ===================== */
-function extendItem(id, key){
+async function extendItem(id, key){
   const c = chars[id]; const it = c?.items?.[key];
   if (!c) return;
   const def = defFor(key, it);
   const reason = blockReason(def, it);
-  if (reason){ toast(reason); return; }
+  if (reason){ toast(reason, 3500); return; }
   const nextCnt = (it.count || 0) + 1;
   const cntTxt = def.max ? ` (${nextCnt}/${def.max}회째)` : ` (${nextCnt}회째)`;
   const after = extendedExpire(def, it);
@@ -1338,12 +1381,16 @@ function extendItem(id, key){
     ? `[${c.name}] ${def.name}\n${josa(def.tool,"으로","로")} 교환했나요?${cntTxt}\n\n만료: ${fmtDate(it.expireAt)} → ${fmtDate(after)} (지금부터 7일)`
       + (after < it.expireAt ? `\n※ 지금 남은 시간보다 짧아집니다.` : "")
     : `[${c.name}] ${def.name}\n${josa(def.tool,"을","를")} 사용해서 7일 연장했나요?${cntTxt}\n\n만료: ${fmtDate(it.expireAt)} → ${fmtDate(after)} (+7일)`;
-  if (!confirm(msg)) return;
+  if (!(await askConfirm(msg, { title: def.reset ? "메테리얼 교환" : "7일 연장", ok: def.reset ? "교환" : "+7일 연장" }))) return;
 
-  Store.extend(id, key).then(res => {
+  try {
+    const res = await Store.extend(id, key);
     if (res) toast(`${c.name} ${def.name} ${def.reset ? "교환 완료" : "7일 연장 완료"} → ${fmtDate(res.expireAt)}${def.max ? ` (${res.count}/${def.max})` : ""}`);
-    else toast("이미 다른 사람이 연장했거나 연장할 수 없는 상태입니다.");
-  }).catch(e => toast("저장 실패: " + e.message));
+    else toast("이미 다른 사람이 연장했거나 연장할 수 없는 상태입니다.", 4000);
+  } catch(e){
+    console.error("연장 실패", e);
+    showNotice("저장에 실패했습니다.\n\n" + e.message, "연장 실패");   // 오류는 창으로 크게 보여줌
+  }
 }
 
 /* ===================== 6. 캐릭터 추가/수정/삭제 ===================== */
@@ -1455,9 +1502,9 @@ function saveChar(){
   }).catch(e => { $("charErr").textContent = "저장 실패: " + e.message; });
 }
 
-function deleteChar(id){
+async function deleteChar(id){
   const c = chars[id]; if (!c) return;
-  if (!confirm(`[${c.name}] 캐릭터를 삭제할까요?`)) return;
+  if (!(await askConfirm(`[${c.name}] 캐릭터를 삭제할까요?`, { title: "캐릭터 삭제", ok: "삭제", danger: true }))) return;
   Store.removeChar(id, `${c.name} 캐릭터 삭제`).then(() => toast("삭제했습니다."));
 }
 
@@ -1569,7 +1616,7 @@ function onFilePicked(file){
   const reader = new FileReader();
   reader.onload = () => {
     try { pendingImport = parseImport(reader.result); }
-    catch(e){ alert("불러오기 실패: " + e.message); return; }
+    catch(e){ showNotice("불러오기 실패: " + e.message); return; }
     const list = Object.values(pendingImport.characters);
     $("importSum").innerHTML = `
       <div><b>${esc(file.name)}</b></div>
@@ -1580,16 +1627,16 @@ function onFilePicked(file){
     $("importErr").textContent = "";
     showModal("mImport");
   };
-  reader.onerror = () => alert("파일을 읽지 못했습니다.");
+  reader.onerror = () => showNotice("파일을 읽지 못했습니다.");
   reader.readAsText(file, "utf-8");
 }
 
-function applyImport(){
+async function applyImport(){
   if (!pendingImport || !needAdmin()) return;
   const mode = document.querySelector('input[name="impMode"]:checked').value;
   let next;
   if (mode === "replace"){
-    if (Object.keys(chars).length && !confirm("지금 있는 캐릭터를 모두 지우고 파일 내용으로 바꿉니다. 계속할까요?")) return;
+    if (Object.keys(chars).length && !(await askConfirm("지금 있는 캐릭터를 모두 지우고 파일 내용으로 바꿉니다. 계속할까요?", { ok: "전체 바꾸기", danger: true }))) return;
     next = pendingImport.characters;
   } else {
     // 합치기: 이름이 같으면 기존 ID 자리에 덮어쓰기
@@ -1709,16 +1756,16 @@ function updatePreview(){
     + (dying ? ` ※ 그중 ${dying}개는 감소 후 만료 상태가 됩니다.` : "");
 }
 
-function applyBulk(){
+async function applyBulk(){
   if (!checkPw()) return;
   const ms = bulkMs();
   if (!ms){ $("adminErr").textContent = "조정할 시간을 입력하세요."; return; }
   const list = bulkTargets();
   if (!list.length){ $("adminErr").textContent = "적용할 아이템이 없습니다."; return; }
   const dying = ms < 0 ? list.filter(t => t.expireAt + ms <= now()).length : 0;
-  if (!confirm(`아이템 ${list.length}개에 ${josa(fmtAdd(ms),"을","를")} ${ms > 0 ? "더합니다" : "뺍니다"}.`
+  if (!(await askConfirm(`아이템 ${list.length}개에 ${josa(fmtAdd(ms),"을","를")} ${ms > 0 ? "더합니다" : "뺍니다"}.`
       + (dying ? `\n※ 그중 ${dying}개는 감소 후 만료 상태가 됩니다.` : "")
-      + `\n되돌리려면 반대 방향으로 같은 시간을 다시 적용하면 됩니다.`)) return;
+      + `\n되돌리려면 반대 방향으로 같은 시간을 다시 적용하면 됩니다.`, { title: "일괄 시간 조정" }))) return;
 
   const tName = $("bTarget").selectedOptions[0].textContent;
   Store.bulkAdd(list, ms, `[관리자] 일괄 시간 ${ms > 0 ? "증가" : "감소"} ${fmtDelta(ms)} (${tName}, ${list.length}개)`).then(() => {
@@ -1834,7 +1881,7 @@ function showModal(id){ $(id).classList.add("show"); }
 function hideModal(id){ $(id).classList.remove("show"); }
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => b.closest(".modal-bg").classList.remove("show"));
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") document.querySelectorAll(".modal-bg.show").forEach(m => m.classList.remove("show"));
+  if (e.key === "Escape") document.querySelectorAll(".modal-bg.show").forEach(m => { if (m.id !== "mConfirm") m.classList.remove("show"); });
 });
 
 // 화면 안 여러 버튼을 한 곳에서 처리 (이벤트 위임)
@@ -1886,8 +1933,8 @@ document.addEventListener("keydown", e => {
 });
 
 $("btnFbSetup").onclick = () => { hideModal("mAdmin"); $("cfgErr").textContent = ""; showModal("mSetup"); };
-$("btnToLocal").onclick = () => {
-  if (!confirm("이 브라우저를 로컬 모드로 돌립니다. (Firebase에 있는 데이터는 지워지지 않습니다)")) return;
+$("btnToLocal").onclick = async () => {
+  if (!(await askConfirm("이 브라우저를 로컬 모드로 돌립니다. (Firebase에 있는 데이터는 지워지지 않습니다)"))) return;
   localStorage.removeItem("r2_fbcfg"); location.reload();
 };
 $("cfgSave").onclick = () => {
