@@ -398,7 +398,7 @@ input.bq{width:60px;text-align:center}
 .rl-pointer{position:absolute;left:50%;top:-18px;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:30px solid #fff0b8;filter:drop-shadow(0 0 8px #f4c76b);z-index:3}
 .rl-hub{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff0b8,#d9a441);border:3px solid #7a5a18;display:flex;align-items:center;justify-content:center;font-size:26px;z-index:2;box-shadow:0 0 18px #0008}
 .rl-seg.win path{stroke:#fff;stroke-width:2.5;filter:drop-shadow(0 0 6px #fff6)}
-@media (prefers-reduced-motion:reduce){.rl-wheel.spin{transition-duration:.8s}}
+
 .dr-foot [hidden]{display:none}
 @keyframes drPulse{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(.8)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
 @keyframes drShake{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-3px,1px) rotate(-3deg)}40%{transform:translate(4px,-2px) rotate(3deg)}60%{transform:translate(-4px,0) rotate(-4deg)}80%{transform:translate(3px,2px) rotate(4deg)}}
@@ -406,7 +406,7 @@ input.bq{width:60px;text-align:center}
 @keyframes drBurst{0%{transform:scale(.1);opacity:1}100%{transform:scale(9);opacity:0}}
 @keyframes drFlash{0%{opacity:.85}100%{opacity:0}}
 @keyframes drWin{0%{opacity:0;transform:scale(.4)}70%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){.dr-chest.wobble,.dr-chest.tshake,.dr-stage.tense::after,.rl-stage.slow,.dr-chest.shake,.dr-glow,.dr-burst,.dr-count span,.dr-wchip.show,.dr-flash.on{animation:none}.dr-wchip.show{opacity:1}.dr-lid,.dr-loot{transition:none}}
+/* 추첨 연출은 '애니메이션 줄이기' 설정에서도 그대로 재생 (쪼이는 맛이 핵심) */
 
 .tab .cnt{display:inline-block;min-width:20px;padding:0 6px;margin-left:7px;border-radius:999px;background:var(--coin);color:#2b1c00;font-size:11px;font-weight:800;text-align:center;vertical-align:middle}
 .tab .cnt:empty{display:inline-block;visibility:hidden}   /* 재고 개수 배지 자리를 항상 확보 */
@@ -537,7 +537,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.04-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.05-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -1750,7 +1750,7 @@ function secureShuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){
 function runRoulette(o){
   return new Promise(resolve=>{
     const root=$('#drawRoot'), B=o.bidders, n=B.length, seg=360/n; const timers=[]; let rec=null, started=false, raf=0, spinning=false, w=-1, target=0, slowOn=false;
-    const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const reduce=!!window.__R2_FASTDRAW;   // 추첨 연출은 기기의 '애니메이션 줄이기' 설정과 상관없이 항상 정상 속도 (시험용 빠른 모드만 예외)
     const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
     const pal=['#f4c76b','#5aa9ff','#c9a0ff','#5ad19a','#ff9f7a','#4fd1c5','#ff6b8a','#b8c1ce'];
     const R0=100, fs=n<=6?11:n<=10?9:n<=16?7.5:6, maxc=n<=10?7:5;
@@ -1814,7 +1814,7 @@ function runDraw(o){
   // 입찰자 수만큼 보물상자(각자 이름) → 무작위 순서로 하나씩 열어 💎 당첨 / 💨 꽝 공개
   return new Promise(resolve=>{
     const root=$('#drawRoot'), T=DRAW_T;
-    const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const reduce=!!window.__R2_FASTDRAW;   // 추첨 연출은 기기의 '애니메이션 줄이기' 설정과 상관없이 항상 정상 속도 (시험용 빠른 모드만 예외)
     const B=o.bidders, n=B.length, k=Math.max(1,Math.min(o.k,n));
     let rec=null, started=false, raf=0, parts=[], wins=0; const timers=[];
     const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
@@ -2118,7 +2118,7 @@ function siegeSet(week,mid,status,reason){
   if(Cloud.enabled&&Cloud.m&&Cloud.db){        // 한 사람당 문서 하나를 바로 저장 → 여러 명이 동시에 체크해도 서로 덮어쓰지 않음
     try{ const mm=Cloud.m, b=mm.writeBatch(Cloud.db), ref=mm.doc(Cloud.db,...CLOUD_ROOT,'docs',docId);
       if(rec){ const pl=clean(rec); b.set(ref,{type:'siege',payload:pl,ord:ordFor(docId),updatedAt:mm.serverTimestamp(),updatedBy:deviceLabel().slice(0,30)}); Cloud.base.set(docId,stable(pl)); Cloud.seen.add(docId); }
-      else { b.delete(ref); Cloud.base.delete(docId); Cloud.seen.delete(docId); }
+      else { b.set(ref,{type:'siege',payload:tombPayload('siege'),ord:0,updatedAt:mm.serverTimestamp(),updatedBy:deviceLabel().slice(0,30)}); Cloud.base.delete(docId); Cloud.seen.delete(docId); Cloud.docs.delete(docId); Cloud.tomb.set(docId,Date.now()); }
       Promise.resolve(b.commit()).catch(e=>{ const c=((e&&e.code)||'').replace('firestore/','');
         toast(c==='permission-denied'?'☁ 출석 저장이 거부되었습니다 — Firebase 규칙의 종류 목록에 \'siege\'를 추가했는지 확인하세요':'☁ 출석 저장 실패: '+cloudErr(e)); ctrace('출석 저장 실패: '+c); });
     }catch(e){}
@@ -2655,10 +2655,11 @@ A.cloudOpen=async(opt)=>{
     st.push(embedded?{lv:'ok',msg:'설정 위치: 파일에 내장 — 누가 어디서 열든 자동으로 연결됩니다'}:{lv:'warn',msg:'설정 위치: 이 브라우저에만 저장 — 다른 기기·다른 브라우저·시크릿 창에서는 다시 설정해야 합니다 (아래 ③에서 해결)'});
     st.push(Cloud.state==='online'||Cloud.state==='saving'?{lv:'ok',msg:'서버 연결: 정상 (실시간 동기화 중)'}:Cloud.state==='offline'?{lv:'warn',msg:'서버 연결: 오프라인 — 마지막으로 받은 데이터를 표시 중'}:Cloud.state==='loading'?{lv:'warn',msg:'서버 연결: 연결 중…'}:{lv:'error',msg:'서버 연결: 실패 — '+(Cloud.err||'원인 불명')+' (연결 진단을 눌러 확인)'});
     if(Cloud.serverSeen) st.push(Cloud.empty?{lv:'warn',msg:'클라우드 데이터: 비어 있음 — '+(ui.admin?'아래 "현재 데이터를 클라우드에 올리기"를 누르세요':'관리자 인증 후 현재 데이터를 올려야 합니다')}:{lv:'ok',msg:'클라우드 데이터: 문서 '+Cloud.docs.size+'개를 받아 화면에 표시 중'});
+    if(Cloud.serverSeen) st.push(Cloud.mode==='delta'?{lv:'ok',msg:'읽기 절약: 저장된 사본 사용 · 바뀐 문서만 받음 (마지막 전체 받기 '+fmtTs(Cloud.fullAt)+', 7일마다 자동 전체 확인)'}:{lv:'ok',msg:'읽기: 이번 접속은 전체 문서를 받았습니다 (문서 '+Cloud.docs.size+'개) — 다음 접속부터는 바뀐 문서만 받습니다'});
     st.push(ui.admin?{lv:'ok',msg:'저장: 관리자 모드 — 입력·수정하면 즉시 클라우드에 자동 저장됩니다'}:{lv:'warn',msg:'저장: 읽기 전용 — 보기만 합니다. 입력·저장하려면 관리자 인증을 하세요 (인증하면 자동 저장)'});
     if(Cloud.lastSync) st.push({lv:'ok',msg:'마지막 동기화: '+fmtTs(Cloud.lastSync)+':'+pad(Cloud.lastSync.getSeconds())});
     b+=lintHtml(st);
-    b+='<div class="toolbar" style="margin:12px 0 6px"><button type="button" class="btn primary" data-cl="diag">🔍 연결 진단</button>'+(Cloud.state==='sdkfail'?'<button type="button" class="btn gold" data-cl="retry">다시 연결 시도</button>':'')+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+(ui.admin&&!Cloud.empty&&Cloud.m?'<button type="button" class="btn" data-cl="syncNow">⟳ 지금 동기화</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">연결 설정 삭제</button>':'')+'</div>';
+    b+='<div class="toolbar" style="margin:12px 0 6px"><button type="button" class="btn primary" data-cl="diag">🔍 연결 진단</button><button type="button" class="btn" data-cl="fullResync" title="이 기기의 사본을 지우고 서버에서 전체 문서를 다시 받습니다 (화면이 이상할 때)">⟳ 전체 다시 받기</button>'+(Cloud.state==='sdkfail'?'<button type="button" class="btn gold" data-cl="retry">다시 연결 시도</button>':'')+(ui.admin&&Cloud.empty?'<button type="button" class="btn gold" data-cl="upload">⬆ 현재 데이터를 클라우드에 올리기</button>':'')+(ui.admin&&!Cloud.empty&&Cloud.m?'<button type="button" class="btn" data-cl="syncNow">⟳ 지금 동기화</button>':'')+'<button type="button" class="btn" data-cl="logs">최근 저장 기록</button>'+(!embedded&&ui.admin?'<button type="button" class="btn ghost" data-cl="clear">연결 설정 삭제</button>':'')+'</div>';
     b+='<div id="clOut"></div>';
     b+='<h3 style="margin:20px 0 8px">③ 모든 기기에서 자동 연결 유지</h3>';
     if(embedded) b+='<div class="notice ok">✓ 이 파일에는 연결 설정이 내장되어 있어, 누가 어디서 열든 매번 설정 없이 자동으로 연결됩니다.</div>';
@@ -2707,6 +2708,7 @@ A.cloudOpen=async(opt)=>{
     sc.addEventListener('click',async e=>{
       const t=e.target.closest('[data-cl]'); if(!t) return; const k=t.dataset.cl;
       if(k==='save') connect();
+      else if(k==='fullResync'){ Cloud.noMirror=true; clearTimeout(Cloud.mirTimer); try{ localStorage.removeItem(MIRROR_KEY); }catch(x){} toast('사본을 지웠습니다 — 전체 문서를 다시 받습니다'); setTimeout(()=>location.reload(),400); }
       else if(k==='fromTimer'){
         const url=S.settings.hammerUrl||HAMMER_URL; setParse('muted','캐쉬템 페이지를 읽는 중… ('+url+')');
         try{ const res=await fetch(url,{cache:'no-store'}); if(!res.ok) throw new Error('페이지를 열 수 없습니다 (HTTP '+res.status+')'); const txt=await res.text(); const c=parseFbConfig(txt);
@@ -3270,7 +3272,24 @@ function cloudCfg(){
 }
 const Cloud={cfg:null,enabled:false,state:'local',err:'',m:null,db:null,
   docs:new Map(),base:new Map(),ord:new Map(),nextOrd:0,first:false,serverSeen:false,hadDocs:false,empty:false,
-  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null,synced:false,uploading:false,allowMass:false,seen:new Set()};
+  localDirty:false,pushing:false,pushAgain:false,needRebuild:false,timer:0,savingSince:0,trace:[],tr1:false,tr2:false,lastSync:null,synced:false,uploading:false,allowMass:false,seen:new Set(),
+  mode:'full',lastMs:0,fullAt:0,tomb:new Map(),mirTimer:0,purged:false};
+/* ---- 읽기 절약: 이 기기에 '서버 문서 사본'을 두고, 다음 접속부터는 바뀐 문서만 받음 ----
+   · 삭제는 실제로 지우지 않고 '삭제 표시(payload.__del)'를 저장 → 바뀐 것만 받아도 삭제를 알 수 있음
+   · 사본이 없거나 7일이 지나면 전체 받기 (예전 버전이 지운 문서까지 정확히 맞추기 위해)
+   · 14일 지난 삭제 표시는 관리자 기기가 실제로 정리 */
+const MIRROR_KEY='r2_cloud_mirror_v1', FULL_EVERY=7*864e5, TOMB_KEEP=14*864e5;
+const tsMs=v=>v&&typeof v.toMillis==='function'?v.toMillis():(v&&typeof v.ms==='number'?v.ms:0);
+const tombPayload=t=>t==='siege'?{__del:true,status:'in',reason:''}:(t==='ledger'||t==='cash')?{__del:true,amount:0}:{__del:true};   // 규칙(종류별 검사)을 그대로 통과하는 최소 내용
+function mirrorLoad(pid){ try{ const o=JSON.parse(localStorage.getItem(MIRROR_KEY)||'null');
+  if(!o||o.v!==1||o.pid!==pid||!(o.lastMs>0)||!(Date.now()-o.fullAt<FULL_EVERY)||!Array.isArray(o.docs)) return null; return o; }catch(e){ return null; } }
+function mirrorSave(){ clearTimeout(Cloud.mirTimer); if(Cloud.noMirror) return; Cloud.mirTimer=setTimeout(()=>{ if(Cloud.noMirror||!Cloud.serverSeen||!Cloud.cfg||!Cloud.lastMs) return;
+  try{ const now=Date.now(); localStorage.setItem(MIRROR_KEY,JSON.stringify({v:1,pid:Cloud.cfg.projectId,lastMs:Cloud.lastMs,fullAt:Cloud.fullAt,docs:[...Cloud.docs],tomb:[...Cloud.tomb].filter(([,u])=>now-u<30*864e5)})); }
+  catch(e){ ctrace('사본 저장 실패 (브라우저 저장 공간 부족) — 다음 접속은 전체 받기'); try{ localStorage.removeItem(MIRROR_KEY); }catch(x){} } },1200); }
+async function tombPurge(){     // 관리자: 14일 지난 삭제 표시를 실제로 정리 (접속당 1번)
+  if(Cloud.purged||!Cloud.synced||!ui.admin||!Cloud.m||!Cloud.db) return; Cloud.purged=true;
+  const now=Date.now(), old=[...Cloud.tomb].filter(([id,u])=>now-u>TOMB_KEEP&&!Cloud.docs.has(id)&&!/^(settings|rule)__/.test(id)).slice(0,400); if(!old.length) return;
+  try{ const b=Cloud.m.writeBatch(Cloud.db); old.forEach(([id])=>b.delete(Cloud.m.doc(Cloud.db,...CLOUD_ROOT,'docs',id))); await b.commit(); old.forEach(([id])=>Cloud.tomb.delete(id)); ctrace('오래된 삭제 표시 '+old.length+'건 정리'); mirrorSave(); }catch(e){ ctrace('삭제 표시 정리 실패: '+((e&&e.code)||e)); } }
 function ctrace(msg){ const d=new Date(); Cloud.trace.push(pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+' '+msg); if(Cloud.trace.length>40) Cloud.trace.shift(); }
 const waitMs=ms=>new Promise(r=>setTimeout(r,ms));
 function cloudErr(e){ const c=(e&&(e.code||'')).replace('firestore/',''); return c==='permission-denied'?'권한 없음 (관리자만 저장할 수 있습니다)':c==='unavailable'?'네트워크 연결 없음':(e&&e.message)||String(e); }
@@ -3322,7 +3341,8 @@ function cloudFlush(){      // 받아둔 변경을 화면에 반영 (입력/모�
   Cloud.needRebuild=false; if(first) Cloud.localDirty=false;
   try{ logFlush(); }catch(e){}
   S=normalize(cloudBuildState()); Repo.save(S); logResetBase(); Cloud.seen=new Set(collectDocs(S).keys());      // 다른 기기에서 온 변경은 기록하지 않음 (그 기기가 기록함)
-  if(first){ Cloud.synced=true; ctrace('클라우드 데이터를 화면에 반영 (문서 '+Cloud.docs.size+'개) — 이제 저장 가능'); }
+  if(first){ if(Cloud.mode==='delta'&&!Cloud.serverSeen){ ctrace('저장된 사본으로 먼저 표시 (서버 확인 후 저장 가능)'); }
+    else { Cloud.synced=true; ctrace('클라우드 데이터를 화면에 반영 (문서 '+Cloud.docs.size+'개) — 이제 저장 가능'); setTimeout(tombPurge,3000); } }
   render();
 }
 function cloudOnSnap(snap){
@@ -3331,8 +3351,12 @@ function cloudOnSnap(snap){
   if(!fromCache){ Cloud.serverSeen=true; Cloud.lastSync=new Date(); }
   changes.forEach(ch=>{
     const id=ch.doc.id;
-    if(ch.type==='removed'){ Cloud.docs.delete(id); Cloud.base.delete(id); Cloud.ord.delete(id); return; }
-    const d=ch.doc.data()||{}; Cloud.docs.set(id,{type:d.type,payload:d.payload,ord:typeof d.ord==='number'?d.ord:0});
+    if(ch.type==='removed'){ if(Cloud.mode==='delta') return;      // 바뀐 것만 받는 중엔 '목록에서 빠짐'이 삭제를 뜻하지 않음 (삭제는 삭제 표시로 옴)
+      Cloud.docs.delete(id); Cloud.base.delete(id); Cloud.ord.delete(id); return; }
+    const d=ch.doc.data()||{}, u=tsMs(d.updatedAt); if(u>Cloud.lastMs) Cloud.lastMs=u;
+    if(d.payload&&d.payload.__del){ Cloud.docs.delete(id); Cloud.base.delete(id); Cloud.ord.delete(id); Cloud.tomb.set(id,u||Date.now()); return; }   // 삭제 표시
+    Cloud.tomb.delete(id);
+    Cloud.docs.set(id,{type:d.type,payload:d.payload,ord:typeof d.ord==='number'?d.ord:0});
     Cloud.base.set(id,stable(d.payload));
     if(typeof d.ord==='number'){ Cloud.ord.set(id,d.ord); if(d.ord>=Cloud.nextOrd) Cloud.nextOrd=d.ord+1; }
   });
@@ -3345,6 +3369,7 @@ function cloudOnSnap(snap){
   if(prev!==Cloud.state&&(Cloud.state==='offline'||prev==='offline')) ctrace(Cloud.state==='offline'?'서버 연결 끊김 → 캐시로 표시 (연결되면 자동 재동기화)':'서버 다시 연결됨');
   if(changes.length&&(Cloud.docs.size>0||Cloud.hadDocs)) Cloud.needRebuild=true;          // 내용이 바뀐 경우에만 화면 갱신
   if(!Cloud.synced&&Cloud.docs.size>0) Cloud.needRebuild=true;                           // 아직 첫 동기화 전이면 반영
+  if(!fromCache&&(changes.length||!Cloud.mirSaved)){ Cloud.mirSaved=true; mirrorSave(); }
   updateCloudUI(); cloudFlush();
   if(wasEmpty!==Cloud.empty&&S&&!cloudBusy()) render();     // '클라우드가 비어 있음' 안내 표시/해제
 }
@@ -3373,10 +3398,11 @@ async function cloudPush(){
         const ch=ops.slice(i,i+400), b=m.writeBatch(db);
         ch.forEach(op=>{
           const ref=m.doc(db,...CLOUD_ROOT,'docs',op.id);
-          if(op.k==='set') b.set(ref,{type:op.rec.type,payload:op.rec.payload,ord:ordFor(op.id),updatedAt:m.serverTimestamp(),updatedBy:by}); else b.delete(ref);
+          if(op.k==='set') b.set(ref,{type:op.rec.type,payload:op.rec.payload,ord:ordFor(op.id),updatedAt:m.serverTimestamp(),updatedBy:by});
+          else { const t=op.id.split('__')[0]; b.set(ref,{type:t,payload:tombPayload(t),ord:0,updatedAt:m.serverTimestamp(),updatedBy:by}); }   // 삭제 = 삭제 표시
         });
         await b.commit();
-        ch.forEach(op=>{ if(op.k==='set'){ Cloud.base.set(op.id,op.str); Cloud.seen.add(op.id); } else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); Cloud.seen.delete(op.id); } });
+        ch.forEach(op=>{ if(op.k==='set'){ Cloud.base.set(op.id,op.str); Cloud.seen.add(op.id); Cloud.tomb.delete(op.id); } else { Cloud.base.delete(op.id); Cloud.ord.delete(op.id); Cloud.seen.delete(op.id); Cloud.docs.delete(op.id); Cloud.tomb.set(op.id,Date.now()); } });
       }
     }while(Cloud.pushAgain);
     Cloud.state='online'; Cloud.err=''; Cloud.lastSync=new Date(); Cloud.allowMass=false;
@@ -3405,8 +3431,17 @@ async function cloudStart(){
     const app=m.initializeApp(fbCfg);
     try{ Cloud.db=m.initializeFirestore(app,{localCache:m.persistentLocalCache({tabManager:m.persistentMultipleTabManager()})}); ctrace('Firestore 초기화 (오프라인 캐시 사용)'); }
     catch(e){ Cloud.db=m.getFirestore(app); ctrace('Firestore 초기화 (오프라인 캐시 없이): '+((e&&e.message)||e)); }
-    m.onSnapshot(m.collection(Cloud.db,...CLOUD_ROOT,'docs'),{includeMetadataChanges:true},cloudOnSnap,cloudOnSnapErr);   // 캐시→서버 확인 같은 연결 상태 변화도 받음
-    ctrace('실시간 구독 시작 (r2guild/main/docs)');
+    let ref=m.collection(Cloud.db,...CLOUD_ROOT,'docs');
+    const mir=(m.where&&m.Timestamp)?mirrorLoad(cfg.projectId):null;
+    if(mir){
+      mir.docs.forEach(([id,d])=>{ Cloud.docs.set(id,d); Cloud.base.set(id,stable(d.payload)); if(typeof d.ord==='number'){ Cloud.ord.set(id,d.ord); if(d.ord>=Cloud.nextOrd) Cloud.nextOrd=d.ord+1; } });
+      (mir.tomb||[]).forEach(([id,u])=>Cloud.tomb.set(id,u));
+      Cloud.lastMs=mir.lastMs; Cloud.fullAt=mir.fullAt; Cloud.mode='delta'; if(Cloud.docs.size) Cloud.hadDocs=true;
+      ref=m.query(ref,m.where('updatedAt','>',m.Timestamp.fromMillis(mir.lastMs)));   // 실시간 구독은 서버의 일관된 시점으로 오므로 '마지막으로 받은 시각 이후'만 받으면 빠짐 없음
+      ctrace('읽기 절약: 저장된 사본 사용 (문서 '+Cloud.docs.size+'개) → 마지막 동기화 이후 바뀐 문서만 받습니다');
+    } else { Cloud.mode='full'; Cloud.fullAt=Date.now(); ctrace('전체 문서 받기 (이 기기에 사본이 없거나 7일이 지남)'); }
+    m.onSnapshot(ref,{includeMetadataChanges:true},cloudOnSnap,cloudOnSnapErr);   // 캐시→서버 확인 같은 연결 상태 변화도 받음
+    ctrace('실시간 구독 시작 (r2guild/main/docs'+(Cloud.mode==='delta'?' · 바뀐 것만':'')+')');
     if(!Cloud.flushTimer) Cloud.flushTimer=setInterval(cloudFlush,700);
   }catch(e){ Cloud.m=null; Cloud.state='sdkfail'; Cloud.err=(e&&e.message)||String(e); ctrace('실패: '+Cloud.err); updateCloudUI(); if(S) render(); }
 }
