@@ -471,6 +471,25 @@ input.bq{width:60px;text-align:center}
 @keyframes csShine{0%{filter:drop-shadow(0 4px 0 #5a3a0a) drop-shadow(0 0 14px #ffd35a)}100%{filter:drop-shadow(0 4px 0 #5a3a0a) drop-shadow(0 0 40px #fff2b8)}}
 .cs-jp-n{margin-top:12px;font-size:clamp(22px,3.4vw,38px);font-weight:900;color:#fff1c4;text-shadow:0 0 16px #f4c76b;line-height:1.35}
 .cs-jp-tap{margin-top:12px;font-size:12px;color:#e6c88f99}
+.cs-jackpot{--glow:#ffd35a}
+@keyframes csShine{0%{filter:drop-shadow(0 4px 0 #0007) drop-shadow(0 0 14px var(--glow))}100%{filter:drop-shadow(0 4px 0 #0007) drop-shadow(0 0 42px var(--glow))}}
+.cs-jackpot.th-ice{--glow:#9fe2ff;background:radial-gradient(ellipse at 50% 0%,#14406b,#061424 80%);border-color:#d6f4ff;box-shadow:0 0 0 8px #0b2238,0 0 0 11px #7fd3ff,0 0 120px #7fd3ffcc}
+.cs-jackpot.th-ice .cs-jp-t{background-image:linear-gradient(180deg,#ffffff,#c9f2ff 40%,#4aa8e8 78%,#eafcff)}
+.cs-jackpot.th-ice .cs-jp-n{color:#eafcff;text-shadow:0 0 16px #7fd3ff}
+.cs-jackpot.th-bar{--glow:#ffb800;background:radial-gradient(ellipse at 50% 0%,#5a3d0e,#1e1203 80%);border-color:#ffe08a;box-shadow:0 0 0 8px #3a2606,0 0 0 11px #ffc23a,0 0 140px #ffb800cc}
+.cs-jackpot.th-bar .cs-jp-t{background-image:linear-gradient(180deg,#fff6c8,#ffd35a 35%,#b07a10 70%,#ffe9a0)}
+.cs-jackpot.th-rainbow{--glow:#ff6bd5;background:radial-gradient(ellipse at 50% 0%,#3b1466,#0e0420 80%);border-color:#ffffff;box-shadow:0 0 0 8px #24093f,0 0 0 11px #c9a0ff,0 0 140px #ff6bd5aa}
+.cs-jackpot.th-rainbow .cs-jp-t{background-image:linear-gradient(90deg,#ff6b6b,#ffd35a,#5ad19a,#5aa9ff,#c9a0ff,#ff6bd5)}
+.cs-jackpot.th-party{--glow:#ff8ab3;background:radial-gradient(ellipse at 50% 0%,#7a1450,#25051a 80%);border-color:#ffd6e6;box-shadow:0 0 0 8px #3f0a28,0 0 0 11px #ff8ab3,0 0 120px #ff8ab3aa}
+.cs-jackpot.th-party .cs-jp-t{background-image:linear-gradient(180deg,#ffffff,#ffc2d9 40%,#ff4f8b 80%,#ffe0ec)}
+.cs-jackpot.th-star{--glow:#d7b4ff;background:radial-gradient(ellipse at 50% 0%,#2b1a5e,#080418 80%);border-color:#efe0ff;box-shadow:0 0 0 8px #1a0f3a,0 0 0 11px #b48cff,0 0 130px #b48cffaa}
+.cs-jackpot.th-star .cs-jp-t{background-image:linear-gradient(180deg,#ffffff,#fff1b0 35%,#c9a0ff 75%,#ffffff)}
+.cs-jackpot.th-gem{--glow:#4dffa0;background:radial-gradient(ellipse at 50% 0%,#0d4a33,#04170f 80%);border-color:#ffd1dc;box-shadow:0 0 0 8px #3a0a1c,0 0 0 11px #21c46b,0 0 130px #21c46baa}
+.cs-jackpot.th-gem .cs-jp-t{background-image:linear-gradient(90deg,#ff3b6b,#ffd1dc,#21c46b,#3b7bff,#a35cff)}
+.cs-jackpot.th-money{--glow:#7dff8a;background:radial-gradient(ellipse at 50% 0%,#1d5e2a,#06180a 80%);border-color:#d8f5d6;box-shadow:0 0 0 8px #0c3014,0 0 0 11px #5bd16a,0 0 130px #5bd16aaa}
+.cs-jackpot.th-money .cs-jp-t{background-image:linear-gradient(180deg,#ffffff,#c8ffcb 35%,#3fae4a 75%,#ffe08a)}
+.cs-jackpot.th-money .cs-jp-n,.cs-jackpot.th-gem .cs-jp-n{color:#f2fff2}
+
 /* 추첨 연출은 '애니메이션 줄이기' 설정에서도 그대로 재생 (쪼이는 맛이 핵심) */
 
 .tab .cnt{display:inline-block;min-width:20px;padding:0 6px;margin-left:7px;border-radius:999px;background:var(--coin);color:#2b1c00;font-size:11px;font-weight:800;text-align:center;vertical-align:middle}
@@ -602,7 +621,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.11-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.12-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -1836,20 +1855,109 @@ const SFX={ctx:null,_bus:null,on:(()=>{ try{ return localStorage.getItem('r2_sfx
   win(){ [784,988,1319].forEach((f,i)=>this.tone(f,0.22,{type:'triangle',vol:0.12,delay:i*0.07})); this.coins(5,0.15); },
   lose(){ this.tone(311,0.3,{type:'sawtooth',vol:0.05,lp:900,to:294}); this.tone(277,0.55,{type:'sawtooth',vol:0.05,lp:900,to:233,delay:0.32}); },   // 와와~ (아쉬움)
   fanfare(){ this.jackpot(); },
-  jackpot(){ this.boom(); this.brass([523,659,784,1046,1319],0.12,0.05); this.crash(0.55); this.coins(16,0.6); this.cheer(0.5); },
+  jackpot(){ this.celebrate('coins'); },
+  horn(d){ this.tone(330,0.55,{type:'sawtooth',vol:0.07,lp:1800,to:540,delay:d||0}); this.tone(495,0.55,{type:'sawtooth',vol:0.04,lp:1800,to:810,delay:d||0}); },   // 파티 나팔
+  clunk(){ this.tone(220,0.28,{type:'triangle',vol:0.12,to:140}); this.noise(0.2,{vol:0.32,freq:280,ftype:'lowpass'}); this.tone(1900,0.18,{vol:0.03}); },          // 금괴가 바닥에 쿵
+  pop(){ this.tone(700,0.25,{vol:0.04,to:1900}); this.noise(0.55,{vol:0.34,freq:240,ftype:'lowpass',delay:0.06}); for(let i=0;i<10;i++) this.noise(0.03,{vol:0.06,freq:5200,ftype:'highpass',delay:0.28+Math.random()*0.55}); },   // 폭죽 펑 + 파바박
+  celebrate(k){ this.boom(); this.brass([523,659,784,1046,1319],0.12,0.05);     // 공통: 쿵 + 금관 팡파르 → 효과별 소리
+    const f={
+      coins:()=>{ this.crash(0.55); this.coins(16,0.6); this.cheer(0.5); },
+      diamonds:()=>{ [2093,2637,3136,4186,3136,4186,5274].forEach((x,i)=>{ this.tone(x,0.9,{vol:0.06,delay:0.55+i*0.11}); this.tone(x*2,0.5,{vol:0.02,delay:0.56+i*0.11}); }); this.cheer(0.6); },
+      goldbars:()=>{ this.crash(0.55); this.cheer(0.6); },
+      fireworks:()=>{ this.cheer(0.45); },
+      confetti:()=>{ this.horn(0.5); this.horn(0.9); this.crash(0.55); this.cheer(0.5); },
+      stars:()=>{ for(let i=0;i<14;i++) this.tone(1200+Math.random()*2400,0.7,{vol:0.05,delay:0.5+i*0.09}); this.cheer(0.7); },
+      gems:()=>{ [1046,1319,1568,1976,2093,2637].forEach((x,i)=>{ this.tone(x,1.1,{type:'triangle',vol:0.06,delay:0.55+i*0.1}); this.tone(x*1.5,0.6,{vol:0.02,delay:0.55+i*0.1}); }); this.crash(0.6); this.cheer(0.6); },
+      money:()=>{ for(let i=0;i<24;i++) this.noise(0.03,{vol:0.12,freq:2500,delay:0.5+i*0.035}); this.tone(2637,0.5,{type:'triangle',vol:0.1,delay:1.4}); this.tone(3520,0.6,{type:'triangle',vol:0.08,delay:1.45}); this.coins(6,1.4); this.cheer(0.6); } }[k];
+    (f||(()=>this.coins(16,0.6)))(); },
   toggle(){ this.on=!this.on; try{ localStorage.setItem('r2_sfx',this.on?'on':'off'); }catch(e){} if(this.on) this.beep(true); return this.on; }};
-// 카지노 효과: 화면 전체 금화 비 + JACKPOT 배너
-function casinoCoins(cv,ms){ if(!cv||!cv.getContext) return; let ctx=null; try{ ctx=cv.getContext('2d'); }catch(e){} if(!ctx) return;
-  const W=cv.width=window.innerWidth||800, H=cv.height=window.innerHeight||600, coins=[], t0=performance.now();
-  const loop=now=>{ if(now-t0<ms) for(let i=0;i<5;i++) coins.push({x:Math.random()*W,y:-30,vy:2.5+Math.random()*4,vx:(Math.random()-.5)*1.6,r:10+Math.random()*10,a:Math.random()*6.28,va:.08+Math.random()*.2});
-    ctx.clearRect(0,0,W,H);
-    coins.forEach(c=>{ c.y+=c.vy; c.x+=c.vx; c.vy+=0.06; c.a+=c.va; const sx=Math.abs(Math.cos(c.a))*c.r+1.2, g=ctx.createLinearGradient(c.x-sx,c.y,c.x+sx,c.y);
-      g.addColorStop(0,'#8a5a12'); g.addColorStop(.5,'#fff1b0'); g.addColorStop(1,'#b8862b'); ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(c.x,c.y,sx,c.r,0,0,6.2832); ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle='#6b4a10'; ctx.stroke(); });
-    for(let i=coins.length-1;i>=0;i--) if(coins[i].y>H+40) coins.splice(i,1);
-    if(coins.length||now-t0<ms) requestAnimationFrame(loop); else ctx.clearRect(0,0,W,H); };
+// 카지노 마무리 효과 8종: 매번 랜덤 (직전 효과는 피함) · 효과마다 배너 문구·색·소리가 다름
+const FX_THEMES={coins:{t:'JACKPOT!',cls:'th-gold'},diamonds:{t:'DIAMOND WIN!',cls:'th-ice'},goldbars:{t:'MEGA WIN!',cls:'th-bar'},fireworks:{t:'BIG WIN!',cls:'th-rainbow'},
+  confetti:{t:'축하합니다!',cls:'th-party'},stars:{t:'LUCKY STAR!',cls:'th-star'},gems:{t:'TREASURE!',cls:'th-gem'},money:{t:'대박!',cls:'th-money'}};
+function pickFx(){ if(window.__R2_FX&&FX_THEMES[window.__R2_FX]) return window.__R2_FX; let last=''; try{ last=localStorage.getItem('r2_fx_last')||''; }catch(e){}
+  const ks=Object.keys(FX_THEMES).filter(k=>k!==last), k=ks[Math.floor(Math.random()*ks.length)]; try{ localStorage.setItem('r2_fx_last',k); }catch(e){} return k; }
+function casinoFx(cv,kind,ms){ if(!cv||!cv.getContext) return; let ctx=null; try{ ctx=cv.getContext('2d'); }catch(e){} if(!ctx) return;
+  const W=cv.width=window.innerWidth||800, H=cv.height=window.innerHeight||600, P=[], t0=performance.now(), R=Math.random, TAU=6.2832, rnd=(a,b)=>a+R()*(b-a), pick=a=>a[Math.floor(R()*a.length)];
+  let snd=0; const once=(fn,max)=>{ if(snd<max){ snd++; fn(); } };
+  const grad=(x0,y0,x1,y1,cs)=>{ const g=ctx.createLinearGradient(x0,y0,x1,y1); cs.forEach((c,i)=>g.addColorStop(i/(cs.length-1),c)); return g; };
+  const star=(x,y,r,n,c)=>{ ctx.beginPath(); for(let i=0;i<n*2;i++){ const rr=i%2?r*0.42:r, a=i*Math.PI/n-Math.PI/2; ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); } ctx.closePath(); ctx.fillStyle=c; ctx.fill(); };
+  const poly=pts=>{ ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath(); };
+  const fall=p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=p.g||0.05; p.a+=p.va||0; };
+  const K={
+    // 🪙 금화: 빙글빙글 돌며 쏟아짐
+    coins:{ spawn(){ for(let i=0;i<5;i++) P.push({x:rnd(0,W),y:-30,vy:rnd(2.5,6.5),vx:rnd(-.8,.8),r:rnd(10,20),a:R()*TAU,va:rnd(.08,.28),g:.06}); }, up(p){ fall(p); },
+      draw(p){ const sx=Math.abs(Math.cos(p.a))*p.r+1.2; ctx.fillStyle=grad(p.x-sx,p.y,p.x+sx,p.y,['#8a5a12','#fff1b0','#b8862b']); ctx.beginPath(); ctx.ellipse(p.x,p.y,sx,p.r,0,0,TAU); ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle='#6b4a10'; ctx.stroke(); }, dead:p=>p.y>H+40 },
+    // 💎 다이아: 천천히 떨어지며 반짝
+    diamonds:{ spawn(){ for(let i=0;i<2;i++) P.push({x:rnd(0,W),y:-40,vy:rnd(2.6,5),vx:rnd(-.6,.6),s:rnd(12,28),a:R()*TAU,va:rnd(-.05,.05),tw:R()*TAU,g:.03}); }, up(p){ fall(p); p.tw+=.18; },
+      draw(p){ const s=p.s; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a*0.4);
+        poly([[-s,-s*.2],[-s*.55,-s*.7],[s*.55,-s*.7],[s,-s*.2],[0,s]]); ctx.fillStyle=grad(0,-s,0,s,['#ffffff','#bdefff','#5ab4f0','#1d5fae']); ctx.shadowColor='#9fe2ff'; ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
+        ctx.strokeStyle='#ffffffcc'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(-s,-s*.2); ctx.lineTo(s,-s*.2); ctx.moveTo(-s*.4,-s*.2); ctx.lineTo(0,s); ctx.lineTo(s*.4,-s*.2); ctx.moveTo(-s*.55,-s*.7); ctx.lineTo(-s*.2,-s*.2); ctx.moveTo(s*.55,-s*.7); ctx.lineTo(s*.2,-s*.2); ctx.stroke();
+        if(Math.sin(p.tw)>.75) star(s*.35,-s*.55,s*.55,4,'#ffffff'); ctx.restore(); }, dead:p=>p.y>H+50 },
+    // 🧈 금괴: 묵직하게 떨어져 튕기고 바닥에 쌓임 (닿을 때 쿵)
+    goldbars:{ spawn(el){ if(R()<.35) P.push({x:rnd(W*.05,W*.95),y:-50,vy:rnd(2,4),vx:rnd(-1,1),w:rnd(44,66),a:rnd(-.6,.6),va:rnd(-.07,.07),floor:H-rnd(10,90),g:.38,born:el}); },
+      up(p,el){ if(!p.landed){ fall(p); if(p.y>p.floor){ p.y=p.floor; if(!p.hit){ p.hit=1; once(()=>SFX.clunk(),7); } p.vy=-p.vy*.33; p.vx*=.5; p.va*=.4; if(Math.abs(p.vy)<1.3){ p.landed=true; p.vy=0; } } } else { p.a*=.85; } p.age=el-p.born; },
+      draw(p){ const w=p.w, h=w*.36, t=w*.18; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.globalAlpha=p.age>ms+2600?Math.max(0,1-(p.age-ms-2600)/900):1;
+        poly([[-w/2,0],[w/2,0],[w/2-t*.6,-t],[-w/2+t*.6,-t]]); ctx.fillStyle=grad(0,-t,0,0,['#fff6c8','#f2c94c']); ctx.fill();
+        ctx.fillStyle=grad(0,0,0,h,['#f6d36b','#c89320','#8a6210']); ctx.fillRect(-w/2,0,w,h); ctx.strokeStyle='#6b4a10'; ctx.lineWidth=1.4; ctx.strokeRect(-w/2,0,w,h);
+        if(w>52){ ctx.fillStyle='#7a5512'; ctx.font='bold '+Math.round(h*.45)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('999.9',0,h/2+1); } ctx.restore(); ctx.globalAlpha=1; },
+      dead:p=>p.age>ms+3500 },
+    // 🎆 불꽃놀이: 폭죽이 올라가 여러 색으로 터짐 (펑 소리)
+    fireworks:{ spawn(el){ if(!this.n||el-this.last>380){ this.n=(this.n||0)+1; this.last=el; P.push({rk:1,x:rnd(W*.12,W*.88),y:H+10,vy:-rnd(10,14),vx:rnd(-1,1),ty:rnd(H*.12,H*.45),c:pick(['#ffd35a','#ff6b8a','#5aa9ff','#5ad19a','#c9a0ff','#ff9f43','#ffffff'])}); } },
+      up(p){ if(p.rk){ p.x+=p.vx; p.y+=p.vy; p.vy+=.13; if(p.y<=p.ty||p.vy>=-1.5){ p.dead=1; once(()=>SFX.pop(),6); const n=100, c2=R()<.4?pick(['#ffffff','#ffd35a']):p.c;
+            P.push({fl:1,x:p.x,y:p.y,l:0,life:16,c:p.c});      // 터지는 순간 섬광
+            for(let i=0;i<n;i++){ const a=i/n*TAU+rnd(-.05,.05), v=rnd(2.5,7.5); P.push({x:p.x,y:p.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:0,life:rnd(55,95),c:i%3?p.c:c2,h:[]}); } } }
+        else if(p.fl) p.l++
+        else { p.h.push([p.x,p.y]); if(p.h.length>6) p.h.shift(); p.vx*=.975; p.vy=p.vy*.975+.06; p.x+=p.vx; p.y+=p.vy; p.l++; } },
+      draw(p){ if(p.rk){ ctx.strokeStyle='#fff6d0'; ctx.lineWidth=4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-p.vx*2.4,p.y-p.vy*2.6); ctx.stroke(); ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(p.x,p.y,3,0,TAU); ctx.fill(); return; }
+        if(p.fl){ const k=p.l/p.life, g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,40+110*k); g.addColorStop(0,'rgba(255,255,255,'+(1-k)+')'); g.addColorStop(.35,p.c); g.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.globalAlpha=Math.max(0,1-k)*.85; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,40+110*k,0,TAU); ctx.fill(); ctx.globalAlpha=1; return; }
+        const al=Math.max(0,1-p.l/p.life); ctx.globalAlpha=al; ctx.strokeStyle=p.c; ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.beginPath(); p.h.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.lineTo(p.x,p.y); ctx.stroke();
+        ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(p.x,p.y,1.9,0,TAU); ctx.fill(); ctx.globalAlpha=1; }, dead:p=>p.dead||(p.fl?p.l>p.life:(!p.rk&&p.l>p.life)) },
+    // 🎉 색종이·리본: 흩날림
+    confetti:{ spawn(){ const cs=['#ff6b8a','#ffd35a','#5aa9ff','#5ad19a','#c9a0ff','#ff9f43','#4fd1c5'];
+        for(let i=0;i<6;i++) P.push({x:rnd(0,W),y:-20,vy:rnd(1.6,3.4),vx:rnd(-1,1),w:rnd(6,11),h:rnd(10,17),a:R()*TAU,va:rnd(-.2,.2),sw:R()*TAU,c:pick(cs),g:.02});
+        if(R()<.25) P.push({rb:1,x:rnd(0,W),y:-120,vy:rnd(1.5,2.6),vx:rnd(-.5,.5),len:rnd(70,120),sw:R()*TAU,c:pick(cs),g:.01}); },
+      up(p){ fall(p); p.sw+=.08; p.x+=Math.sin(p.sw)*.9; },
+      draw(p){ if(p.rb){ ctx.strokeStyle=p.c; ctx.lineWidth=4; ctx.lineCap='round'; ctx.beginPath(); for(let i=0;i<=12;i++){ const yy=p.y+i*p.len/12, xx=p.x+Math.sin(p.sw+i*.6)*10; i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy); } ctx.stroke(); return; }
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.scale(1,Math.cos(p.sw*2)||.01); ctx.fillStyle=p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore(); }, dead:p=>p.y>H+(p.rb?10:30) },
+    // 🌠 별똥별: 사선으로 쏟아지고 반짝
+    stars:{ spawn(){ if(R()<.55) P.push({x:rnd(-W*.3,W*.8),y:rnd(-H*.4,H*.25),vx:rnd(7,11),vy:rnd(3.5,6),len:rnd(70,150),c:pick(['#fff6c4','#ffd35a','#e3c7ff','#bfe6ff'])});
+        if(R()<.6) P.push({tw:1,x:rnd(0,W),y:rnd(0,H),r:rnd(3,8),l:0,life:rnd(30,60)}); },
+      up(p){ if(p.tw) p.l++; else { p.x+=p.vx; p.y+=p.vy; } },
+      draw(p){ if(p.tw){ ctx.globalAlpha=Math.max(0,Math.sin(p.l/p.life*Math.PI)); star(p.x,p.y,p.r,4,'#ffffff'); ctx.globalAlpha=1; return; }
+        const k=p.len/Math.hypot(p.vx,p.vy), g=ctx.createLinearGradient(p.x,p.y,p.x-p.vx*k,p.y-p.vy*k); g.addColorStop(0,p.c); g.addColorStop(1,'rgba(255,255,255,0)');
+        ctx.strokeStyle=g; ctx.lineWidth=3; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-p.vx*k,p.y-p.vy*k); ctx.stroke(); ctx.shadowColor=p.c; ctx.shadowBlur=16; star(p.x,p.y,9,5,p.c); ctx.shadowBlur=0; },
+      dead:p=>p.tw?p.l>p.life:(p.x>W+160||p.y>H+160) },
+    // 💍 보석: 루비·사파이어·에메랄드·자수정
+    gems:{ spawn(){ for(let i=0;i<2;i++) P.push({x:rnd(0,W),y:-40,vy:rnd(2.6,5),vx:rnd(-.7,.7),s:rnd(11,22),a:R()*TAU,va:rnd(-.06,.06),g:.035,k:pick(['ruby','sapphire','emerald','amethyst'])}); }, up(p){ fall(p); },
+      draw(p){ const s=p.s, C={ruby:['#ffd1dc','#ff3b6b','#8a0f2e'],sapphire:['#d6ecff','#3b7bff','#0f2f8a'],emerald:['#d6ffe8','#21c46b','#0a5a30'],amethyst:['#f1e0ff','#a35cff','#4b1a8a']}[p.k];
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.shadowColor=C[1]; ctx.shadowBlur=12;
+        if(p.k==='emerald') poly([[-s*.6,-s],[s*.6,-s],[s,-s*.5],[s,s*.5],[s*.6,s],[-s*.6,s],[-s,s*.5],[-s,-s*.5]]);
+        else if(p.k==='sapphire'){ ctx.beginPath(); ctx.ellipse(0,0,s*.8,s,0,0,TAU); }
+        else { const n=6; ctx.beginPath(); for(let i=0;i<n;i++){ const a=i/n*TAU; ctx.lineTo(Math.cos(a)*s,Math.sin(a)*s); } ctx.closePath(); }
+        ctx.fillStyle=grad(-s,-s,s,s,C); ctx.fill(); ctx.shadowBlur=0; ctx.strokeStyle='#ffffff99'; ctx.lineWidth=1; ctx.strokeRect(-s*.35,-s*.35,s*.7,s*.7); ctx.restore(); }, dead:p=>p.y>H+40 },
+    // 💵 돈다발: 지폐가 팔랑팔랑 (뒤집히며)
+    money:{ spawn(){ for(let i=0;i<2;i++) P.push({x:rnd(0,W),y:-40,vy:rnd(1.8,3.2),vx:rnd(-1,1),w:rnd(46,66),a:rnd(-.6,.6),va:rnd(-.03,.03),fl:R()*TAU,vf:rnd(.08,.18),sw:R()*TAU,g:.012}); },
+      up(p){ fall(p); p.sw+=.05; p.x+=Math.sin(p.sw)*1.3; p.fl+=p.vf; },
+      draw(p){ const w=p.w, h=w*.46; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.scale(1,Math.cos(p.fl)||.01);
+        ctx.fillStyle=grad(-w/2,0,w/2,0,['#3f8f46','#8fd694','#3f8f46']); ctx.fillRect(-w/2,-h/2,w,h); ctx.strokeStyle='#1f5e25'; ctx.lineWidth=1.6; ctx.strokeRect(-w/2+3,-h/2+3,w-6,h-6);
+        ctx.fillStyle='#d8f5d6'; ctx.beginPath(); ctx.ellipse(0,0,h*.32,h*.32,0,0,TAU); ctx.fill(); ctx.fillStyle='#1f5e25'; ctx.font='bold '+Math.round(h*.42)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('₩',0,1); ctx.restore(); },
+      dead:p=>p.y>H+60 } }, F=K[kind]||K.coins;
+  if(['coins','diamonds','gems','money','confetti'].includes(kind)){ for(let i=0;i<14;i++) F.spawn(0); P.forEach(p=>{ p.y=rnd(-H*.15,H*.55); }); }   // 시작하자마자 화면 위쪽이 가득 차도록
+  let sim=t0;     // 실제 시간 기준으로 움직임 (화면이 느리게 그려지는 기기에서도 같은 속도)
+  const loop=now=>{ let n=0; while(sim+16.67<=now&&n<6){ sim+=16.67; n++; const el=sim-t0; if(el<ms) F.spawn(el);
+      for(let i=P.length-1;i>=0;i--){ const p=P[i]; F.up(p,el); if(F.dead(p)) P.splice(i,1); } }
+    if(now-sim>100) sim=now;     // 탭을 다녀오는 등 오래 멈췄으면 따라잡지 않고 이어서
+    ctx.clearRect(0,0,W,H); P.forEach(p=>F.draw(p));
+    const el=now-t0; if((P.length||el<ms)&&el<ms+6500) requestAnimationFrame(loop); else ctx.clearRect(0,0,W,H); };
   requestAnimationFrame(loop); }
-function casinoJackpot(el,names){ if(!el) return; el.innerHTML='<div class="cs-jp-t">JACKPOT!</div><div class="cs-jp-n">'+names.map(n=>'👑 '+esc(n)).join('<br>')+'</div><div class="cs-jp-tap">눌러서 닫기</div>';
-  el.hidden=false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); el.onclick=()=>{ el.hidden=true; }; setTimeout(()=>{ el.hidden=true; },6000); }
+function casinoJackpot(el,names,kind){ if(!el) return; const th=FX_THEMES[kind]||FX_THEMES.coins;
+  el.className='cs-jackpot '+th.cls; el.dataset.fx=kind||'coins';
+  const wide=[...th.t].reduce((a,c)=>a+(/[가-힣]/.test(c)?1.05:0.68),0), fs=Math.max(34,Math.min(110,Math.floor(Math.min((window.innerWidth||800)*0.82,960)/wide)));   // 문구 길이에 맞춰 한 줄로
+  el.innerHTML='<div class="cs-jp-t" style="font-size:'+fs+'px;white-space:nowrap">'+th.t+'</div><div class="cs-jp-n">'+names.map(n=>'👑 '+esc(n)).join('<br>')+'</div><div class="cs-jp-tap">눌러서 닫기</div>';
+  el.hidden=false; void el.offsetWidth; el.classList.add('show'); el.onclick=()=>{ el.hidden=true; }; setTimeout(()=>{ el.hidden=true; },6000); }
+function casinoCelebrate(q,names){ const kind=pickFx(); casinoFx(q('.cs-coins'),kind,2800); casinoJackpot(q('.cs-jackpot'),names,kind); SFX.celebrate(kind); return kind; }
+function casinoCoins(cv,ms){ casinoFx(cv,'coins',ms); }
 const CASINO_FX='<canvas class="cs-coins"></canvas><div class="cs-jackpot" hidden></div>';
 const sfxBtn=()=>'<button type="button" class="btn sm ghost" data-dr="sfx" title="효과음 켜기/끄기">'+(SFX.on?'🔊':'🔇')+'</button>';
 function randInt(n){
@@ -1889,7 +1997,7 @@ function runRoulette(o){
       const g=root.querySelector('.rl-seg[data-i="'+w+'"]'); if(g) g.classList.add('win');
       root.querySelectorAll('.dr-bidders .chip').forEach(c=>c.classList.add(+c.dataset.bi===w?'win':'lose'));
       winEl.innerHTML='<div class="dr-wchip show cur"><small>당첨자</small><strong>👑 '+esc(B[w].name)+'</strong></div>';
-      stat.textContent='🎉 당첨: '+B[w].name+' (결과가 기록되었습니다)'; SFX.jackpot(); burst(); casinoCoins(q('.cs-coins'),2600); casinoJackpot(q('.cs-jackpot'),[B[w].name]);
+      stat.textContent='🎉 당첨: '+B[w].name+' (결과가 기록되었습니다)'; burst(); casinoCelebrate(q,[B[w].name]);
       copyBtn.hidden=false; startBtn.hidden=true; const c2=q('#drClose2'); c2.className='btn gold lg'; c2.textContent='확인';
     }
     function flap(){ ptr.classList.add('flap'); setTimeout(()=>ptr.classList.remove('flap'),60); }
@@ -2010,7 +2118,7 @@ function runDraw(o){
       order.forEach(i=>openOne(i,true)); finish(); }
     function finish(){
       if(finished) return; finished=true; skipBtn.hidden=true;
-      SFX.jackpot(); casinoCoins(q('.cs-coins'),2600); casinoJackpot(q('.cs-jackpot'),rec.winners.map(w=>w.name));
+      casinoCelebrate(q,rec.winners.map(w=>w.name));   // 마무리 효과: 8종 중 랜덤
       stat.textContent='🎊 추첨 완료 — 당첨: '+rec.winners.map(w=>w.name).join(', ')+' (결과가 기록되었습니다)';
       copyBtn.hidden=false; startBtn.hidden=true; const c2=q('#drClose2'); c2.className='btn gold lg'; c2.textContent='확인';
     }
@@ -3784,7 +3892,7 @@ function renderLogTable(){
 /* =====================================================================
    11. 시작
    ===================================================================== */
-window.R2={ SFX, setRole, canWrite, stockAvail, ownedItems, usedItems, calcDist, siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
+window.R2={ FX_THEMES, pickFx, SFX, setRole, canWrite, stockAvail, ownedItems, usedItems, calcDist, siegeState, siegeSet, LOG, LOGV, logFlush, logDescribe, logLoad, memberRefs, commit, embedCfg, cfgLink, cloudCfgFromHash, buildEmbeddedHtml, lintRules, cloudDiagnose, Cloud, cloudStart, cloudFlush, cloudPush, collectDocs, cloudBuildState, stable, parseFbConfig, sha256, setAdmin, get S(){return S;}, stockGroups, calcDist, pools, cashPools, raidTotals, monthlyData, fmtM, fmtWon, A, C, I, ui, render, normalize, defaultData, parsePaste, migrate, runDraw, DRAW_T };
 Repo.load().then(d=>{
   initAdmin();
   const viaLink=cloudCfgFromHash();
