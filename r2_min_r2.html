@@ -571,6 +571,44 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
 #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:#e7edf4;color:#0b1016;padding:9px 16px;border-radius:8px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:200;max-width:90vw}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+/* ===== 보물상자 그림 (나무+금테 / 붉은 광택+금장식) ===== */
+.dr-chest{max-width:240px;aspect-ratio:200/190}
+.ch-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:2;filter:drop-shadow(0 10px 10px #000a)}
+.ch-lid,.ch-lidopen,.ch-rays{transform-box:view-box}
+.ch-lid{transform-origin:100px 96px;transition:transform .42s cubic-bezier(.5,-0.4,.6,1.2),opacity .3s}
+.ch-lidopen{transform-origin:100px 93px;transform:scaleY(0);opacity:0;transition:transform .45s .12s cubic-bezier(.2,1.5,.4,1),opacity .2s .12s}
+.ch-mouth,.ch-rays{opacity:0;transition:opacity .4s .2s}
+.ch-rays{transform-origin:100px 92px}
+.dr-chest.open .ch-lid{transform:scaleY(-.2) translateY(30px);opacity:0}
+.dr-chest.open .ch-lidopen{transform:scaleY(1);opacity:1}
+.dr-chest.open .ch-mouth{opacity:1}
+.dr-chest.win .ch-rays{opacity:1;animation:chRays 2.4s linear infinite}
+@keyframes chRays{0%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.08) rotate(3deg)}100%{transform:scale(1) rotate(-3deg)}}
+.dr-chest.lose .ch-shine{fill:#3a2a1a}
+.ch-spark{animation:chSpark 1.3s ease-in-out infinite}
+@keyframes chSpark{0%{opacity:0;transform:translateY(14px)}40%{opacity:1}100%{opacity:0;transform:translateY(-22px)}}
+.ch-spark{transform-box:fill-box}
+.dr-chest .dr-glow{z-index:1}
+.dr-chest .dr-loot{bottom:64%;z-index:4}
+.dr-chest.win .ch-svg{filter:drop-shadow(0 0 18px #ffd35a) drop-shadow(0 10px 10px #000a)}
+.dr-chest.wobble .ch-shackle,.dr-chest.tshake .ch-shackle{animation:chRattle .12s infinite}
+@keyframes chRattle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+/* ===== 룰렛: 빨강·흰색 휠 + 금테 + 받침대 + 황금빛 햇살 ===== */
+.rl-stage{flex-direction:column;background:repeating-conic-gradient(from 0deg at 50% 42%,rgba(255,246,200,.16) 0deg 5deg,transparent 5deg 11deg),radial-gradient(circle at 50% 42%,#fff1b0 0%,#ffc23a 26%,#e07b12 58%,#7a3206 100%) !important;
+  border-color:#d9a441 !important;box-shadow:inset 0 0 90px #5a2306aa,0 0 0 9px #3a0a12,0 0 0 12px #b8862b,0 12px 50px #000c !important}
+.rl-stage::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle,#fff 0 1.4px,transparent 2px) 0 0/46px 52px,radial-gradient(circle,#fff6 0 1px,transparent 1.6px) 21px 27px/38px 44px;opacity:.55;animation:rlGlit 3s linear infinite}
+@keyframes rlGlit{0%{opacity:.25}50%{opacity:.6}100%{opacity:.25}}
+.rl-stage{padding-top:66px !important}
+.rl-wrap{z-index:2;width:clamp(200px,min(76vw,calc(100vh - 500px)),560px);width:clamp(200px,min(76vw,calc(100dvh - 500px)),560px)}
+.rl-wheel{box-shadow:0 0 0 9px #d9a441,0 0 0 13px #8a6210,0 0 0 16px #fff1b0,0 0 0 19px #b8862b,0 0 60px #fff1b0aa,0 18px 40px #0009}
+.rl-wheel.done{box-shadow:0 0 0 9px #ffe08a,0 0 0 13px #8a6210,0 0 0 16px #fffbe0,0 0 0 19px #ffe08a,0 0 120px #fff6c8}
+.rl-pointer{top:-40px;width:44px;height:60px;border:0 !important;background:linear-gradient(90deg,#a87412,#fff1b0 45%,#d9a441 60%,#8a6210);clip-path:polygon(50% 100%,4% 34%,14% 6%,50% 0,86% 6%,96% 34%);filter:drop-shadow(0 4px 3px #0008)}
+.rl-hub{background:radial-gradient(circle at 35% 30%,#fffbe0,#f2c94c 40%,#8a6210 100%) !important;border:4px solid #fff1b0 !important;font-size:0 !important;box-shadow:0 0 0 4px #8a6210,0 6px 14px #0009}
+.rl-stand{position:relative;z-index:1;margin-top:-26px;width:calc(var(--sw,320px) * .5);height:64px;display:flex;flex-direction:column;align-items:center}
+.rl-stand i{display:block;width:26%;height:30px;background:linear-gradient(90deg,#1a1a1a,#4a4a4a 45%,#111)}
+.rl-stand b{display:block;width:100%;height:34px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,#3a3a3a,#111 70%);clip-path:polygon(14% 0,86% 0,100% 100%,0 100%);box-shadow:0 10px 18px #0008}
+.rl-stand::after{content:'';position:absolute;bottom:-10px;left:-10%;right:-10%;height:14px;border-radius:50%;background:radial-gradient(ellipse,#0007,transparent 70%)}
+
 </style>
 </head>
 <body>
@@ -621,7 +659,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.12-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.23-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -1842,34 +1880,44 @@ const SFX={ctx:null,_bus:null,on:(()=>{ try{ return localStorage.getItem('r2_sfx
   noise(d,o){ o=o||{}; const a=this.ac(); if(!a) return; try{ const t=a.currentTime+(o.delay||0), len=Math.max(1,Math.floor(a.sampleRate*d)), buf=a.createBuffer(1,len,a.sampleRate), ch=buf.getChannelData(0);
     for(let i=0;i<len;i++){ const k=i/len, env=o.att?Math.min(1,k/o.att)*(1-k):(1-k); ch[i]=(Math.random()*2-1)*env; }
     const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); f.type=o.ftype||'bandpass'; f.frequency.value=o.freq||800; g.gain.value=o.vol||0.15; src.buffer=buf; src.connect(f); f.connect(g); g.connect(this.bus(a)); src.start(t); }catch(e){} },
-  tick(){ this.tone(2000,0.03,{type:'square',vol:0.05}); this.noise(0.02,{vol:0.05,freq:4000,ftype:'highpass'}); },
-  beep(hi){ this.tone(hi?1046:659,0.16,{type:'triangle',vol:0.12}); this.tone(hi?82:65,0.7,{vol:0.45,to:hi?50:42}); this.noise(0.25,{vol:0.25,freq:140,ftype:'lowpass'}); },   // 팀파니 쿵
-  shake(){ this.noise(0.22,{vol:0.32,freq:170}); this.tone(105,0.18,{vol:0.12}); },
-  drum(){ for(let i=0;i<16;i++) this.noise(0.05,{vol:0.07+i*0.012,freq:1800,ftype:'highpass',delay:i*0.06*(1-i/40)}); this.tone(70,0.6,{vol:0.25,delay:0.9,to:45}); },   // 스네어 드럼롤 → 쿵
-  whoosh(){ this.noise(0.6,{vol:0.18,freq:1400,att:0.4}); },
-  boom(){ this.tone(90,0.7,{vol:0.5,to:38}); this.noise(0.5,{vol:0.35,freq:120,ftype:'lowpass'}); },
+  // ===== 🎰 슬롯머신풍 효과음 (벨 · 동전 폭포 · 사이렌 · 전자음 팡파르) =====
+  bell(f,d,o){ o=o||{}; [1,2.76,5.4,8.93].forEach((m,i)=>this.tone(f*m,(d||0.9)/(1+i*0.6),{vol:(o.vol||0.09)/(1+i*1.3),delay:o.delay||0})); },   // 금속 종소리 (배음 4개)
+  tick(){ this.tone(1500,0.035,{type:'square',vol:0.07,to:900}); this.noise(0.025,{vol:0.12,freq:3200}); },                 // 릴이 칸을 넘어가는 "딱"
+  beep(hi){ this.tone(hi?1568:988,0.22,{type:'square',vol:0.08,lp:3500}); this.tone(hi?3136:1976,0.12,{type:'square',vol:0.03,delay:0.03}); if(hi) this.bell(1568,0.9,{vol:0.07,delay:0.05}); this.tone(70,0.45,{vol:0.4,to:40}); },   // 전자음 삑 + 쿵
+  shake(){ for(let i=0;i<5;i++) this.noise(0.04,{vol:0.22,freq:900+i*250,delay:i*0.045}); this.tone(120,0.2,{vol:0.12,to:80}); },   // 덜컹덜컹
+  drum(){ for(let i=0;i<20;i++) this.tone(600+i*55,0.05,{type:'square',vol:0.045,delay:i*0.055}); this.siren(0.1,1.1,0.05); this.tone(65,0.6,{vol:0.3,delay:1.15,to:40}); },   // 릴 가속 + 경광 사이렌 → 쿵
+  whoosh(){ this.noise(0.12,{vol:0.4,freq:300,ftype:'lowpass'}); this.tone(180,0.18,{type:'square',vol:0.08,to:70}); for(let i=0;i<14;i++) this.noise(0.03,{vol:0.07,freq:2400,delay:0.18+i*0.05}); },   // 레버 "철컥" + 릴 도는 소리
+  boom(){ this.tone(90,0.8,{vol:0.55,to:36}); this.noise(0.5,{vol:0.4,freq:120,ftype:'lowpass'}); },
   crash(d){ this.noise(1.8,{vol:0.28,freq:6500,ftype:'highpass',delay:d||0}); },
-  coins(n,d){ for(let i=0;i<(n||8);i++){ const f=2200+Math.random()*1600; this.tone(f,0.09,{type:'triangle',vol:0.07,delay:(d||0)+i*0.065}); this.tone(f*1.52,0.07,{type:'sine',vol:0.04,delay:(d||0)+i*0.065+0.01}); } },
+  coins(n,d){ for(let i=0;i<(n||8);i++){ const f=2400+Math.random()*1800, t=(d||0)+i*0.055+Math.random()*0.02; this.tone(f,0.1,{type:'triangle',vol:0.08,delay:t}); this.tone(f*1.52,0.08,{vol:0.045,delay:t+0.01}); } },
+  coinFall(n,d){ this.coins(n||36,d); this.noise(1.6,{vol:0.09,freq:5200,ftype:'highpass',att:0.1,delay:d||0}); },     // 동전 폭포
+  siren(d,dur,vol){ const a=this.ac(); if(!a) return; try{ const t=a.currentTime+(d||0), os=a.createOscillator(), g=a.createGain(), f=a.createBiquadFilter(); os.type='sawtooth'; f.type='lowpass'; f.frequency.value=2600;
+    for(let k=0,x=t;x<t+dur;k++,x+=0.22) os.frequency.setValueAtTime(k%2?1250:820,x), os.frequency.linearRampToValueAtTime(k%2?820:1250,x+0.22);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.06,t+0.05); g.gain.setValueAtTime(vol||0.06,t+dur-0.1); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    os.connect(f); f.connect(g); g.connect(this.bus(a)); os.start(t); os.stop(t+dur+0.05); }catch(e){} },                      // 경광 사이렌 "위용위용"
+  alarm(d,dur){ for(let x=0;x<dur;x+=0.075) this.bell(2093,0.25,{vol:0.05,delay:(d||0)+x}); },                               // 잭팟 경보 벨 "따르르릉"
+  arcade(d){ const n=[523,659,784,1046,784,1046,1319,1568]; n.forEach((f,i)=>{ this.tone(f,0.11,{type:'square',vol:0.07,lp:4000,delay:(d||0)+i*0.07}); this.tone(f/2,0.11,{type:'square',vol:0.04,lp:2000,delay:(d||0)+i*0.07}); });
+    [1046,1319,1568,2093].forEach(f=>this.tone(f,1.0,{type:'square',vol:0.045,lp:3500,delay:(d||0)+0.6})); },                 // 전자음 팡파르
   cheer(d){ [600,950,1400].forEach((f,i)=>this.noise(2.4,{vol:0.1,freq:f,att:0.35,delay:(d||0)+i*0.05})); },
-  brass(notes,step,d){ notes.forEach((f,i)=>{ const last=i===notes.length-1; [1,1.5,2].forEach((m,j)=>this.tone(f*m/(j?1:1),last?1.1:0.2,{type:'sawtooth',vol:j?0.03:0.07,lp:2400,att:0.03,delay:(d||0)+i*step})); }); },
-  win(){ [784,988,1319].forEach((f,i)=>this.tone(f,0.22,{type:'triangle',vol:0.12,delay:i*0.07})); this.coins(5,0.15); },
-  lose(){ this.tone(311,0.3,{type:'sawtooth',vol:0.05,lp:900,to:294}); this.tone(277,0.55,{type:'sawtooth',vol:0.05,lp:900,to:233,delay:0.32}); },   // 와와~ (아쉬움)
+  brass(notes,step,d){ notes.forEach((f,i)=>{ const last=i===notes.length-1; [1,1.5,2].forEach((m,j)=>this.tone(f*m,last?1.1:0.2,{type:'sawtooth',vol:j?0.03:0.07,lp:2400,att:0.03,delay:(d||0)+i*step})); }); },
+  win(){ this.bell(1319,0.9,{vol:0.1}); this.bell(1568,1.1,{vol:0.1,delay:0.12}); this.coins(8,0.1); },                    // 딩-딩 + 짤랑
+  lose(){ [392,370,349,330].forEach((f,i)=>this.tone(f,i===3?0.6:0.22,{type:'square',vol:0.05,lp:1200,to:i===3?260:undefined,delay:i*0.2})); },   // 전자음 "뿌-뿌-뿌-뿌우~"
   fanfare(){ this.jackpot(); },
   jackpot(){ this.celebrate('coins'); },
-  horn(d){ this.tone(330,0.55,{type:'sawtooth',vol:0.07,lp:1800,to:540,delay:d||0}); this.tone(495,0.55,{type:'sawtooth',vol:0.04,lp:1800,to:810,delay:d||0}); },   // 파티 나팔
-  clunk(){ this.tone(220,0.28,{type:'triangle',vol:0.12,to:140}); this.noise(0.2,{vol:0.32,freq:280,ftype:'lowpass'}); this.tone(1900,0.18,{vol:0.03}); },          // 금괴가 바닥에 쿵
-  pop(){ this.tone(700,0.25,{vol:0.04,to:1900}); this.noise(0.55,{vol:0.34,freq:240,ftype:'lowpass',delay:0.06}); for(let i=0;i<10;i++) this.noise(0.03,{vol:0.06,freq:5200,ftype:'highpass',delay:0.28+Math.random()*0.55}); },   // 폭죽 펑 + 파바박
-  celebrate(k){ this.boom(); this.brass([523,659,784,1046,1319],0.12,0.05);     // 공통: 쿵 + 금관 팡파르 → 효과별 소리
+  horn(d){ this.tone(330,0.55,{type:'sawtooth',vol:0.07,lp:1800,to:540,delay:d||0}); this.tone(495,0.55,{type:'sawtooth',vol:0.04,lp:1800,to:810,delay:d||0}); },
+  clunk(){ this.tone(220,0.28,{type:'triangle',vol:0.12,to:140}); this.noise(0.2,{vol:0.32,freq:280,ftype:'lowpass'}); this.bell(1900,0.3,{vol:0.03}); },
+  pop(){ this.tone(700,0.25,{vol:0.04,to:1900}); this.noise(0.55,{vol:0.34,freq:240,ftype:'lowpass',delay:0.06}); for(let i=0;i<10;i++) this.noise(0.03,{vol:0.06,freq:5200,ftype:'highpass',delay:0.28+Math.random()*0.55}); },
+  celebrate(k){ this.boom(); this.siren(0,1.6,0.05); this.alarm(0.05,1.5); this.arcade(0.15); this.coinFall(36,0.4); this.crash(0.6); this.cheer(0.7);   // 공통: 잭팟 사이렌·벨·팡파르·동전 폭포
     const f={
-      coins:()=>{ this.crash(0.55); this.coins(16,0.6); this.cheer(0.5); },
-      diamonds:()=>{ [2093,2637,3136,4186,3136,4186,5274].forEach((x,i)=>{ this.tone(x,0.9,{vol:0.06,delay:0.55+i*0.11}); this.tone(x*2,0.5,{vol:0.02,delay:0.56+i*0.11}); }); this.cheer(0.6); },
-      goldbars:()=>{ this.crash(0.55); this.cheer(0.6); },
-      fireworks:()=>{ this.cheer(0.45); },
-      confetti:()=>{ this.horn(0.5); this.horn(0.9); this.crash(0.55); this.cheer(0.5); },
-      stars:()=>{ for(let i=0;i<14;i++) this.tone(1200+Math.random()*2400,0.7,{vol:0.05,delay:0.5+i*0.09}); this.cheer(0.7); },
-      gems:()=>{ [1046,1319,1568,1976,2093,2637].forEach((x,i)=>{ this.tone(x,1.1,{type:'triangle',vol:0.06,delay:0.55+i*0.1}); this.tone(x*1.5,0.6,{vol:0.02,delay:0.55+i*0.1}); }); this.crash(0.6); this.cheer(0.6); },
-      money:()=>{ for(let i=0;i<24;i++) this.noise(0.03,{vol:0.12,freq:2500,delay:0.5+i*0.035}); this.tone(2637,0.5,{type:'triangle',vol:0.1,delay:1.4}); this.tone(3520,0.6,{type:'triangle',vol:0.08,delay:1.45}); this.coins(6,1.4); this.cheer(0.6); } }[k];
-    (f||(()=>this.coins(16,0.6)))(); },
+      coins:()=>this.coinFall(24,1.6),
+      diamonds:()=>{ [2093,2637,3136,4186,3136,4186,5274].forEach((x,i)=>this.bell(x,0.8,{vol:0.05,delay:1.2+i*0.1})); },
+      goldbars:()=>{ this.boom(); },
+      fireworks:()=>{},
+      confetti:()=>{ this.horn(1.1); this.horn(1.45); },
+      stars:()=>{ for(let i=0;i<14;i++) this.bell(1400+Math.random()*2200,0.6,{vol:0.04,delay:1.1+i*0.09}); },
+      gems:()=>{ [1046,1319,1568,1976,2093,2637].forEach((x,i)=>this.bell(x,1.0,{vol:0.05,delay:1.1+i*0.1})); },
+      money:()=>{ for(let i=0;i<24;i++) this.noise(0.03,{vol:0.12,freq:2500,delay:1.1+i*0.035}); this.bell(2637,0.8,{vol:0.09,delay:2.0}); } }[k];
+    if(f) f(); },
   toggle(){ this.on=!this.on; try{ localStorage.setItem('r2_sfx',this.on?'on':'off'); }catch(e){} if(this.on) this.beep(true); return this.on; }};
 // 카지노 마무리 효과 8종: 매번 랜덤 (직전 효과는 피함) · 효과마다 배너 문구·색·소리가 다름
 const FX_THEMES={coins:{t:'JACKPOT!',cls:'th-gold'},diamonds:{t:'DIAMOND WIN!',cls:'th-ice'},goldbars:{t:'MEGA WIN!',cls:'th-bar'},fireworks:{t:'BIG WIN!',cls:'th-rainbow'},
@@ -1958,6 +2006,58 @@ function casinoJackpot(el,names,kind){ if(!el) return; const th=FX_THEMES[kind]|
   el.hidden=false; void el.offsetWidth; el.classList.add('show'); el.onclick=()=>{ el.hidden=true; }; setTimeout(()=>{ el.hidden=true; },6000); }
 function casinoCelebrate(q,names){ const kind=pickFx(); casinoFx(q('.cs-coins'),kind,2800); casinoJackpot(q('.cs-jackpot'),names,kind); SFX.celebrate(kind); return kind; }
 function casinoCoins(cv,ms){ casinoFx(cv,'coins',ms); }
+// 보물상자 그림 (SVG, 이미지 파일 없음): 나무+금테 / 붉은 광택+금장식 두 디자인을 번갈아 사용
+const CHEST_DEFS='<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>'+
+  '<linearGradient id="chGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4c2"/><stop offset=".35" stop-color="#f2c94c"/><stop offset=".7" stop-color="#b8862b"/><stop offset="1" stop-color="#f6d77a"/></linearGradient>'+
+  '<linearGradient id="chGoldH" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a87412"/><stop offset=".5" stop-color="#fff1b0"/><stop offset="1" stop-color="#a87412"/></linearGradient>'+
+  '<linearGradient id="chWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a5f2c"/><stop offset=".5" stop-color="#7a4520"/><stop offset="1" stop-color="#4e2a12"/></linearGradient>'+
+  '<linearGradient id="chWoodL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8743a"/><stop offset="1" stop-color="#7a4520"/></linearGradient>'+
+  '<linearGradient id="chRed" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2453f"/><stop offset=".18" stop-color="#c3141f"/><stop offset=".75" stop-color="#8a0812"/><stop offset="1" stop-color="#5a040b"/></linearGradient>'+
+  '<linearGradient id="chRedL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a6a"/><stop offset=".3" stop-color="#d11a26"/><stop offset="1" stop-color="#8a0812"/></linearGradient>'+
+  '<linearGradient id="chIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1608"/><stop offset="1" stop-color="#4a2a12"/></linearGradient>'+
+  '<radialGradient id="chLight" cx="50%" cy="100%" r="90%"><stop offset="0" stop-color="#ffffff"/><stop offset=".25" stop-color="#fff2b0"/><stop offset=".6" stop-color="#ffcf4a" stop-opacity=".75"/><stop offset="1" stop-color="#ffb000" stop-opacity="0"/></radialGradient>'+
+  '<linearGradient id="chRay" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fff6c8" stop-opacity=".95"/><stop offset="1" stop-color="#ffcf4a" stop-opacity="0"/></linearGradient>'+
+  '</defs></svg>';
+function chestSvg(i){
+  const red=i%2===1, body=red?'url(#chRed)':'url(#chWood)', lidF=red?'url(#chRedL)':'url(#chWoodL)', G='url(#chGold)';
+  const riv=(xs,y,r)=>xs.map(x=>'<circle cx="'+x+'" cy="'+y+'" r="'+(r||2.3)+'" fill="#fff1b0" stroke="#8a6210" stroke-width=".8"/>').join('');
+  const range=(a,b,st)=>{ const o=[]; for(let x=a;x<=b;x+=st) o.push(x); return o; };
+  // 빛줄기 + 반짝이 (당첨 상자가 열릴 때)
+  const rays='<g class="ch-rays">'+[-62,-40,-20,0,20,40,62].map(a=>'<polygon points="100,92 '+(100+Math.tan((a-6)*Math.PI/180)*110)+',-20 '+(100+Math.tan((a+6)*Math.PI/180)*110)+',-20" fill="url(#chRay)" transform="rotate(0)"/>').join('')+
+    '<ellipse cx="100" cy="92" rx="80" ry="58" fill="url(#chLight)"/>'+[[70,60],[120,40],[95,20],[140,66],[58,34],[110,70],[82,46]].map(([x,y],k)=>'<circle class="ch-spark" style="animation-delay:'+(k*0.18)+'s" cx="'+x+'" cy="'+y+'" r="'+(1.6+k%3)+'" fill="#fffbe0"/>').join('')+'</g>';
+  // 열린 뚜껑 (뒤로 젖혀진 모습: 안쪽 면이 보임)
+  const lidOpen='<g class="ch-lidopen"><path d="M24 93 L176 93 L166 44 Q100 30 34 44 Z" fill="url(#chIn)" stroke="'+G+'" stroke-width="5" stroke-linejoin="round"/>'+
+    '<path d="M34 44 Q100 30 166 44" fill="none" stroke="#fff1b0" stroke-width="2" opacity=".6"/>'+riv([46,100,154],50,2)+'</g>';
+  // 닫힌 뚜껑 (둥근 아치 + 금 띠)
+  let lid='<g class="ch-lid"><path d="M18 96 L18 70 Q18 36 100 34 Q182 36 182 70 L182 96 Z" fill="'+lidF+'" stroke="'+G+'" stroke-width="5" stroke-linejoin="round"/>';
+  if(red){ lid+='<path d="M28 60 Q60 42 100 41" fill="none" stroke="#ffffff" stroke-width="3" opacity=".35" stroke-linecap="round"/>'+
+      [40,100,160].map(x=>'<path d="M'+(x-6)+' '+(x===100?34:39)+' L'+(x-6)+' 96 L'+(x+6)+' 96 L'+(x+6)+' '+(x===100?34:39)+' Z" fill="url(#chGoldH)"/>').join('')+
+      range(44,88,9).map(y=>riv([40,160],y,1.8)).join('')+
+      '<path d="M76 46 Q88 30 100 40 Q112 30 124 46 Q112 40 100 50 Q88 40 76 46 Z" fill="'+G+'" stroke="#7a5512" stroke-width=".8"/><circle cx="100" cy="42" r="3.5" fill="#fff1b0"/>'; }
+  else { lid+=[[52,0],[148,0]].map(([x])=>'<path d="M'+(x-7)+' 40 L'+(x-7)+' 96 L'+(x+7)+' 96 L'+(x+7)+' 40 Z" fill="url(#chGoldH)"/>').join('')+
+      range(46,90,11).map(y=>riv([52,148],y,1.9)).join('')+
+      '<path d="M40 56 Q100 34 160 56" fill="none" stroke="#3b200c" stroke-width="1.2" opacity=".55"/><path d="M30 76 Q100 60 170 76" fill="none" stroke="#3b200c" stroke-width="1.2" opacity=".5"/>'+
+      '<path d="M18 70 L34 70 L34 96 L18 96 Z M166 70 L182 70 L182 96 L166 96 Z" fill="'+G+'"/>'; }
+  lid+='<rect x="93" y="76" width="14" height="24" rx="2" fill="'+G+'" stroke="#7a5512" stroke-width=".8"/></g>';
+  // 상자 몸통
+  let bd='<rect x="20" y="92" width="160" height="78" rx="5" fill="'+body+'" stroke="'+G+'" stroke-width="5"/>';
+  if(red){ bd+='<path d="M26 98 L174 98" stroke="#ff9a8a" stroke-width="2.5" opacity=".45"/>'+
+      [40,160].map(x=>'<rect x="'+(x-6)+'" y="92" width="12" height="78" fill="url(#chGoldH)"/>'+range(100,164,10).map(y=>riv([x],y,1.8)).join('')).join('')+
+      '<circle cx="186" cy="128" r="9" fill="none" stroke="'+G+'" stroke-width="3.5"/><circle cx="184" cy="119" r="6" fill="'+G+'" stroke="#7a5512" stroke-width=".8"/>'+
+      '<path d="M14 170 L186 170 L190 182 L176 182 L172 177 L28 177 L24 182 L10 182 Z" fill="'+G+'" stroke="#7a5512" stroke-width="1"/>'; }
+  else { bd+=[110,130,150].map(y=>'<path d="M24 '+y+' Q60 '+(y-4)+' 100 '+y+' T176 '+y+'" fill="none" stroke="#3b200c" stroke-width="1.1" opacity=".55"/>').join('')+
+      '<path d="M22 131 L178 131" stroke="#2e1808" stroke-width="2" opacity=".6"/>'+
+      ['M20 92 L44 92 L44 100 L28 100 L28 116 L20 116 Z','M180 92 L156 92 L156 100 L172 100 L172 116 L180 116 Z','M20 170 L44 170 L44 162 L28 162 L28 146 L20 146 Z','M180 170 L156 170 L156 162 L172 162 L172 146 L180 146 Z'].map(d=>'<path d="'+d+'" fill="'+G+'" stroke="#7a5512" stroke-width=".8"/>').join('')+
+      riv(range(52,148,12),96,1.9)+riv(range(52,148,12),166,1.9); }
+  // 자물쇠 (금판 + 자물통 + 열쇠구멍)
+  bd+='<rect x="83" y="96" width="34" height="40" rx="4" fill="'+G+'" stroke="#7a5512" stroke-width="1"/>'+riv([88,112],101,1.7)+riv([88,112],131,1.7)+
+    '<path class="ch-shackle" d="M93 116 L93 108 Q100 99 107 108 L107 116" fill="none" stroke="'+G+'" stroke-width="3.2"/><rect x="89" y="114" width="22" height="17" rx="3" fill="url(#chGoldH)" stroke="#7a5512" stroke-width=".9"/>'+
+    '<circle cx="100" cy="120.5" r="2.6" fill="#2a1608"/><path d="M98.6 121.5 L101.4 121.5 L100.8 127 L99.2 127 Z" fill="#2a1608"/>';
+  // 상자 안쪽 입구 (열리면 보임)
+  const mouth='<g class="ch-mouth"><path d="M24 93 L176 93 L172 100 L28 100 Z" fill="#1a0d05"/><ellipse class="ch-shine" cx="100" cy="95" rx="70" ry="7" fill="#fff6c8"/></g>';
+  return '<svg class="ch-svg '+(red?'ch-red':'ch-wood')+'" viewBox="0 0 200 190" aria-hidden="true">'+rays+lidOpen+mouth+bd+lid+'</svg>';
+}
+
 const CASINO_FX='<canvas class="cs-coins"></canvas><div class="cs-jackpot" hidden></div>';
 const sfxBtn=()=>'<button type="button" class="btn sm ghost" data-dr="sfx" title="효과음 켜기/끄기">'+(SFX.on?'🔊':'🔇')+'</button>';
 function randInt(n){
@@ -1972,21 +2072,23 @@ function runRoulette(o){
     const reduce=!!window.__R2_FASTDRAW;   // 추첨 연출은 기기의 '애니메이션 줄이기' 설정과 상관없이 항상 정상 속도 (시험용 빠른 모드만 예외)
     const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
     const R0=100, fs=n<=6?11:n<=10?9:n<=16?7.5:6, maxc=n<=10?7:5;
-    const segCol=i=>(n%2===1&&i===n-1)?'#0e6b3a':(i%2?'#151515':'#b3122e');     // 카지노 휠: 빨강·검정 (홀수면 마지막 칸 초록)
+    const segCol=i=>(n%2===1&&i===n-1&&n>1)?'#e8b931':(i%2?'#fbf3e2':'#c8102e'), txtCol=i=>(n%2===1&&i===n-1&&n>1)?'#4a2c04':(i%2?'#c8102e':'#fff6e6');     // 빨강·흰색 휠 (홀수면 마지막 칸 금색)
     const pt=a=>{ const r=a*Math.PI/180; return [ (R0*Math.sin(r)).toFixed(2), (-R0*Math.cos(r)).toFixed(2) ]; };
     const segs=B.map((b,i)=>{ const a1=i*seg, a2=(i+1)*seg, p1=pt(a1), p2=pt(a2), mid=a1+seg/2, col=segCol(i), nm=b.name.length>maxc?b.name.slice(0,maxc)+'…':b.name;
       const d=n===1?'M0,-100 A100,100 0 1 1 -0.01,-100 Z':'M0,0 L'+p1[0]+','+p1[1]+' A100,100 0 '+(seg>180?1:0)+' 1 '+p2[0]+','+p2[1]+' Z';
-      return '<g class="rl-seg" data-i="'+i+'"><path d="'+d+'" fill="'+col+'" stroke="#d9a441" stroke-width="1.2"/>'+(mid<=180?'<g transform="rotate('+(mid-90).toFixed(2)+')"><text x="'+(n>12?40:34)+'" y="0" dominant-baseline="middle" font-size="'+fs+'" font-weight="900" fill="#fff4d6">'+esc(nm)+'</text></g>'
-        :'<g transform="rotate('+(mid+90).toFixed(2)+')"><text x="-'+(n>12?40:34)+'" y="0" text-anchor="end" dominant-baseline="middle" font-size="'+fs+'" font-weight="900" fill="#fff4d6">'+esc(nm)+'</text></g>')+'</g>'; }).join('')+
+      return '<g class="rl-seg" data-i="'+i+'"><path d="'+d+'" fill="'+col+'" stroke="#d9a441" stroke-width="1.2"/>'+(mid<=180?'<g transform="rotate('+(mid-90).toFixed(2)+')"><text x="'+(n>12?40:34)+'" y="0" dominant-baseline="middle" font-size="'+fs+'" font-weight="900" fill="'+txtCol(i)+'">'+esc(nm)+'</text></g>'
+        :'<g transform="rotate('+(mid+90).toFixed(2)+')"><text x="-'+(n>12?40:34)+'" y="0" text-anchor="end" dominant-baseline="middle" font-size="'+fs+'" font-weight="900" fill="'+txtCol(i)+'">'+esc(nm)+'</text></g>')+'</g>'; }).join('')+
+      B.map((_,i)=>{ const a=i*seg*Math.PI/180; return '<circle cx="'+(94*Math.sin(a)).toFixed(2)+'" cy="'+(-94*Math.cos(a)).toFixed(2)+'" r="2.6" fill="#fff1b0" stroke="#8a6210" stroke-width=".8"/>'; }).join('')+   // 칸 경계 금 징
       Array.from({length:28},(_,i)=>{ const a=i*360/28*Math.PI/180; return '<circle class="rl-bulb'+(i%2?' b2':'')+'" cx="'+(101.5*Math.sin(a)).toFixed(2)+'" cy="'+(-101.5*Math.cos(a)).toFixed(2)+'" r="1.8"/>'; }).join('');   // 휠 테두리 전구   // 왼쪽 절반은 글자를 뒤집어 바로 읽히게
     root.innerHTML='<div class="dr-overlay">'+CASINO_FX+'<div class="dr-box" role="dialog" aria-modal="true" aria-label="룰렛 뽑기">'+
       '<div class="dr-head"><div><div class="dr-eyebrow">♠ ♥ GUILD CASINO ♦ ♣ · ROULETTE</div><h3><span class="dr-emo">🎡</span>'+esc(o.item)+' 룰렛</h3></div><div class="dr-tools">'+sfxBtn()+'<button class="btn sm ghost" data-dr="close">닫기</button></div></div>'+
       '<p class="dr-sub">'+esc(o.raidTitle||'레이드')+' · 입찰 '+n+'명 중 1명 당첨 · 판매 수량 1개라 룰렛으로 뽑습니다</p>'+
       '<div class="dr-bidders">'+B.map((b,i)=>'<span class="chip" data-bi="'+i+'">'+esc(b.name)+'</span>').join('')+'</div>'+
-      '<div class="rl-stage" id="rlStage"><canvas class="rl-fx" id="rlFx"></canvas><div class="rl-wrap"><div class="rl-pointer"></div><svg class="rl-wheel" id="rlWheel" viewBox="-106 -106 212 212">'+segs+'</svg><div class="rl-hub">🎡</div></div></div>'+
+      '<div class="rl-stage" id="rlStage"><canvas class="rl-fx" id="rlFx"></canvas><div class="rl-wrap"><div class="rl-pointer"></div><svg class="rl-wheel" id="rlWheel" viewBox="-106 -106 212 212">'+segs+'</svg><div class="rl-hub"></div></div><div class="rl-stand"><i></i><b></b></div></div>'+
       '<div class="dr-status" id="drStatus" aria-live="polite">준비 완료 — 룰렛을 돌려 주세요</div><div class="dr-winners" id="drWinners"></div>'+
       '<div class="dr-foot"><button class="btn gold lg" data-dr="start">🎡 룰렛 돌리기</button><button class="btn" data-dr="skip" hidden>⏭ 건너뛰기</button><button class="btn" data-dr="copy" hidden>당첨 결과 복사</button><button class="btn" data-dr="close" id="drClose2">닫기</button></div></div></div>';
-    const q=sel=>root.querySelector(sel), wheel=q('#rlWheel'), stage=q('#rlStage'), ptr=q('.rl-pointer'), stat=q('#drStatus'), winEl=q('#drWinners'), startBtn=q('[data-dr=start]'), skipBtn=q('[data-dr=skip]'), copyBtn=q('[data-dr=copy]');
+    const q=sel=>root.querySelector(sel); requestAnimationFrame(()=>{ const ww=root.querySelector('.rl-wrap'), st=root.querySelector('.rl-stand'); if(ww&&st) st.style.setProperty('--sw',ww.getBoundingClientRect().width+'px'); });
+    const wheel=q('#rlWheel'), stage=q('#rlStage'), ptr=q('.rl-pointer'), stat=q('#drStatus'), winEl=q('#drWinners'), startBtn=q('[data-dr=start]'), skipBtn=q('[data-dr=skip]'), copyBtn=q('[data-dr=copy]');
     const cv=q('#rlFx'); let ctx=null, parts=[], praf=0; try{ ctx=cv.getContext?cv.getContext('2d'):null; }catch(e){}
     function burst(){ if(!ctx||reduce) return; const b=stage.getBoundingClientRect(); cv.width=Math.max(1,b.width); cv.height=Math.max(1,b.height);
       const cols=['#fff6d5','#ffe6a3','#f4c76b','#ffd35a','#ff6b8a','#5aa9ff']; for(let i=0;i<140;i++){ const a=Math.random()*6.2832, v=2+Math.random()*7; parts.push({x:cv.width/2,y:34,vx:Math.cos(a)*v,vy:Math.sin(a)*v-3,l:0,life:60+Math.random()*60,r:2+Math.random()*3.5,c:cols[i%cols.length]}); }
@@ -2040,12 +2142,12 @@ function runDraw(o){
     const later=(fn,ms)=>{ timers.push(setTimeout(fn,ms)); };
     const narrow=(window.innerWidth||800)<560;
     const cols=Math.min(n<=4?n:n<=6?(narrow?3:n):n<=8?4:n<=12?6:8, narrow?4:8), size=n<=4?'':n<=8?'mid':'small';
-    root.innerHTML='<div class="dr-overlay">'+CASINO_FX+'<div class="dr-box" role="dialog" aria-modal="true" aria-label="보물상자 뽑기">'+
+    root.innerHTML='<div class="dr-overlay">'+CASINO_FX+CHEST_DEFS+'<div class="dr-box" role="dialog" aria-modal="true" aria-label="보물상자 뽑기">'+
       '<div class="dr-head"><div><div class="dr-eyebrow">♠ ♥ GUILD CASINO ♦ ♣ · TREASURE DRAW</div><h3><span class="dr-emo">🏴‍☠️</span>'+esc(o.item)+' 뽑기</h3></div><div class="dr-tools">'+sfxBtn()+'<button class="btn sm ghost" data-dr="close">닫기</button></div></div>'+
       '<p class="dr-sub">'+esc(o.raidTitle||'레이드')+' · 입찰 '+n+'명 중 당첨 '+k+'명 · 상자 '+n+'개 중 <b style="color:var(--coin)">💎 '+k+'개</b> / 💨 '+(n-k)+'개 (중복 없이 추첨)</p>'+
       '<div class="dr-bidders">'+B.map((b,i)=>'<span class="chip" data-bi="'+i+'">'+esc(b.name)+'</span>').join('')+'</div>'+
       '<div class="dr-stage" id="drStage"><canvas id="drCanvas"></canvas><div class="dr-flash"></div><div class="dr-chests '+size+'" style="--cols:'+cols+'">'+
-      B.map((b,i)=>'<div class="dr-cw"><div class="dr-chest charge" data-i="'+i+'"><div class="dr-glow"></div><div class="dr-lid"></div><div class="dr-body"><i class="dr-lock"></i></div><div class="dr-loot"></div></div><div class="dr-who">'+esc(b.name)+'</div></div>').join('')+
+      B.map((b,i)=>'<div class="dr-cw"><div class="dr-chest charge" data-i="'+i+'"><div class="dr-glow"></div>'+chestSvg(i)+'<div class="dr-loot"></div></div><div class="dr-who">'+esc(b.name)+'</div></div>').join('')+
       '</div><div class="dr-count" id="drCount" aria-live="assertive"></div></div>'+
       '<div class="dr-status" id="drStatus" aria-live="polite">준비 완료 — 상자 '+n+'개 중 '+k+'개에 💎가 들어 있습니다. 보물상자를 열어 주세요</div>'+
       '<div class="dr-winners" id="drWinners"></div>'+
