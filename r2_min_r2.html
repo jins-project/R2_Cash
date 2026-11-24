@@ -659,7 +659,7 @@ details.nh .ni{padding:4px 18px 14px 18px;border-top:1px solid var(--line)}
    ===================================================================== */
 const SCHEMA = 4;   // 4 = 레이드: 아이템 등록→판매 입력→일괄 반영, 재고 이월, 현금 관리 (이전 버전은 열 때 자동 변환)
 const KEY = 'r2_guild_fund_v1';
-const APP_VER = '2026.11.23-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
+const APP_VER = '2026.11.24-a';   // 화면 맨 위에 표시 — 휴대폰 등에서 최신 파일인지 확인용
 /* ★ Firebase 연동 설정 — 가이드(firebase_setup_guide.md)대로 만든 웹앱 설정값을 여기에 붙여넣으세요.
    비워 두면(null) 지금처럼 이 브라우저에만 저장됩니다. (로그인/계정은 사용하지 않습니다)
    예) const FIREBASE_CONFIG = { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }; */
@@ -1632,7 +1632,7 @@ function historyBody(){
            ?'<span class="chip blue">💰 회수 '+fmtM(r.recovered)+'</span> <span class="small muted">'+esc(r.recoverAt||'')+(r.recoverWhy?' · '+esc(r.recoverWhy):'')+'</span> <button class="btn ghost sm" data-act="distRecoverUndo" data-d="'+esc(d.id)+'" data-m="'+esc(r.memberId)+'">회수 취소</button>'
            :'<label><input type="checkbox" '+(r.paid?'checked':'')+' data-chg="paid" data-d="'+esc(d.id)+'" data-m="'+esc(r.memberId)+'"> 지급 완료</label>'+(r.paid?'':' <button class="btn ghost sm" data-act="distRecover" data-d="'+esc(d.id)+'" data-m="'+esc(r.memberId)+'" title="지급하지 못한 몫을 길자금 수입으로 회수">💰 회수</button>'))+'</td></tr>';
     });
-    b+='</tbody></table></div><div class="toolbar">'+(unpaidRows.length?'<button class="btn sm" data-act="distRecoverAll" data-id="'+esc(d.id)+'">💰 미지급 '+unpaidRows.length+'명 전체 회수 ('+fmtM(unpaidRows.reduce((a,r)=>a+num(r.total),0))+')</button>':'')+'<button class="btn ghost sm" style="margin-left:auto" data-act="distCancel" data-id="'+esc(d.id)+'">분배 취소(되돌리기)</button></div></div></details>';
+    b+='</tbody></table></div><div class="toolbar">'+(unpaidRows.length?'<button class="btn sm" data-act="distRecoverAll" data-id="'+esc(d.id)+'">💰 미지급 '+unpaidRows.length+'명 전체 회수 ('+fmtM(unpaidRows.reduce((a,r)=>a+num(r.total),0))+')</button>':'')+'<button class="btn sm" style="margin-left:auto" data-act="distEdit" data-id="'+esc(d.id)+'" title="분배 날짜·제목만 고칩니다 (금액·지급 내역은 그대로)">✏ 날짜·제목 수정</button><button class="btn ghost sm" data-act="distCancel" data-id="'+esc(d.id)+'">분배 취소(되돌리기)</button></div></div></details>';
   });
   return '<p class="hint">날짜를 누르면 분배 비율·방식과 개인별 상세가 펼쳐집니다.</p>'+b;
 }
@@ -2763,6 +2763,24 @@ A.distDone=async()=>{
   ui.open.add(d.id);
   commit(); toast('분배를 완료하고 '+fmtDate(d.date)+' 지출로 기록했습니다');
 };
+// 완료된 분배의 날짜·제목 수정 (금액·지급·회수 내역은 그대로) — 길자금 지출 내역의 날짜·항목도 함께 맞춤
+A.distEdit=async el=>{
+  const d=S.distributions.find(x=>x.id===el.dataset.id); if(!d||d.status!=='completed') return;
+  const le=S.ledger.find(e=>e.id===d.ledgerId)||S.ledger.find(e=>e.ref&&e.ref.kind==='distribution'&&e.ref.id===d.id);
+  const res=await modal({title:'✏ 분배 날짜·제목 수정',ok:'저장',body:
+    '<p class="hint" style="margin-top:0">잘못 지정한 <b>분배 날짜</b>나 <b>제목</b>만 고칩니다. 분배 금액, 개인별 지급액, 지급 완료·회수 표시는 바뀌지 않습니다.'+(le?' 길자금 <b>지출 내역('+fmtM(le.amount)+')</b>의 날짜와 항목도 함께 바뀝니다.':'')+'</p>'+
+    '<div class="field"><label>분배 날짜</label><input type="date" id="deDate" value="'+esc(d.date||'')+'"></div>'+
+    '<div class="field"><label>분배 제목</label><input type="text" id="deTitle" maxlength="60" value="'+esc(d.title||'')+'"></div>',
+    onOk(root){ const dt=root.querySelector('#deDate').value, ti=root.querySelector('#deTitle').value.trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)){ toast('날짜를 선택하세요'); return false; } if(!ti){ toast('제목을 입력하세요'); return false; }
+      return {date:dt,title:ti}; }});
+  if(!res||res===true) return;
+  if(res.date===d.date&&res.title===d.title) return toast('바뀐 내용이 없습니다');
+  const old=d.date; d.date=res.date; d.title=res.title;
+  if(le){ le.date=res.date; le.category=res.title; if(le.ref&&le.ref.kind==='distribution'){} else le.ref={kind:'distribution',id:d.id}; d.ledgerId=le.id; }
+  ui.open.add(d.id); commit();
+  toast(old!==res.date?'분배 날짜를 '+fmtDate(old)+' → '+fmtDate(res.date)+'로 고쳤습니다':'분배 제목을 고쳤습니다');
+};
 A.distCancel=async el=>{
   const d=S.distributions.find(x=>x.id===el.dataset.id); if(!d) return;
   const dr=draftDist();
@@ -3847,6 +3865,7 @@ function logDescribe(p){
       const t=lq(a.title||'진행 중 분배');
       if(b.status!==a.status){ if(a.status==='completed') L('분배','완료 · '+t+' 총 지급 '+fmtM((a.summary&&a.summary.totalPayout)||(a.results||[]).reduce((s,r)=>s+num(r.total),0))+' ('+(a.results||[]).length+'명)'); else L('분배','완료 취소 · '+t); }
       if((b.title||'')!==(a.title||'')&&a.status===b.status) L('분배','제목 '+arrow(lq(b.title||''),lq(a.title||'')));
+      if((b.date||'')!==(a.date||'')&&a.status==='completed'&&b.status==='completed') L('분배',t+' 날짜 '+arrow(b.date||'',a.date||''));
       if(num(b.poolAmount)!==num(a.poolAmount)&&a.status==='draft') L('분배',t+' 분배 대상 금액 '+arrow(fmtM(b.poolAmount),fmtM(a.poolAmount)));
       if(a.status==='draft'&&b.status==='draft'){
         const br=new Map((b.rows||[]).map(r=>[r.memberId,r])), ch=[];
