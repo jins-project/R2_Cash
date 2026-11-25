@@ -128,6 +128,7 @@ body.touch #matchCard,body.touch #missionHud{top:calc(100px + env(safe-area-inse
 .rows{display:grid;gap:6px}
 .row{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:6px 10px}
 .row .nm{flex:1}
+.qbtns{display:flex;gap:4px}.qbtns button{padding:4px 9px;font-size:14px;border-radius:10px;background:#efe8df;min-width:0}.qbtns button.on{background:#ff9f43;color:#fff}
 .row .need{font-size:14px;color:#6b5d52}
 .ok{color:var(--good)}.no{color:var(--bad)}
 .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
@@ -325,6 +326,7 @@ body.touch .fslot.lock{display:none}
   </div></div>
 <div class="panel card hide" id="pSet"><button class="x" data-close>닫기</button><h2>⚙ 설정</h2>
   <div class="rows">
+    <div class="row" style="flex-wrap:wrap;background:#fff3e0"><span class="nm">🖥 화질 (버벅이면 낮춰요)</span><div id="sQual" class="qbtns"></div><div id="sQualNow" style="width:100%;font-size:13px;color:#6b5d52"></div></div>
     <div class="row" style="background:#efe8ff">타격 효과 (끄고 켤 수 있어요)</div>
     <div class="rows" id="fxRows"></div>
     <label class="row"><input type="checkbox" id="sFree"> <span class="nm">자유 모드 (배고픔·피로도가 줄지 않아요)</span></label>
@@ -622,7 +624,7 @@ function buildDecor(rng){
   const nearV=(x,z,d)=>VIL.some(v=>Math.hypot(x-v.x,z-v.z)<d);
   const scatter=(n,ok)=>{const L=[];for(let t=0;t<n*6&&L.length<n;t++){const a=rng()*TAU,r=Math.sqrt(rng())*(R+80),x=Math.cos(a)*r,z=Math.sin(a)*r;const h=groundH(x,z);if(ok(x,z,h))L.push({x,z,h});}return L;};
   const inst=(geo,L,setup,shadow)=>{const im=new THREE.InstancedMesh(geo,mat,L.length);L.forEach((o,i)=>{const r=setup(o,i);q.setFromAxisAngle(up,rng()*TAU);sc.setScalar(r.s||1);if(r.sy)sc.y*=r.sy;p.set(o.x,o.h+(r.dy||0),o.z);m4.compose(p,q,sc);im.setMatrixAt(i,m4);im.setColorAt(i,c.setHex(r.c!==undefined?r.c:0xffffff));});
-    im.castShadow=!!shadow;im.receiveShadow=true;scene.add(im);return im;};
+    im.castShadow=!!shadow;im.receiveShadow=true;scene.add(im);W.decor.push(im);return im;};
   const GRASS=[0x9fd05a,0x5fc46a,0x3f9a46,0xa58fd0,0x8a6a4a,0xc9a86a];
   // 풀숲
   const tuft=mergeGeos([G(new THREE.ConeGeometry(.09,.7,3),0xffffff,0,.35,0),G(new THREE.ConeGeometry(.08,.55,3).rotateZ(.35),0xffffff,.12,.26,.05),G(new THREE.ConeGeometry(.08,.6,3).rotateZ(-.3),0xffffff,-.1,.28,-.06)]);
@@ -941,7 +943,7 @@ function buildSea(rng){
 }
 
 // 월드 공용 상태 보관함
-const W={flames:[],fires:[],smiths:[],smokers:[],vilPos:[],time:8,day:1,dayLen:600};
+const W={decor:[],flames:[],fires:[],smiths:[],smokers:[],vilPos:[],time:8,day:1,dayLen:600};
 
 /* =========================================================
    2. 모델 — 로블록스풍 블록 캐릭터, 동물, 몬스터, 도구
@@ -1042,16 +1044,32 @@ function makeHuman(p,eq){
   return g;
 }
 // ---- 머리 위 이름 + HP 표 ----
+// 이름표: 배경 없이 입체 글씨 (두꺼운 테두리 + 아래 그림자 + 윗부분 빛) + 반짝이는 하트와 체력 숫자
+function tag3D(ctx,text,x,y,size,top,bot){
+  ctx.font=size+'px Jua, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+  ctx.lineWidth=size*.32;ctx.strokeStyle='rgba(0,0,0,.45)';ctx.strokeText(text,x+size*.06,y+size*.1);   // 아래로 떨어지는 그림자
+  ctx.strokeStyle='#2a1e19';ctx.strokeText(text,x,y);                                                   // 두꺼운 테두리
+  const g=ctx.createLinearGradient(0,y-size*.5,0,y+size*.5);g.addColorStop(0,top);g.addColorStop(1,bot);
+  ctx.fillStyle=g;ctx.fillText(text,x,y);}
+function heart3D(ctx,x,y,s,col){
+  const path=()=>{ctx.beginPath();ctx.moveTo(x,y+s*.35);ctx.bezierCurveTo(x-s*.9,y-s*.2,x-s*.45,y-s*.85,x,y-s*.35);ctx.bezierCurveTo(x+s*.45,y-s*.85,x+s*.9,y-s*.2,x,y+s*.35);ctx.closePath();};
+  ctx.save();ctx.translate(s*.06,s*.1);path();ctx.fillStyle='rgba(0,0,0,.45)';ctx.fill();ctx.restore();
+  path();ctx.lineWidth=s*.16;ctx.strokeStyle='#2a1e19';ctx.stroke();
+  const g=ctx.createRadialGradient(x-s*.2,y-s*.35,s*.05,x,y,s*.8);g.addColorStop(0,'#fff');g.addColorStop(.25,col);g.addColorStop(1,'#7a1020');
+  ctx.fillStyle=g;ctx.fill();}
 function makeTag(){
-  const cv=document.createElement('canvas');cv.width=256;cv.height=72;const ctx=cv.getContext('2d');
-  const tex=new THREE.CanvasTexture(cv);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sp.scale.set(2.6,.73,1);sp.renderOrder=10;
+  const cv=document.createElement('canvas');cv.width=512;cv.height=160;const ctx=cv.getContext('2d');
+  const tex=new THREE.CanvasTexture(cv);tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sp.scale.set(2.8,.875,1);sp.renderOrder=10;
   let key='';
   sp.userData.set=(name,hp,max)=>{const k=name+'|'+Math.ceil(hp)+'|'+Math.round(max);if(k===key)return;key=k;
-    ctx.clearRect(0,0,256,72);ctx.fillStyle='rgba(255,248,232,.9)';ctx.beginPath();if(ctx.roundRect)ctx.roundRect(8,2,240,68,18);else ctx.rect(8,2,240,68);ctx.fill();
-    ctx.font='30px Jua, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#3b2f2a';ctx.fillText(name,128,22);
-    const r=clamp(hp/max,0,1);ctx.fillStyle='#e7dccb';ctx.fillRect(28,44,200,14);ctx.fillStyle=r>.5?'#3fae5a':r>.25?'#f39c3d':'#e2544b';ctx.fillRect(28,44,200*r,14);
-    ctx.font='14px Jua, sans-serif';ctx.fillStyle='#fff';ctx.fillText(Math.ceil(hp)+' / '+Math.round(max),128,52);tex.needsUpdate=true;};
+    ctx.clearRect(0,0,512,160);
+    tag3D(ctx,name,256,48,50,'#ffffff','#d9e6f2');
+    const r=clamp(hp/max,0,1),num=String(Math.max(0,Math.ceil(hp)));
+    const hc=r>.5?'#ff4d6a':r>.25?'#ff8a3c':'#e2362b',tc=r>.5?['#d8ffd0','#43c35a']:r>.25?['#fff0c8','#f39c3d']:['#ffd6d0','#e2544b'];
+    ctx.font='46px Jua, sans-serif';const w=ctx.measureText(num).width,x0=256-(w+52)/2;
+    heart3D(ctx,x0+20,118,44,hc);tag3D(ctx,num,x0+52+w/2,118,46,tc[0],tc[1]);
+    tex.needsUpdate=true;};
   return sp;
 }
 const FORM_H={bear:3.4,cheetah:2.3,fox:2,gumiho:2.6,croc:2,shark:2.4,dolphin:2.2,whale:5.6,bird:2.6};
@@ -1370,7 +1388,7 @@ RECIPES.forEach(r=>{if(!r.tip&&WEAR[r.out])r.tip=WEAR[r.out].desc+' (30분 입�
 
 // ---- 저장 데이터 ----
 const FXDEF={stop:true,flash:true,kb:true,sfx:true,shake:true,parts:true,wave:true};
-const NEWSAVE=()=>({fx:Object.assign({},FXDEF),inv:{'단검':1,'도끼':1,'열매':5},kills:{},unlocked:{},souls:{},flv:{},fast:false,dur:{},equip:{hat:null,top:null,shoe:null,acc:null},free:false,shadow:!isTouch,dayLen:600});
+const NEWSAVE=()=>({fx:Object.assign({},FXDEF),inv:{'단검':1,'도끼':1,'열매':5},kills:{},unlocked:{},souls:{},flv:{},fast:false,dur:{},equip:{hat:null,top:null,shoe:null,acc:null},free:false,shadow:!isTouch,dayLen:600,quality:'auto'});
 let SAVE=Object.assign(NEWSAVE(),store('soyul_save')||{});SAVE.fx=Object.assign({},FXDEF,SAVE.fx||{});
 function save(){store('soyul_save',SAVE);}
 const has=(k,n=1)=>(SAVE.inv[k]||0)>=n;
@@ -1406,7 +1424,7 @@ let meVis=null,boatMesh=null,bikeMesh=null;
 function buildMe(){
   if(meVis)scene.remove(meVis.g);
   const g=new THREE.Group(),human=makeHuman(ME.profile,SAVE.equip);g.add(human);scene.add(g);
-  const tag=makeTag();tag.scale.set(1.9,.53,1);tag.position.y=2.9;g.add(tag);
+  const tag=makeTag();tag.scale.set(2.1,.66,1);tag.position.y=2.9;g.add(tag);
   meVis={g,human,form:null,tool:null,tag};setToolMesh();
   boatMesh=makeBoat();boatMesh.visible=false;g.add(boatMesh);
   bikeMesh=makeBike();bikeMesh.visible=false;g.add(bikeMesh);
@@ -2439,7 +2457,7 @@ function cleanProfile(p){p=p||{};const pick=(v,arr)=>arr.includes(v)?v:arr[0];
 function addRemote(id,p){
   if(REMOTES.has(id))removeRemote(id);
   const g=new THREE.Group(),human=makeHuman(p);g.add(human);scene.add(g);
-  const tag=makeTag();tag.position.y=2.75;g.add(tag);tag.userData.set(REG[p.race].icon+' '+p.name,100,100);
+  const tag=makeTag();tag.scale.set(2.1,.66,1);tag.position.y=2.75;g.add(tag);tag.userData.set(REG[p.race].icon+' '+p.name,100,100);
   const boat=makeBoat();boat.visible=false;g.add(boat);const bike=makeBike();bike.visible=false;g.add(bike);
   const r={id,profile:p,vis:{g,human,form:null,formIdx:-1,tool:null,toolIdx:-2,tag,boat,bike,eq:0},tx:0,ty:-100,tz:0,ry:0,form:-1,flags:0,phase:0,last:null,sleep:false};
   REMOTES.set(id,r);return r;
@@ -2580,10 +2598,28 @@ function pickRace(taken,cb){$('raceRows').innerHTML=REG.map((g,i)=>`<button clas
 const FX_LIST=[['stop','⏸ 히트 스톱'],['flash','⚪ 흰 번쩍'],['kb','💥 넉백'],['sfx','🔊 효과음'],['shake','😵 화면 흔들림'],['parts','✨ 파편 · 숫자'],['wave','🌊 쇼크웨이브 (치명타)']];
 $('fxRows').innerHTML=FX_LIST.map(([k,n])=>`<label class="row"><input type="checkbox" data-fx="${k}"> <span class="nm">${n}</span></label>`).join('');
 $('fxRows').addEventListener('change',e=>{const k=e.target.dataset.fx;if(k){SAVE.fx[k]=e.target.checked;save();}});
-function renderSet(){document.querySelectorAll('[data-fx]').forEach(i=>i.checked=SAVE.fx[i.dataset.fx]!==false);$('sFree').checked=SAVE.free;$('sFast').checked=SAVE.fast;$('sShadow').checked=SAVE.shadow;$('sDay').value=String(SAVE.dayLen);$('sReset').textContent='처음부터 다시 하기 (가방·변신 초기화)';$('sReset').dataset.k='';}
+function renderSet(){renderQual();document.querySelectorAll('[data-fx]').forEach(i=>i.checked=SAVE.fx[i.dataset.fx]!==false);$('sFree').checked=SAVE.free;$('sFast').checked=SAVE.fast;$('sShadow').checked=SAVE.shadow;$('sDay').value=String(SAVE.dayLen);$('sReset').textContent='처음부터 다시 하기 (가방·변신 초기화)';$('sReset').dataset.k='';}
 $('sFree').onchange=e=>{SAVE.free=e.target.checked;save();};
 $('sFast').onchange=e=>{SAVE.fast=e.target.checked;save();};
-$('sShadow').onchange=e=>{SAVE.shadow=e.target.checked;sun.castShadow=SAVE.shadow;save();};
+$('sShadow').onchange=e=>{SAVE.shadow=e.target.checked;applyQuality();save();};
+// ---- 화질 ----  화면을 몇 배로 그릴지(픽셀 배율) + 그림자 + 풀숲 장식 + 멀리 보이는 거리
+const QUAL={low:{n:'낮음',pr:.5,shadow:false,decor:false,far:520,map:512},mid:{n:'보통',pr:.75,shadow:true,decor:true,far:900,map:1024},
+            high:{n:'높음',pr:1,shadow:true,decor:true,far:2000,map:1024},max:{n:'최고',pr:2,shadow:true,decor:true,far:2000,map:2048}};
+const QORDER=['low','mid','high','max'];let qAuto='high',qCur='';
+function curQual(){return SAVE.quality==='auto'?qAuto:(SAVE.quality||'auto')==='auto'?qAuto:SAVE.quality;}
+function applyQuality(){const k=curQual(),Q=QUAL[k];
+  renderer.setPixelRatio(Math.min(devicePixelRatio,Q.pr));fitView();
+  sun.castShadow=Q.shadow&&SAVE.shadow;if(sun.shadow.mapSize.x!==Q.map){sun.shadow.mapSize.set(Q.map,Q.map);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}}
+  W.decor.forEach(m=>m.visible=Q.decor);camera.far=Q.far;camera.updateProjectionMatrix();qCur=k;
+  if($('sQualNow'))$('sQualNow').textContent=(SAVE.quality==='auto'?'자동 → 지금 ':'지금 ')+Q.n+' · 화면 배율 '+renderer.getPixelRatio().toFixed(2)+'배'+(Q.decor?'':' · 풀숲 장식 끔');}
+function renderQual(){$('sQual').innerHTML=[['auto','자동'],...QORDER.map(k=>[k,QUAL[k].n])].map(([k,n])=>`<button data-q="${k}" class="${(SAVE.quality||'auto')===k?'on':''}">${n}</button>`).join('');applyQuality();}
+$('sQual').onclick=e=>{const k=e.target.dataset.q;if(!k)return;SAVE.quality=k;if(k==='auto')qAuto='high';save();renderQual();};
+// 자동: 3초마다 평균 FPS를 보고 버벅이면 한 단계 낮추고, 아주 잘 돌면(10초 이상) 한 단계 올려요
+const FPSM={n:0,t:0,good:0};
+function autoQuality(rdt){if((SAVE.quality||'auto')!=='auto'||!GAME.on)return;FPSM.n++;FPSM.t+=rdt;if(FPSM.t<3)return;
+  const fps=FPSM.n/FPSM.t;FPSM.n=0;FPSM.t=0;const i=QORDER.indexOf(qAuto);
+  if(fps<30&&i>0){qAuto=QORDER[i-1];FPSM.good=0;applyQuality();toast('🖥 화질을 자동으로 낮췄어요: '+QUAL[qAuto].n);}
+  else if(fps>55&&i<2){if(++FPSM.good>=4){qAuto=QORDER[i+1];FPSM.good=0;applyQuality();}}else FPSM.good=0;}
 $('sDay').onchange=e=>{SAVE.dayLen=+e.target.value;W.dayLen=SAVE.dayLen;save();};
 $('sReset').onclick=e=>{const b=e.target;if(b.dataset.k!=='1'){b.dataset.k='1';b.textContent='정말요? 한 번 더 누르면 지워져요';return;}
   SAVE=NEWSAVE();save();ME.tool='dagger';if(ME.form){ME.form=null;setFormMesh();}setToolMesh();UI.dirty=true;closePanels();toast('처음부터 다시 시작해요!');};
@@ -2708,7 +2744,7 @@ function updateSky(tx,ty,tz){
   const a=(W.time-6)/24*TAU,el=Math.sin(a),dayF=sstep(-.12,.25,el),dusk=1-Math.min(1,Math.abs(el)/.3);
   tmpC.copy(C_NIGHT).lerp(C_DAY,dayF).lerp(C_SET,dusk*.5);
   if(camera.position.y<0){scene.background.copy(C_UW).multiplyScalar(.35+.65*dayF);scene.fog.color.copy(scene.background);scene.fog.near=1;scene.fog.far=70;}
-  else{scene.background.copy(tmpC);scene.fog.color.copy(tmpC);scene.fog.near=170;scene.fog.far=dayF>.3?720:400;}
+  else{scene.background.copy(tmpC);scene.fog.color.copy(tmpC);scene.fog.far=Math.min(dayF>.3?720:400,camera.far-20);scene.fog.near=Math.min(170,scene.fog.far*.4);}
   const moon=el<-.05,sx=Math.cos(a)*(moon?-1:1),sy=Math.abs(el)+.15;
   sun.intensity=moon?.22:.18+.8*dayF;sun.color.copy(moon?MOONC:SUNC);if(!moon&&dusk>.3)sun.color.lerp(C_SET,dusk*.6);
   hemi.intensity=.25+.35*dayF;
@@ -2821,7 +2857,7 @@ async function startGame(mode,opts){
   PROF.name=($('nameIn').value.trim()||'소율').slice(0,8);store('soyul_profile',PROF);if(document.activeElement)document.activeElement.blur();
   ME.profile=cleanProfile(PROF);
   $('start').classList.add('hide');$('hud').classList.remove('hide');if(isTouch)$('touch').classList.remove('hide');
-  W.dayLen=SAVE.dayLen;sun.castShadow=SAVE.shadow;
+  W.dayLen=SAVE.dayLen;applyQuality();
   if(innerWidth<innerHeight)camDist=11;
   buildMe();goHome();GAME.snapCam=true;ME.hp=maxHp();GAME.on=true;GAME.godT=now()+3000;UI.dirty=true;
   if(!has(TOOLS.find(t=>t.id===ME.tool).item))ME.tool='dagger';setToolMesh();
@@ -2837,7 +2873,7 @@ async function startGame(mode,opts){
 let last=now(),netT=0,entT=0,hudT=0,resT=0,saveT=0;
 function loop(){
   requestAnimationFrame(loop);
-  const t=now(),dt=Math.min(.05,(t-last)/1000);last=t;
+  const t=now(),rdt=(t-last)/1000,dt=Math.min(.05,rdt);last=t;if(rdt>0&&rdt<1)autoQuality(rdt);
   let ts=1;
   if(GAME.on&&NET.isHost()&&ME.sleep&&[...REMOTES.values()].every(r=>r.sleep)&&isNight())ts=40;
   W.time+=dt*24/W.dayLen*ts;if(W.time>=24){W.time-=24;W.day++;}
