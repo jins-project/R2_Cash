@@ -131,6 +131,9 @@ button:focus-visible{outline:3px solid var(--accent)}
 #bossBar .bb{height:10px;background:rgba(255,255,255,.2);border-radius:6px;overflow:hidden;margin-top:2px}#bossBar .bb i{display:block;height:100%;background:linear-gradient(90deg,#ff3a2a,#ffb627);transition:width .2s}
 .slot.pot,#tPot{position:relative;overflow:hidden}
 .slot.pot.cool::after,#tPot.cool::after{content:'';position:absolute;left:0;right:0;bottom:0;height:calc(var(--cd,0)*100%);background:rgba(40,40,60,.55);pointer-events:none}
+#resumeBox{display:flex;align-items:center;gap:8px;background:#e8f7ff;border:2px solid #5b8def;border-radius:14px;padding:6px 10px;margin:6px 0 2px;font-size:14px}
+#resumeBox.hide{display:none}#resumeBox .tx{flex:1;min-width:0}#resumeBox small{display:block;color:#5a6a7a;font-size:12px}
+#resumeBox button{background:#5b8def;color:#fff;padding:8px 14px;font-size:15px;white-space:nowrap}
 label.lb{display:block;margin:10px 0 6px;font-size:17px}
 #nameIn{width:100%;font:inherit;font-size:18px;padding:10px 12px;border-radius:12px;border:3px solid var(--line);background:#fff}
 .races{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -149,11 +152,15 @@ label.lb{display:block;margin:10px 0 6px;font-size:17px}
 #cross{position:fixed;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;pointer-events:none;z-index:9;--p:0deg}
 #cross .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#ffb627 var(--p),rgba(255,255,255,.35) 0);-webkit-mask:radial-gradient(circle,transparent 21px,#000 22px);mask:radial-gradient(circle,transparent 21px,#000 22px)}
 #cross .plus{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;text-shadow:0 0 3px #000,0 0 2px #000}
-#matchCard,#missionHud{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:12;background:rgba(255,248,232,.95);border-radius:16px;padding:8px 12px;box-shadow:0 4px 0 rgba(0,0,0,.12);width:min(340px,92vw);font-size:15px}
+#matchCard{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:12;background:rgba(255,248,232,.95);border-radius:16px;padding:8px 12px;box-shadow:0 4px 0 rgba(0,0,0,.12);width:min(340px,92vw);font-size:15px}
 #matchCard b,#missionHud b{font-weight:400}
-#missionHud.mini{background:none;box-shadow:none;padding:2px 6px;width:auto;max-width:92vw;color:#fff;font-size:14px;white-space:nowrap;text-shadow:0 2px 0 #2a1e19,0 0 3px #2a1e19,1px 1px 0 #2a1e19,-1px -1px 0 #2a1e19,1px -1px 0 #2a1e19,-1px 1px 0 #2a1e19;cursor:pointer}
-#missionHud.mini small{opacity:.9}
-body.touch #missionHud.mini{font-size:12px;width:auto;left:50%;right:auto;transform:translateX(-50%)}
+/* 미션: 시계 옆 작은 칩 (자리는 JS가 시계·버튼을 피해서 정해요) · 누르면 순위표가 잠깐 펼쳐져요 */
+#missionHud{position:fixed;z-index:12;left:10px;top:60px;background:rgba(255,248,232,.95);border-radius:14px;padding:4px 10px;box-shadow:0 3px 0 rgba(0,0,0,.12);
+  font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;pointer-events:auto;line-height:1.35}
+#missionHud.intro{background:#fff3cf;box-shadow:0 0 0 2px #ffb627,0 3px 0 rgba(0,0,0,.12)}
+#missionHud.open{white-space:normal;padding:6px 10px}
+#missionHud .mfold{font-size:11px;opacity:.6;text-align:center;margin-top:2px}
+body.touch #missionHud{font-size:12.5px}
 .mrow{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px}
 .mrow .nm{width:86px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mrow .tr{flex:1;height:10px;background:#e7dccb;border-radius:6px;overflow:hidden}.mrow .tr i{display:block;height:100%;background:#4ecdc4}
@@ -162,8 +169,8 @@ body.touch #missionHud.mini{font-size:12px;width:auto;left:50%;right:auto;transf
 #cdOv{background:rgba(20,30,60,.55);pointer-events:none}
 #cdNum{font-size:120px;line-height:1}#cdMis{font-size:30px;margin-top:10px}#cdTip{font-size:17px;margin-top:6px;opacity:.9}
 #endOv{background:rgba(20,30,60,.6)}#endCard{color:var(--ink);text-shadow:none;max-width:420px}
-body.touch #matchCard,body.touch #missionHud{top:calc(100px + env(safe-area-inset-top));font-size:13px;width:min(300px,64vw)}
-@media (orientation:portrait){body.touch #matchCard,body.touch #missionHud{top:calc(150px + env(safe-area-inset-top));left:58px;right:56px;width:auto;transform:none}}
+body.touch #matchCard{top:calc(100px + env(safe-area-inset-top));font-size:13px;width:min(300px,64vw)}
+@media (orientation:portrait){body.touch #matchCard{top:calc(150px + env(safe-area-inset-top));left:58px;right:56px;width:auto;transform:none}}
 #flash{position:fixed;inset:0;background:radial-gradient(circle,#fff 30%,#d9ccff);opacity:0;pointer-events:none;z-index:14}
 .sw{width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line)}
 .sw.on{box-shadow:0 0 0 3px var(--ink)}
@@ -390,6 +397,7 @@ body.hudS #clock{top:calc(8px + env(safe-area-inset-top))}
     </div>
     </div>
     <div class="startBottom">
+    <div id="resumeBox" class="hide"></div>
     <div class="startBtns">
       <button class="big" id="btnSolo">혼자 놀기</button>
       <button class="big alt" id="btnHost">친구랑 놀기 (방 만들기)</button>
@@ -682,7 +690,7 @@ function rockGeo(r,seed){const g=new THREE.IcosahedronGeometry(r,1),p=g.attribut
     v.multiplyScalar(f);p.setXYZ(i,v.x,v.y,v.z);v.normalize();n.setXYZ(i,v.x,v.y,v.z);}return g;}
 // 쓰지 않게 된 물체의 GPU 메모리 정리 (함께 쓰는 것은 남겨 둬요)
 function freeObj(o){if(!o)return;o.traverse(x=>{if(x.geometry&&!x.geometry.userData.keep)x.geometry.dispose();
-  const ms=x.material?(Array.isArray(x.material)?x.material:[x.material]):[];ms.forEach(m=>{if(m.userData&&m.userData.keep)return;if(m.map&&!m.map.userData.keep)m.map.dispose();m.dispose();});});}
+  const ms=x.material?(Array.isArray(x.material)?x.material:[x.material]):[];ms.forEach(m=>{if(m.userData&&m.userData.keep)return;if(m.map&&!(m.map.userData&&m.map.userData.keep))m.map.dispose();m.dispose();});});}
 // ---- 반복되는 물체는 '구역(160m)'마다 InstancedMesh 로 묶어요 → 화면 밖·먼 구역은 아예 그리지 않아요 ----
 const CHUNKS=[],CH_SIZE=160;
 function chunkInstances(geo,mat,items,opts){opts=opts||{};if(!geo.boundingSphere)geo.computeBoundingSphere();
@@ -2954,12 +2962,29 @@ let VIS_STAMP=0;
    ========================================================= */
 const REMOTES=new Map();
 const MAXP=6,SLOTS=12;   // 한 방 최대 6명, 한 사이트에 방 12개까지
-const NET={peer:null,hosting:false,hostConn:null,conns:new Map(),room:null,
-  isHost(){return !this.hostConn;},
+const NET={peer:null,hosting:false,hostConn:null,conns:new Map(),room:null,recon:null,
+  isHost(){return !this.hostConn&&!this.recon;},
   send(m){if(this.hostConn&&this.hostConn.open)this.hostConn.send(m);},
   bcast(m,except){for(const [id,c] of this.conns)if(c.open&&id!==except)c.send(m);},
   sendTo(id,m){const c=this.conns.get(id);if(c&&c.open)c.send(m);},
-  online(){return this.hosting||!!this.hostConn;}};
+  online(){return this.hosting||!!this.hostConn||!!this.recon;}};
+// ---- 다시 들어오기: 내 고유 번호 + 놀던 방 기억 (튕겨도 10분 안에는 그대로 이어서 놀 수 있어요) ----
+const PKEY=(()=>{let k=store('soyul_pkey');if(!k||typeof k!=='string'){k=Math.random().toString(36).slice(2,10)+Date.now().toString(36);store('soyul_pkey',k);}return k;})();
+const SEATS=new Map();   // 방장이 기억하는 자리: 고유 번호 → {id, profile, prog, left(나간 시각)}
+const SEAT_KEEP=10*60*1000,SESS_KEY='soyul_session';
+const seatOf=id=>{for(const [k,v] of SEATS)if(v.id===id)return [k,v];return [null,null];};
+function keyedProg(){const o={};for(const id in MATCH.prog){const k=id===ME.id?PKEY:seatOf(id)[0];if(k)o[k]=MATCH.prog[id];}for(const [k,v] of SEATS)if(v.left&&o[k]==null)o[k]=v.prog||0;return o;}
+function saveSession(){
+  if(TEST||!NET.room||NET.recon)return;if(store('soyul_pkey')!==PKEY)store('soyul_pkey',PKEY);   // 고유 번호가 지워졌으면 다시 적어 둬요
+  if(NET.hosting&&NET.room.mode==='solo'&&!REMOTES.size)return;   // 혼자 노는 중이면 기억할 필요 없어요
+  const s={role:NET.hosting?'host':'guest',slot:NET.room.slot,rid:NET.room.rid,pw:NET.room.pw||'',title:NET.room.title,mode:NET.room.mode,solo:!!NET.room.solo,t:Date.now(),
+    pos:[+ME.x.toFixed(1),+ME.y.toFixed(1),+ME.z.toFixed(1)],hp:Math.round(ME.hp),food:Math.round(ME.food),sta:Math.round(ME.sta),home:ME.home,day:W.day,time:W.time};
+  if(NET.hosting){s.match={state:MATCH.state,mid:MATCH.mission?MATCH.mission.id:null,el:MATCH.state==='play'?now()-MATCH.t0:0,prog:keyedProg()};
+    s.seats=[...SEATS.entries()].map(([k,v])=>[k,{profile:v.profile}]);}
+  store(SESS_KEY,s);}
+function loadSession(){const s=store(SESS_KEY);return s&&s.rid&&Date.now()-s.t<SEAT_KEEP?s:null;}
+function clearSession(){try{localStorage.removeItem(SESS_KEY);}catch(e){}}
+function restoreMe(S){if(!S||!S.pos)return;ME.x=S.pos[0];ME.y=S.pos[1];ME.z=S.pos[2];ME.vy=0;if(S.hp>0)ME.hp=Math.min(maxHp(),S.hp);if(S.food!=null)ME.food=S.food;if(S.sta!=null)ME.sta=S.sta;if(S.home!=null)ME.home=S.home;GAME.snapCam=true;GAME.godT=now()+3000;}
 // 사이트 주소마다 다른 방 이름표 → 같은 사이트에 접속한 사람끼리만 방이 보여요
 const SITE=(()=>{let h=5381;const s=location.host+location.pathname;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);})();
 const slotId=n=>'sw'+SITE+'-r'+n;
@@ -3002,7 +3027,7 @@ function hostProg(id,v){
   if(MATCH.prog[id]>=MATCH.mission.n){const nm=id===ME.id?ME.profile.name:(REMOTES.get(id)||{profile:{name:'친구'}}).profile.name;endMatch(id,nm);NET.bcast({t:'mend',winner:id,name:nm,prog:MATCH.prog});}
 }
 function hostStartMatch(){
-  if(!NET.hosting||MATCH.state!=='lobby')return;
+  if(!NET.hosting||MATCH.state!=='lobby')return;for(const [k,v] of SEATS)if(v.left)SEATS.delete(k);
   const M=MISSIONS[Math.floor(Math.random()*MISSIONS.length)];
   NET.bcast({t:'mstart',mid:M.id});beginMatch(M.id);
 }
@@ -3018,26 +3043,40 @@ function backToLobby(){MATCH.state='lobby';MATCH.mission=null;MATCH.prog={};$('e
 function hostRoom(opts){
   return new Promise((res,rej)=>{
     if(typeof Peer==='undefined'){rej(new Error('nopeer'));return;}
-    closeLobbyPeer();let slot=1;
+    closeLobbyPeer();let slot=opts.slot||1,tries=0;
     const tryNext=()=>{
       if(slot>SLOTS){rej(new Error('nofree'));return;}
       const peer=new Peer(slotId(slot),PEEROPT());let opened=false;
-      peer.on('open',()=>{opened=true;NET.peer=peer;NET.hosting=true;ME.id='h';NET.room={slot,title:String(opts.title||'놀이방').slice(0,16),pw:String(opts.pw||'').slice(0,12),rid:randCode(),mode:opts.mode||'free',solo:opts.mode==='solo'};
+      peer.on('open',()=>{opened=true;NET.peer=peer;NET.hosting=true;ME.id='h';NET.room={slot,title:String(opts.title||'놀이방').slice(0,16),pw:String(opts.pw||'').slice(0,12),rid:opts.rid||randCode(),mode:opts.mode||'free',solo:opts.solo!=null?opts.solo:opts.mode==='solo'};
         MATCH.state=NET.room.mode==='mission'?'lobby':'free';res(NET.room);});
-      peer.on('error',e=>{if(!opened&&e.type==='unavailable-id'){peer.destroy();slot++;tryNext();}else if(!opened)rej(e);else if(e.type!=='peer-unavailable'&&!(NET.room&&NET.room.mode==='solo'))msg('연결 문제: '+e.type);});
+      peer.on('error',e=>{if(!opened&&e.type==='unavailable-id'){peer.destroy();if(opts.slot){if(++tries>12){rej(new Error('busyslot'));return;}setTimeout(tryNext,3000);return;}slot++;tryNext();}else if(!opened)rej(e);else if(e.type!=='peer-unavailable'&&!(NET.room&&NET.room.mode==='solo'))msg('연결 문제: '+e.type);});
       peer.on('disconnected',()=>{try{peer.reconnect();}catch(e){}});
       peer.on('connection',conn=>{
         conn.on('data',m=>hostRecv(conn,m));
-        conn.on('close',()=>{if(NET.pending&&NET.pending.conn===conn)reqDone();if(NET.conns.get(conn.peer)!==conn)return;NET.conns.delete(conn.peer);if(!NET.conns.size&&NET.room.solo){NET.room.mode='solo';MATCH.state='free';MATCH.mission=null;$('endOv').classList.add('hide');}const r=REMOTES.get(conn.peer);if(r)msg('👋 '+r.profile.name+' 님이 나갔어요');removeRemote(conn.peer);delete MATCH.prog[conn.peer];NET.bcast({t:'leave',id:conn.peer});UI.dirty=true;});
+        conn.on('close',()=>{if(NET.pending&&NET.pending.conn===conn)reqDone();if(NET.conns.get(conn.peer)!==conn)return;dropGuest(conn.peer,'close');});
       });
     };
     tryNext();
   });
 }
-function acceptJoin(conn,id,p){if(!conn.open)return;
+// 친구가 나가거나 끊겼을 때: 자리(미션 점수)는 10분 동안 기억해 둬요
+function dropGuest(id,why){const c=NET.conns.get(id);NET.conns.delete(id);if(why!=='close')try{c&&c.close();}catch(e){}
+  const r=REMOTES.get(id),[k,seat]=seatOf(id);if(seat){seat.left=Date.now();seat.prog=MATCH.prog[id]||seat.prog||0;}
+  if(r&&why!=='swap')msg('👋 '+r.profile.name+' 님 연결이 끊겼어요'+(seat?' (10분 안에 다시 들어올 수 있어요)':''));
+  removeRemote(id);delete MATCH.prog[id];NET.bcast({t:'leave',id});if(matchOn())NET.bcast({t:'mprog',d:MATCH.prog});UI.dirty=true;}
+// 혼자 놀던 방: 친구가 다 나가고 2분이 지나도 안 돌아오면 다시 혼자 놀기로
+function soloBackCheck(){if(!NET.hosting||!NET.room||!NET.room.solo||NET.conns.size||NET.room.mode==='solo')return;
+  for(const v of SEATS.values())if(v.left&&Date.now()-v.left<120000)return;
+  NET.room.mode='solo';MATCH.state='free';MATCH.mission=null;$('endOv').classList.add('hide');clearSession();UI.dirty=true;}
+function acceptJoin(conn,id,p,key){if(!conn.open)return;
   NET.conns.set(id,conn);addRemote(id,p);
-  conn.send({t:'welcome',id,time:W.time,day:W.day,roster:roster(),title:NET.room.title,rid:NET.room.rid,mode:NET.room.mode,mstate:MATCH.state});NET.bcast({t:'join',id,p},id);
-  toast('🎉 '+p.name+' 님이 들어왔어요! ('+(1+REMOTES.size)+'/'+MAXP+')');UI.dirty=true;}
+  const old=key&&SEATS.get(key),back=!!(old&&old.left);if(key)SEATS.set(key,{id,profile:p,prog:old?old.prog||0:0,left:0});
+  if(back&&(MATCH.state==='play'||MATCH.state==='count'))MATCH.prog[id]=old.prog||0;
+  conn.send({t:'welcome',id,time:W.time,day:W.day,roster:roster(),title:NET.room.title,rid:NET.room.rid,mode:NET.room.mode,mstate:MATCH.state,
+    mid:MATCH.mission?MATCH.mission.id:null,mel:MATCH.state==='play'?now()-MATCH.t0:0,prog:MATCH.prog,back});
+  if(matchOn())NET.bcast({t:'mprog',d:MATCH.prog});
+  if(back){NET.bcast({t:'join',id,p},id);toast('🔄 '+p.name+' 님이 다시 들어왔어요!');UI.dirty=true;saveSession();return;}NET.bcast({t:'join',id,p},id);
+  toast('🎉 '+p.name+' 님이 들어왔어요! ('+(1+REMOTES.size)+'/'+MAXP+')');UI.dirty=true;saveSession();}
 // 미션 대결로 바꿀 때: 동물·시간·내 상태를 처음처럼 되돌리고 마을에서 대기해요 (가방은 그대로)
 function resetForMission(){
   if(ME.form)endForm();if(ME.dead)ME.dead.until=0;goHome();ME.hp=maxHp();ME.food=100;ME.sta=100;ME.tired=0;GAME.godT=now()+3000;
@@ -3051,16 +3090,19 @@ function hostRecv(conn,m){
     if(NET.conns.has(id))return;
     if(m.rid&&m.rid!==NET.room.rid){bye('gone');return;}
     if(NET.room.pw&&String(m.pw||'')!==NET.room.pw){bye('badpw');return;}
+    const key=typeof m.k==='string'?m.k.slice(0,24):null,seat=key&&SEATS.get(key);
+    if(seat&&!seat.left&&seat.id!==id&&NET.conns.has(seat.id))dropGuest(seat.id,'swap');   // 튕긴 줄 모르고 남아 있던 예전 연결은 정리
+    const back=!!(seat&&seat.left&&Date.now()-seat.left<SEAT_KEEP);
     if(1+NET.conns.size>=MAXP){bye('full');return;}
-    if(MATCH.state==='play'||MATCH.state==='count'){bye('playing');return;}
+    if(!back&&(MATCH.state==='play'||MATCH.state==='count')){bye('playing');return;}   // 새 친구는 게임 중에 못 들어와요 (원래 있던 친구는 OK)
     const p=cleanProfile(m.p),taken=takenRaces();
     if(taken.includes(p.race)){conn.send({t:'raceTaken',races:taken});return;}   // 다른 종족을 골라 다시 인사해요
     // 혼자 놀던 중이면 먼저 물어봐요: 미션 대결 / 자유 모드 / 거절
     if(NET.room.mode==='solo'){if(NET.pending){bye('busy');return;}NET.pending={conn,id,p};conn.send({t:'wait'});askJoinReq(p,ch=>{
         if(ch==='no'){bye('declined');return;}
         if(ch==='mission'){NET.room.mode='mission';resetForMission();}else{NET.room.mode='free';MATCH.state='free';}
-        acceptJoin(conn,id,p);});return;}
-    acceptJoin(conn,id,p);return;}
+        acceptJoin(conn,id,p,key);});return;}
+    acceptJoin(conn,id,p,key);return;}
   if(!NET.conns.has(id))return;
   if(m.t==='st'){const r=REMOTES.get(id);if(r&&Array.isArray(m.s))setRemoteState(r,m.s);}
   else if(m.t==='hit'){applyHit(+m.id,clamp(+m.dmg||0,0,150),id,+m.kx||0,+m.kz||0);}
@@ -3098,25 +3140,36 @@ function joinRoom(slot,pw,rid){
     const fail=e=>{if(!ok){ok=true;rej(e);}};
     peer.on('error',e=>{if(e.type==='peer-unavailable'&&new RegExp(slotId(slot)+'(?!\\d)').test(String(e.message||'')))fail(new Error('gone'));});   // 방 목록 확인용 연결의 오류는 무시
     const conn=peer.connect(slotId(slot),{reliable:true});
-    const hello=()=>conn.send({t:'hello',p:ME.profile,pw,rid});let tmo=setTimeout(()=>fail(new Error('timeout')),20000);
+    const hello=()=>conn.send({t:'hello',p:ME.profile,pw,rid,k:PKEY});let tmo=setTimeout(()=>fail(new Error('timeout')),20000);
     conn.on('open',hello);
     conn.on('data',m=>{if(!m)return;
-      if(m.t==='welcome'){if(ok&&!NET.hostConn&&ME.id==='me'){conn.close();return;}clearTimeout(tmo);ME.id=peer.id;NET.hostConn=conn;NET.room={slot,title:m.title,pw:pw||'',rid:m.rid};if(!ok){ok=true;res();}guestRecv(m);return;}
+      if(m.t==='welcome'){if(ok&&!NET.hostConn&&ME.id==='me'){conn.close();return;}clearTimeout(tmo);ME.id=peer.id;NET.hostConn=conn;NET.recon=null;NET.room={slot,title:m.title,pw:pw||'',rid:m.rid,mode:m.mode};if(!ok){ok=true;res();}guestRecv(m);return;}
       if(m.t==='wait'){clearTimeout(tmo);tmo=setTimeout(()=>fail(new Error('declined')),40000);toast('🙋 같이 놀자고 물어봤어요! 대답을 기다리는 중… ⏳');return;}
       if(m.t==='full'||m.t==='badpw'||m.t==='gone'||m.t==='playing'||m.t==='declined'||m.t==='busy'){clearTimeout(tmo);fail(new Error(m.t));return;}
       if(m.t==='raceTaken'){pickRace(m.races,race=>{ME.profile.race=race;PROF.race=race;saveProf();buildMe();goHome();hello();});return;}
       guestRecv(m);});
-    conn.on('close',()=>{if(!NET.hostConn)return;NET.hostConn=null;NET.room=null;MATCH.state='free';$('endOv').classList.add('hide');for(const id of [...REMOTES.keys()])removeRemote(id);
-      for(const [id,v] of EV){scene.remove(v.mesh);EV.delete(id);}spawnAll();ME.id='me';toast('방이 닫혔어요. 혼자 놀기로 바뀌어요');UI.dirty=true;});
+    conn.on('close',()=>{if(NET.hostConn!==conn)return;NET.hostConn=null;guestReconnect(slot,pw,rid);});
   });
 }
+// 방장과 연결이 끊기면: 바로 혼자 놀기로 바꾸지 않고 1분 동안 다시 연결해 봐요 (그동안 세상은 잠깐 멈춰요)
+async function guestReconnect(slot,pw,rid){
+  if(NET.recon)return;NET.recon={slot,pw,rid};saveSession();for(const id of [...REMOTES.keys()])removeRemote(id);
+  toast('🔌 연결이 끊겼어요 — 다시 연결하는 중…');UI.dirty=true;
+  for(let n=1;n<=12&&NET.recon;n++){await new Promise(r=>setTimeout(r,n===1?1200:5000));if(!NET.recon)return;
+    try{if(NET.peer){try{NET.peer.destroy();}catch(e){}NET.peer=null;}closeLobbyPeer();await joinRoom(slot,pw,rid);toast('🔄 다시 연결됐어요! 하던 거 계속해요');return;}
+    catch(e){const m=e&&e.message;if(m==='badpw'||m==='declined'||m==='full')break;if(n%3===0)toast('🔌 다시 연결하는 중… ('+n+'/12)');}}
+  if(NET.hostConn)return;NET.recon=null;NET.room=null;MATCH.state='free';$('endOv').classList.add('hide');for(const id of [...REMOTES.keys()])removeRemote(id);
+  for(const [id,v] of EV){scene.remove(v.mesh);EV.delete(id);}spawnAll();ME.id='me';
+  toast('방장과 연결이 안 돼요 😢 혼자 놀기로 바꿔요 · 방장이 방을 다시 열면 첫 화면의 [🔄 돌아가기]로 들어갈 수 있어요');UI.dirty=true;}
 function guestRecv(m){
   if(!m||typeof m!=='object')return;
   if(m.t==='mstart'){beginMatch(m.mid);return;}
   if(m.t==='mprog'){for(const k in m.d)MATCH.prog[k]=m.d[k];UI.dirty=true;return;}
   if(m.t==='mend'){for(const k in m.prog||{})MATCH.prog[k]=m.prog[k];endMatch(m.winner,String(m.name||'친구').slice(0,8));return;}
   if(m.t==='mlobby'){backToLobby();return;}
-  if(m.t==='welcome'){MATCH.state=m.mode==='mission'?(m.mstate==='end'?'lobby':m.mstate||'lobby'):'free';W.time=+m.time||8;W.day=+m.day||1;for(const id in m.roster)if(id!==ME.id)addRemote(id,cleanProfile(m.roster[id]));UI.dirty=true;}
+  if(m.t==='welcome'){MATCH.state=m.mode==='mission'?(m.mstate==='end'?'lobby':m.mstate||'lobby'):'free';
+    if((m.mstate==='play'||m.mstate==='count')&&m.mid){MATCH.mission=MISSIONS.find(x=>x.id===m.mid)||null;MATCH.state=MATCH.mission?'play':'lobby';MATCH.t0=now()-(+m.mel||0);MATCH.prog=Object.assign({},m.prog||{});}   // 게임 중에 다시 들어오면 점수·시간 그대로
+    if(m.back)toast('🔄 아까 하던 그대로 이어서 놀아요!');W.time=+m.time||8;W.day=+m.day||1;for(const id in m.roster)if(id!==ME.id)addRemote(id,cleanProfile(m.roster[id]));UI.dirty=true;}
   else if(m.t==='join'){if(m.id!==ME.id){const p=cleanProfile(m.p);addRemote(m.id,p);toast('🎉 '+p.name+' 님이 들어왔어요!');UI.dirty=true;}}
   else if(m.t==='leave'){const r=REMOTES.get(m.id);if(r)msg('👋 '+r.profile.name+' 님이 나갔어요');removeRemote(m.id);UI.dirty=true;}
   else if(m.t==='ps'){for(const id in m.d){if(id===ME.id)continue;const r=REMOTES.get(id);if(r)setRemoteState(r,m.d[id]);}}
@@ -3130,7 +3183,8 @@ function guestRecv(m){
 // 창을 그냥 닫아 버린 친구는 12초 동안 소식이 없으면 나간 걸로 정리해요
 function cleanupGhosts(){
   if(!NET.hosting)return;const t=now();
-  for(const [id,r] of REMOTES)if(r.seen&&t-r.seen>12000){const c=NET.conns.get(id);NET.conns.delete(id);try{c&&c.close();}catch(e){}msg('👋 '+r.profile.name+' 님 연결이 끊겼어요');removeRemote(id);NET.bcast({t:'leave',id});UI.dirty=true;}
+  for(const [id,r] of REMOTES)if(r.seen&&t-r.seen>12000)dropGuest(id,'ghost');
+  soloBackCheck();
 }
 function netTick(){
   if(Math.random()<.1)cleanupGhosts();
@@ -3298,9 +3352,15 @@ function copyLink(){const url=inviteLink();
   if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>msg('🔗 링크를 복사했어요! 카톡에 붙여 넣어요'),fb);else fb();}
 async function openRoom(opts){
   if(NET.online())return;
-  $('inviteBody').innerHTML='<p>방을 만드는 중… 🔧</p>';closePanels();$('pInvite').classList.remove('hide');
-  try{await hostRoom(opts);toast('방이 열렸어요! 링크를 보내 주세요');}
-  catch(e){toast(e&&e.message==='nofree'?'열 수 있는 방이 꽉 찼어요 (최대 '+SLOTS+'개)':'방을 못 만들었어요 — 인터넷 연결을 확인해요');}
+  $('inviteBody').innerHTML='<p>'+(opts.resume?'예전 방을 다시 여는 중… 🔧 (최대 30초)':'방을 만드는 중… 🔧')+'</p>';closePanels();$('pInvite').classList.remove('hide');
+  try{await hostRoom(opts);
+    if(opts.resume){const S=opts.resume;restoreMe(S);if(S.day)W.day=S.day;if(S.time!=null)W.time=S.time;   // 방 다시 열기: 친구 자리 · 미션 점수 · 시간 그대로
+      for(const [k,v] of S.seats||[])SEATS.set(k,{id:null,profile:v.profile,prog:(S.match&&S.match.prog&&S.match.prog[k])||0,left:Date.now()});
+      const M=S.match;if(M&&M.mid&&(M.state==='play'||M.state==='count')){MATCH.mission=MISSIONS.find(x=>x.id===M.mid)||null;if(MATCH.mission){MATCH.state='play';MATCH.t0=now()-(M.el||0);MATCH.prog={};MATCH.prog[ME.id]=(M.prog&&M.prog[PKEY])||0;}}
+      else if(M&&NET.room.mode==='mission')MATCH.state='lobby';
+      saveSession();toast('🔄 방을 다시 열었어요! 친구들이 곧 돌아와요');}
+    else toast('방이 열렸어요! 링크를 보내 주세요');}
+  catch(e){if(opts.resume)clearSession();toast(e&&e.message==='nofree'?'열 수 있는 방이 꽉 찼어요 (최대 '+SLOTS+'개)':e&&e.message==='busyslot'?'예전 방 번호가 아직 안 풀렸어요 — 잠시 뒤 다시 해 봐요':'방을 못 만들었어요 — 인터넷 연결을 확인해요');}
   renderInvite();UI.dirty=true;
 }
 // ---- 방 만들기 창 (제목 · 비밀번호) ----
@@ -3367,15 +3427,26 @@ function renderMatch(){
       <div style="margin:6px 0">${P.map(p=>`<span class="chip" style="display:inline-flex;margin:2px;min-height:28px;font-size:13px">${REG[p.race].icon} ${esc(p.name)}${p.id===ME.id?' (나)':''}</span>`).join('')}</div>
       ${NET.hosting?`<button class="big" id="mStart" style="width:100%">▶ 모두 모였으면 게임 시작!</button>`:'<small>⏳ 방장이 시작하면 다 같이 시작해요</small>'}`;}}
   if(play){const M=MATCH.mission,P=playerRows().map(p=>Object.assign(p,{v:Math.min(MATCH.prog[p.id]||0,M.n)})).sort((a,b)=>b.v-a.v),sec=Math.floor((now()-MATCH.t0)/1000);
-    const big=now()<Math.max(MATCH.t0+6000,MATCH.bigUntil||0);   // 처음 6초만 크게, 그 다음엔 글씨만 작게 (누르면 잠깐 크게)
-    const sig=P.map(p=>p.id+':'+p.v).join()+Math.floor(sec)+big;if(sig!==mhSig){mhSig=sig;$('missionHud').classList.toggle('mini',!big);
+    const intro=now()<MATCH.t0+3500,open=now()<(MATCH.bigUntil||0);   // 처음 3.5초: 미션 이름 · 그 다음: 작은 칩 · 누르면 5초 동안 순위표
+    const sig=P.map(p=>p.id+':'+p.v).join()+Math.floor(sec)+intro+open;if(sig!==mhSig){mhSig=sig;const el=$('missionHud');
+      el.classList.toggle('intro',intro&&!open);el.classList.toggle('open',open);
       const mine=P.find(p=>p.id===ME.id)||{v:0},lead=P[0],tm=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
-      if(!big)$('missionHud').innerHTML=`${M.icon} ${esc(M.text)} · 나 <b>${mine.v}/${M.n}</b>${P.length>1?` · 👑 ${esc(lead.name)} ${lead.v}`:''} · <small>⏱ ${tm}</small>`;
-      else $('missionHud').innerHTML=`<b>${M.icon} ${esc(M.text)}</b> <small style="float:right">⏱ ${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}</small>
-        ${P.map((p,i)=>`<div class="mrow ${p.id===ME.id?'me':''}"><span class="nm">${i===0&&p.v>0?'👑':REG[p.race].icon} ${esc(p.name)}</span><span class="tr"><i style="width:${p.v/M.n*100}%"></i></span><span>${p.v}/${M.n}</span></div>`).join('')}`;}}
+      if(open)el.innerHTML=`<b>${M.icon} ${esc(M.text)}</b> <small style="float:right">⏱ ${tm}</small>
+        ${P.map((p,i)=>`<div class="mrow ${p.id===ME.id?'me':''}"><span class="nm">${i===0&&p.v>0?'👑':REG[p.race].icon} ${esc(p.name)}</span><span class="tr"><i style="width:${p.v/M.n*100}%"></i></span><span>${p.v}/${M.n}</span></div>`).join('')}<div class="mfold">▲ 눌러서 접기</div>`;
+      else if(intro)el.innerHTML=`🎯 <b>${M.icon} ${esc(M.text)}</b>`;
+      else el.innerHTML=`${M.icon} 나 <b>${mine.v}/${M.n}</b>${P.length>1&&lead.v>0?` · 👑${lead.id===ME.id?'나':esc(lead.name)} ${lead.v}`:''} · ⏱${tm}`;
+      placeMH();}}
 }
+// 미션 칩 자리: 시계 바로 오른쪽 (오른쪽 버튼·지도와 안 겹치게). 자리가 좁으면 시계 아래, 변신 칸 오른쪽
+function placeMH(){const el=$('missionHud');if(el.classList.contains('hide'))return;const c=$('clock').getBoundingClientRect();
+  const open=el.classList.contains('open');let L=c.right+6,T=c.top,R=innerWidth-8;
+  for(const id of ['topBtns','mini','mapIco','bossBar']){const e=$(id);if(!e||!e.offsetParent)continue;const r=e.getBoundingClientRect();if(r.width&&r.top<c.bottom+4&&r.bottom>c.top-4&&r.left>L-2)R=Math.min(R,r.left-6);}
+  if(!c.width||R-L<(open?240:120)){L=c.width?c.left:10;T=c.width?c.bottom+6:60;const fb=$('formbar');if(fb&&fb.offsetParent){const r=fb.getBoundingClientRect();if(r.width&&r.top<T+34&&r.bottom>T&&r.left<L+20)L=r.right+6;}
+    R=innerWidth-8;for(const id of ['topBtns','mini']){const e=$(id);if(!e||!e.offsetParent)continue;const r=e.getBoundingClientRect();if(r.width&&r.top<T+40&&r.bottom>T&&r.left>L)R=Math.min(R,r.left-6);}}
+  Object.assign(el.style,{left:L+'px',top:T+'px',right:'auto',transform:'none',width:open?Math.min(300,R-L)+'px':'auto',maxWidth:Math.max(110,R-L)+'px'});}
+addEventListener('resize',()=>{mhSig='';});
 $('matchCard').addEventListener('click',e=>{if(e.target.closest('#mStart'))hostStartMatch();});
-$('missionHud').addEventListener('click',()=>{MATCH.bigUntil=now()+5000;mhSig='';UI.dirty=true;});
+$('missionHud').addEventListener('click',()=>{MATCH.bigUntil=now()<(MATCH.bigUntil||0)?0:now()+5000;mhSig='';UI.dirty=true;renderMatch();});
 function showCountdown(M,done){
   const ov=$('cdOv');ov.classList.remove('hide');$('cdMis').textContent='미션: '+M.icon+' '+M.text;$('cdTip').textContent='💡 '+M.tip;let n=3;
   const tick=()=>{if(n>0){$('cdNum').textContent=n;sfx('pick');n--;setTimeout(tick,1000);}else{$('cdNum').textContent='시작!';sfx('crit');setTimeout(()=>ov.classList.add('hide'),900);done();}};tick();
@@ -3581,8 +3652,20 @@ $('charBar').addEventListener('click',e=>{const d=e.target.closest('.del');
 $('nameIn').addEventListener('input',()=>{PROF.name=$('nameIn').value.trim().slice(0,8);saveProf();renderCharBar();});
 $('testOff').onclick=()=>{store('soyul_testmode',0);location.reload();};
 const hex=n=>'#'+n.toString(16).padStart(6,'0');
+function renderResume(){const S=loadSession(),el=$('resumeBox');if(!S||TEST){el.classList.add('hide');return;}
+  const ago=Math.max(1,Math.round((Date.now()-S.t)/60000));el.classList.remove('hide');
+  el.innerHTML=`<span class="tx">🔄 <b style="font-weight:400">「${esc(S.title||'놀이방')}」</b> ${S.role==='host'?'방이 닫혔어요':'방에서 튕겼어요'}<small>${ago}분 전 · ${S.role==='host'?'다시 열면 친구들이 그대로 돌아올 수 있어요':'그대로 이어서 놀 수 있어요'} (10분까지)</small></span>
+    <button id="btnResume">${S.role==='host'?'방 다시 열기':'다시 들어가기'}</button><button id="btnResumeX" class="chip" title="잊기" style="background:#fff;color:#5a6a7a;padding:6px 10px">✕</button>`;
+  $('btnResume').onclick=()=>{const S2=loadSession();if(!S2){renderResume();return;}
+    if(S2.role==='host')startGame('host',{title:S2.title,pw:S2.pw,mode:S2.mode,solo:S2.solo,slot:S2.slot,rid:S2.rid,resume:S2});
+    else{JOIN={slot:S2.slot,rid:S2.rid,pw:S2.pw,title:S2.title,n:0,max:MAXP,races:[],restore:S2};startGame('join');}};
+  $('btnResumeX').onclick=()=>{clearSession();renderResume();};}
+setInterval(()=>{if(!GAME.on)renderResume();},30000);
+// 휴대폰에서 다른 앱으로 가거나 화면이 꺼질 때 바로 저장 (튕겨도 가방·위치가 남아요)
+function saveNow(){if(!GAME.on)return;save();saveSession();}
+addEventListener('pagehide',saveNow);document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNow();});
 function renderStart(){
-  renderCharBar();
+  renderCharBar();renderResume();
   if(TEST){$('btnHost').disabled=true;$('btnHost').style.opacity=.45;$('btnJoin').classList.add('hide');$('testBadge').classList.remove('hide');}
   const taken=JOIN?JOIN.races||[]:[];
   if(taken.includes(PROF.race)){const free=[0,1,2,3,4,5].find(i=>!taken.includes(i));if(free!==undefined){$('raceNote').textContent='⚠ '+REG[PROF.race].name+'은(는) 다른 친구가 먼저 골랐어요. 남은 종족 중에서 골라 주세요!';PROF.race=free;}}
@@ -3674,7 +3757,7 @@ async function refreshRooms(quiet){
   listing=false;
   if(!roomCache){box.innerHTML='<div class="room"><small>방 목록을 불러오지 못했어요. 새로고침을 눌러 주세요.</small></div>';return;}
   box.innerHTML=roomCache.length?roomCache.map(r=>`<div class="room"><span class="nm">${r.locked?'🔒 ':''}${r.mode==='mission'?'🎯 ':r.mode==='solo'?'🙋 ':''}${esc(r.title)}<br><small>${r.mode==='solo'?'혼자 노는 중 · 같이 놀자고 할 수 있어요 · ':''}방장 ${esc(r.host)} · ${(r.races||[]).map(i=>REG[i]?REG[i].icon:'').join('')}${r.mode==='mission'?(r.state==='play'||r.state==='count'?' · 🏃 게임 중':' · ⏳ 대기 중'):''}</small></span><b>${r.n}/${r.max}</b>
-    ${(()=>{const busy=r.n>=r.max||(r.mode==='mission'&&(r.state==='play'||r.state==='count'));return `<button class="chip" data-slot="${r.slot}" ${busy?'disabled style="opacity:.4"':''}>${r.n>=r.max?'꽉 참':busy?'게임 중':r.mode==='solo'?'같이 놀자!':'들어가기'}</button>`;})()}</div>`).join(''):'<div class="room"><small>지금 열린 방이 없어요. [친구랑 놀기]로 방을 만들어 보세요!</small></div>';
+    ${(()=>{const S=loadSession(),mine=S&&S.rid===r.rid&&S.role==='guest',busy=r.n>=r.max||(!mine&&r.mode==='mission'&&(r.state==='play'||r.state==='count'));return `<button class="chip" data-slot="${r.slot}" ${busy?'disabled style="opacity:.4"':''}>${r.n>=r.max?'꽉 참':mine?'🔄 다시 들어가기':busy?'게임 중':r.mode==='solo'?'같이 놀자!':'들어가기'}</button>`;})()}</div>`).join(''):'<div class="room"><small>지금 열린 방이 없어요. [친구랑 놀기]로 방을 만들어 보세요!</small></div>';
 }
 $('btnRefresh').onclick=()=>refreshRooms();
 setInterval(()=>{if(!GAME.on&&!document.hidden)refreshRooms(true);},12000);   // 첫 화면에서는 12초마다 조용히 새로 고쳐요
@@ -3685,6 +3768,7 @@ function askJoinReq(p,cb){reqCb=cb;let n=30;$('reqTxt').textContent=REG[p.race].
 function reqDone(ch){clearTimeout(reqTimer);$('pReq').classList.add('hide');const cb=reqCb;reqCb=null;NET.pending=null;if(cb&&ch)cb(ch);}
 $('pReq').addEventListener('click',e=>{const b=e.target.closest('[data-rq]');if(b)reqDone(b.dataset.rq);});
 $('roomList').addEventListener('click',e=>{const b=e.target.closest('button[data-slot]');if(!b)return;const r=roomCache.find(x=>x.slot===+b.dataset.slot);if(!r)return;
+  {const S=loadSession();if(S&&S.role==='guest'&&S.rid===r.rid){JOIN=Object.assign({},r,{pw:S.pw,restore:S});startGame('join');return;}}
   const go=pw=>{JOIN=Object.assign({},r,{pw});renderStart();$('btnJoin').scrollIntoView({block:'nearest'});};
   if(r.locked)askPw(r,go);else go('');});
 function askPw(r,cb){$('pwFor').textContent='「'+r.title+'」 방의 비밀번호를 써 주세요';$('pwIn').value='';$('pPw').classList.remove('hide');
@@ -3708,8 +3792,8 @@ async function startGame(mode,opts){
   buildMe();goHome();GAME.snapCam=true;ME.hp=maxHp();GAME.on=true;GAME.godT=now()+3000;UI.dirty=true;
   if(!has(TOOLS.find(t=>t.id===ME.tool).item))ME.tool='dagger';setToolMesh();
   if(mode==='join'){toast('친구 방에 들어가는 중… 🚪');
-    try{await joinRoom(JOIN.slot,JOIN.pw,JOIN.rid);toast('「'+NET.room.title+'」 방에 들어왔어요! 🎉');}
-    catch(e){NET.hostConn=null;ME.id='me';spawnAll();const m=e&&e.message;
+    try{await joinRoom(JOIN.slot,JOIN.pw,JOIN.rid);if(JOIN.restore)restoreMe(JOIN.restore);toast(JOIN.restore?'🔄 「'+NET.room.title+'」 방으로 돌아왔어요!':'「'+NET.room.title+'」 방에 들어왔어요! 🎉');saveSession();}
+    catch(e){NET.hostConn=null;ME.id='me';spawnAll();const m=e&&e.message;if(JOIN.restore&&(m==='gone'||m==='timeout'))clearSession();
       toast(m==='declined'?'친구가 지금은 혼자 하고 싶대요 — 혼자 놀기로 시작해요':m==='busy'?'다른 친구 요청을 먼저 보고 있어요. 잠시 뒤 다시 해 봐요':m==='playing'?'이미 게임이 시작된 방이에요 — 혼자 놀기로 시작해요':m==='full'?'방이 꽉 찼어요 (최대 '+MAXP+'명) — 혼자 놀기로 시작해요':m==='badpw'?'비밀번호가 틀렸어요 — 혼자 놀기로 시작해요':'방을 못 찾았어요 — 혼자 놀기로 시작해요');}}
   else{closeLobbyPeer();spawnAll();if(mode==='host')openRoom(opts);
     else if(!TEST&&location.protocol!=='file:'&&typeof Peer!=='undefined')hostRoom({title:ME.profile.name+'의 섬',mode:'solo'}).then(()=>UI.dirty=true).catch(()=>{});}   // 혼자 놀아도 방 목록에 보여요
@@ -3735,6 +3819,7 @@ function loop(){
       for(const o of RES)if(!o.alive&&o.respawn&&t>o.respawn){o.respawn=0;setResAlive(o,true);}
       for(const c of CHESTS)if(c.open&&t>c.respawn){c.open=false;c.mesh.children[1].rotation.x=0;c.mesh.children[1].position.z=0;}}
     saveT-=dt;if(saveT<=0){saveT=10;save();}
+    if(NET.online()&&(GAME.sessT=(GAME.sessT||0)-dt)<=0){GAME.sessT=3;saveSession();}
   }
   updateFx(dt);updateCamera(dt);updateChunks(dt);drawPreview();
   if(GAME.on)updateVillages(dt,ME.x,ME.y,ME.z,t/1000);else updateVillages(dt,0,0,0,t/1000);
@@ -3746,7 +3831,7 @@ function loop(){
 // ---- 시작! ----
 if(isTouch)document.body.classList.add('touch');
 buildWorld();buildMini();renderStart();
-window.__game={makeAnimal,showWarn,TOOLS,hotArr,setHot,renderer,scene,LAVA,BR,RES,inVillage,gather:o=>gather(o),MATCH,mprog,hostStartMatch,faint,trySpecialDrop,listRooms,LINK,hitEnt,shockwave,sfx,camera,AIM,atkDown,atkUp,startWarp,COL,blockedBuilding,onKill,applyHit,upgradeForm,addSoul,cam:(y,pi,d)=>{camYaw=y;camPitch=pi;camDist=d;},fish:()=>fishing&&fishing.state,useUp,putOn,startCraft,RECIPES,toggleRide,INTER,attack,visEnts,ME,W,ENTS,EV,REMOTES,NET,SAVE:()=>SAVE,toggleForm,give,startGame,goHome,FORMS,unlock:k=>{SAVE.unlocked[k]=true;autoFav(k);UI.dirty=true;}};
+window.__game={makeAnimal,mprog,loadSession,showWarn,TOOLS,hotArr,setHot,renderer,scene,LAVA,BR,RES,inVillage,gather:o=>gather(o),MATCH,mprog,hostStartMatch,faint,trySpecialDrop,listRooms,LINK,hitEnt,shockwave,sfx,camera,AIM,atkDown,atkUp,startWarp,COL,blockedBuilding,onKill,applyHit,upgradeForm,addSoul,cam:(y,pi,d)=>{camYaw=y;camPitch=pi;camDist=d;},fish:()=>fishing&&fishing.state,useUp,putOn,startCraft,RECIPES,toggleRide,INTER,attack,visEnts,ME,W,ENTS,EV,REMOTES,NET,SAVE:()=>SAVE,toggleForm,give,startGame,goHome,FORMS,unlock:k=>{SAVE.unlocked[k]=true;autoFav(k);UI.dirty=true;}};
 loop();
 })();
 </script>
